@@ -12,6 +12,8 @@ class ProfileWindow:
         if typ in ['edit', 'open'] and not isinstance(profile, str):
             raise ValueError("in ['edit', 'open'] mode `profile' must be str")
 
+        self.typ = typ
+
         win = Gtk.Window()
 
         title = "Creating New Profile"
@@ -63,10 +65,11 @@ class ProfileWindow:
         b.pack_start(b2, True, True, 0)
 
         if typ == 'edit':
-            name_editor.set_active(False)
+            name_editor.set_sensitive(False)
 
         if typ == 'open':
-            passwd2_editor.set_active(False)
+            name_editor.set_sensitive(False)
+            passwd2_editor.set_sensitive(False)
 
         bb = Gtk.ButtonBox()
 
@@ -88,6 +91,14 @@ class ProfileWindow:
 #        win.set_attached_to(parent)
 
         ok_button.connect('clicked', self._ok)
+        ok_button.set_can_default(True)
+
+        win.set_default(ok_button)
+
+        name_editor.set_activates_default(True)
+        passwd_editor.set_activates_default(True)
+        passwd2_editor.set_activates_default(True)
+
         cancel_button.connect('clicked', self._cancel)
 
         self.win = win
@@ -128,7 +139,7 @@ class ProfileWindow:
             d.destroy()
         else:
 
-            if pwd1 != pwd2:
+            if self.typ in ['new', 'edit'] and pwd1 != pwd2:
                 d = Gtk.MessageDialog(
                     self.win,
                     Gtk.DialogFlags.MODAL
