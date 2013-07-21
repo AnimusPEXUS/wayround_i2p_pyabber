@@ -11,7 +11,12 @@ import org.wayround.utils.path
 import org.wayround.utils.crypto
 import org.wayround.utils.error
 
+import org.wayround.xmpp.client
+
 import org.wayround.pyabber.profilewindow
+import org.wayround.pyabber.connpresetwindow
+
+class Dumb: pass
 
 class MainWindow:
 
@@ -28,16 +33,20 @@ class MainWindow:
         if not os.path.isdir(self.profiles_path):
             os.makedirs(self.profiles_path)
 
+#        self.client = org.wayround.xmpp.client.XMPPC2SClient()
+
+        self.window_elements = Dumb()
+
         self._load_pixbufs()
 
-        self.window = Gtk.Window()
+        window = Gtk.Window()
 
-        self.window.set_icon(self.icons['pyabber'])
-        self.window.set_title("Pyabber :P")
-        self.window.maximize()
-        self.window.set_hide_titlebar_when_maximized(True)
-#        self.window.set_decorated(False)
-#        self.window.set_resizable(False)
+        window.set_icon(self.icons['pyabber'])
+        window.set_title("Pyabber :P")
+        window.maximize()
+        window.set_hide_titlebar_when_maximized(True)
+#        self.window_elements.window.set_decorated(False)
+#        self.window_elements.window.set_resizable(False)
 
         main_box = Gtk.Box()
 
@@ -56,37 +65,43 @@ class MainWindow:
 
 
         _l = Gtk.Label("Program")
-#        _l.set_width_chars(25)
+        _l.set_width_chars(10)
         _b = Gtk.Button("Exit")
         _b.connect('clicked', self.app_exit)
         _b.set_relief(Gtk.ReliefStyle.NONE)
         main_notebook.append_page(_b, _l)
 
         _l = Gtk.Label("Profile")
-#        _l.set_width_chars(25)
-        self.profile_tab = self._build_profile_tab()
-        main_notebook.append_page(self.profile_tab, _l)
+        _l.set_width_chars(10)
+
+        profile_tab = self._build_profile_tab()
+        main_notebook.append_page(profile_tab, _l)
 
         _l = Gtk.Label("Connection")
-#        _l.set_width_chars(25)
-        main_notebook.append_page(self._build_connection_tab(), _l)
+        _l.set_width_chars(10)
+        connection_tab = self._build_connection_tab()
+        main_notebook.append_page(connection_tab, _l)
 
-        _l = Gtk.Label("Server Features")
-#        _l.set_width_chars(25)
+        _l = Gtk.Label("Stream Features")
+        _l.set_width_chars(10)
         main_notebook.append_page(Gtk.Label(), _l)
 
         _l = Gtk.Label("Roster and Stanzas")
-#        _l.set_width_chars(25)
+        _l.set_width_chars(10)
         main_notebook.append_page(xmpp_core_box, _l)
 
         main_box.pack_start(main_notebook, True, True, 0)
 
         main_notebook.connect('switch-page', self.main_notebook_switch_page)
 
-        self.window.add(main_box)
+        window.add(main_box)
 
         self.profile_name = None
         self.profile_data = None
+
+        self.window_elements.window = window
+        self.window_elements.profile_tab = profile_tab
+        self.window_elements.connection_tab = connection_tab
 
         return
 
@@ -166,27 +181,25 @@ class MainWindow:
 
         b3.pack_start(ff1, False, True, 0)
 
-        self.profile_info_label = Gtk.Label("Currently opened profile info")
+        profile_info_label = Gtk.Label("Currently opened profile info")
 
         ff2 = Gtk.Frame()
-        ff2.add(self.profile_info_label)
+        ff2.add(profile_info_label)
         ff2.set_label("Current Profile")
 
-        self.profile_info_label.set_margin_left(5)
-        self.profile_info_label.set_margin_right(5)
-        self.profile_info_label.set_margin_top(5)
-        self.profile_info_label.set_margin_bottom(5)
+        profile_info_label.set_margin_left(5)
+        profile_info_label.set_margin_right(5)
+        profile_info_label.set_margin_top(5)
+        profile_info_label.set_margin_bottom(5)
+        profile_info_label.set_line_wrap(True)
+        profile_info_label.set_max_width_chars(10)
 
         b3.pack_start(ff2, True, True, 0)
 
-        self.profile_info_label.set_line_wrap(True)
-        self.profile_info_label.set_max_width_chars(10)
-
-
-
         b.pack_start(b2, True, True, 0)
 
-        self.profile_icon_view = icon_view
+        self.window_elements.profile_icon_view = icon_view
+        self.window_elements.profile_info_label = profile_info_label
 
 #        b.set_sensitive(False)
 
@@ -202,10 +215,6 @@ class MainWindow:
         b.set_spacing(5)
 
         b.set_orientation(Gtk.Orientation.VERTICAL)
-
-        b01 = Gtk.Box()
-        b01.set_spacing(5)
-        b01.set_orientation(Gtk.Orientation.VERTICAL)
 
         conn_table = Gtk.TreeView()
 
@@ -241,11 +250,10 @@ class MainWindow:
         bb01.pack_start(but4, False, True, 0)
         bb01.pack_start(but5, False, True, 0)
 
+        but3.connect('clicked', self.connections_tab_new_clicked)
 
-        b01.pack_start(bb01_ff, False, True, 0)
-        b01.pack_start(conn_table_f, True, True, 0)
-
-        b.pack_start(b01, True, True, 0)
+        b.pack_start(bb01_ff, False, True, 0)
+        b.pack_start(conn_table_f, True, True, 0)
 
         return b
 
@@ -255,13 +263,15 @@ class MainWindow:
 
     def main_notebook_switch_page(self, notebook, page, pagenum):
 
-        if page == self.profile_tab:
+        if page == self.window_elements.profile_tab:
             self.profile_tab_refresh_list()
             self.display_open_profile_info()
 
     def profile_tab_new_clicked(self, button):
 
-        w = org.wayround.pyabber.profilewindow.ProfileWindow(self.window, typ='new')
+        w = org.wayround.pyabber.profilewindow.ProfileWindow(
+            self.window_elements.window, typ='new'
+            )
         r = w.run()
 
         if r['button'] == 'ok':
@@ -281,28 +291,28 @@ class MainWindow:
 
     def profile_tab_delete_clicked(self, button):
 
-        items = self.profile_icon_view.get_selected_items()
+        items = self.window_elements.profile_icon_view.get_selected_items()
 
         i_len = len(items)
 
         if i_len == 0:
             d = Gtk.MessageDialog(
-                self.window,
+                self.window_elements.window,
                 Gtk.DialogFlags.MODAL
                 | Gtk.DialogFlags.DESTROY_WITH_PARENT,
                 Gtk.MessageType.ERROR,
                 Gtk.ButtonsType.OK,
-                "Select something first"
+                "Profile not selected"
                 )
             d.run()
             d.destroy()
 
         else:
 
-            name = self.profile_icon_view.get_model()[items[0]][0][:-4]
+            name = self.window_elements.profile_icon_view.get_model()[items[0]][0][:-4]
 
             d = Gtk.MessageDialog(
-                self.window,
+                self.window_elements.window,
                 Gtk.DialogFlags.MODAL
                 | Gtk.DialogFlags.DESTROY_WITH_PARENT,
                 Gtk.MessageType.QUESTION,
@@ -323,7 +333,7 @@ class MainWindow:
                     os.unlink(profiles)
                 except:
                     d = Gtk.MessageDialog(
-                        self.window,
+                        self.window_elements.window,
                         Gtk.DialogFlags.MODAL
                         | Gtk.DialogFlags.DESTROY_WITH_PARENT,
                         Gtk.MessageType.ERROR,
@@ -347,28 +357,28 @@ class MainWindow:
 
     def profile_tab_activate_clicked(self, button):
 
-        items = self.profile_icon_view.get_selected_items()
+        items = self.window_elements.profile_icon_view.get_selected_items()
 
         i_len = len(items)
 
         if i_len == 0:
             d = Gtk.MessageDialog(
-                self.window,
+                self.window_elements.window,
                 Gtk.DialogFlags.MODAL
                 | Gtk.DialogFlags.DESTROY_WITH_PARENT,
                 Gtk.MessageType.ERROR,
                 Gtk.ButtonsType.OK,
-                "Select something first"
+                "Profile not selected"
                 )
             d.run()
             d.destroy()
 
         else:
 
-            name = self.profile_icon_view.get_model()[items[0]][0][:-4]
+            name = self.window_elements.profile_icon_view.get_model()[items[0]][0][:-4]
 
             w = org.wayround.pyabber.profilewindow.ProfileWindow(
-                self.window, typ='open', profile=name
+                self.window_elements.window, typ='open', profile=name
                 )
             r = w.run()
 
@@ -406,7 +416,7 @@ class MainWindow:
 
         selected = None
 
-        items = self.profile_icon_view.get_selected_items()
+        items = self.window_elements.profile_icon_view.get_selected_items()
 
         if len(items) != 0:
 
@@ -426,21 +436,28 @@ class MainWindow:
 
             tree.append([i, self.icons['profile']])
 
-        self.profile_icon_view.set_model(tree)
-        self.profile_icon_view.set_text_column(0)
-        self.profile_icon_view.set_pixbuf_column(1)
+        self.window_elements.profile_icon_view.set_model(tree)
+        self.window_elements.profile_icon_view.set_text_column(0)
+        self.window_elements.profile_icon_view.set_pixbuf_column(1)
 
         if selected:
 
-            self.profile_icon_view.select_path(selected)
+            self.window_elements.profile_icon_view.select_path(selected)
 
     def display_open_profile_info(self):
 
         if not hasattr(self, 'profile_name') or not isinstance(self.profile_data, dict):
-            self.profile_info_label.set_text("Profile not activated")
+            self.window_elements.profile_info_label.set_text("Profile not activated")
 
         else:
-            self.profile_info_label.set_text(
+            self.window_elements.profile_info_label.set_text(
                 "Active profile is `{}'".format(self.profile_name)
                 )
+
+    def connections_tab_new_clicked(self, button):
+
+        w = org.wayround.pyabber.connpresetwindow.ConnectionPresetWindow(
+            self.window_elements.window, typ='new'
+            )
+        r = w.run()
 

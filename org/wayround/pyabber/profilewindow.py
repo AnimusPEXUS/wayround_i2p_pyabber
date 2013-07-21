@@ -116,7 +116,7 @@ class ProfileWindow:
     def run(self):
 
         self.win.show_all()
-        Gtk.main()
+#        Gtk.main()
 
         return self.result
 
@@ -172,7 +172,7 @@ class ProfileWindow:
                         'password2': pwd2
                         }
 
-                    Gtk.main_quit()
+#                    Gtk.main_quit()
                     self.win.destroy()
 
     def _cancel(self, user_data):
@@ -184,5 +184,5 @@ class ProfileWindow:
             'password2': self.passwd2_ed.get_text()
             }
 
-        Gtk.main_quit()
+#        Gtk.main_quit()
         self.win.destroy()
