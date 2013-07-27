@@ -1,4 +1,6 @@
 
+import threading
+
 from gi.repository import Gtk
 from gi.repository import Gdk
 from gi.repository import GLib
@@ -10,6 +12,8 @@ class Dumb: pass
 class ConnectionPresetWindow:
 
     def __init__(self, parent, preset_name=None, preset_data=None, typ='new'):
+
+        self.exit_event = threading.Event()
 
         if not typ in ['new', 'edit']:
             raise ValueError("`typ' must be in ['new', 'edit']")
@@ -94,6 +98,9 @@ class ConnectionPresetWindow:
 
         password_entry = Gtk.Entry()
         password_entry2 = Gtk.Entry()
+
+        password_entry.set_visibility(False)
+        password_entry2.set_visibility(False)
 
         pwd_grid.attach(Gtk.Label("Password:"), 0, 0, 1, 1)
         pwd_grid.attach(password_entry, 1, 0, 1, 1)
@@ -255,10 +262,12 @@ class ConnectionPresetWindow:
         ok_button.connect('clicked', self._ok)
         cancel_button.connect('clicked', self._cancel)
 
-        resource_switch_combobox.connect('changed', self.resource_mode_changed)
-        manual_server_cb.connect('toggled', self.manual_server_toggled)
-        auto_routines_rb.connect('toggled', self.auto_routines_rb_toggled)
-        manual_routines_rb.connect('toggled', self.manual_routines_rb_toggled)
+        resource_switch_combobox.connect('changed', self._resource_mode_changed)
+        manual_server_cb.connect('toggled', self._manual_server_toggled)
+        auto_routines_rb.connect('toggled', self._auto_routines_rb_toggled)
+        manual_routines_rb.connect('toggled', self._manual_routines_rb_toggled)
+
+        win.connect('destroy', self._window_destroy)
 
 
         self.window_elements.win = win
@@ -283,6 +292,7 @@ class ConnectionPresetWindow:
         self.window_elements.host_port_grid = host_port_grid
         self.window_elements.auto_routines_grid_or_box = auto_routines_grid_or_box
         self.window_elements.manual_routines_label = manual_routines_label
+        self.window_elements.cancel_button = cancel_button
 
         self.result = {
             'button': 'cancel',
@@ -332,15 +342,15 @@ class ConnectionPresetWindow:
         resource_switch_combobox.set_active(active_cb_value)
 
         manual_server_cb.set_active(self.result['manual_host_and_port'])
-        self.manual_server_toggled(manual_server_cb)
+        self._manual_server_toggled(manual_server_cb)
 
         if self.result['stream_features_handling'] == 'auto':
             auto_routines_rb.set_active(True)
         else:
             manual_routines_rb.set_active(True)
 
-        self.auto_routines_rb_toggled(auto_routines_rb)
-        self.manual_routines_rb_toggled(manual_routines_rb)
+        self._auto_routines_rb_toggled(auto_routines_rb)
+        self._manual_routines_rb_toggled(manual_routines_rb)
 
         use_starttls_cb.set_active(self.result['STARTTLS'])
         register_cb.set_active(self.result['register'])
@@ -348,24 +358,24 @@ class ConnectionPresetWindow:
         bind_cb.set_active(self.result['bind'])
         session_cb.set_active(self.result['session'])
 
-        if typ == 'edit':
-            preset_name_entry.set_sensitive(False)
-
         return
 
 
     def run(self):
 
         self.window_elements.win.show_all()
-#        Gtk.main()
+
+        self.exit_event.clear()
+        while not self.exit_event.is_set():
+            Gtk.main_iteration()
 
         return self.result
 
-    def _ok(self, user_data):
+    def _ok(self, button):
 
-        name = self.window_elements.name_ed.get_text()
-        pwd1 = self.window_elements.passwd_ed.get_text()
-        pwd2 = self.window_elements.passwd2_ed.get_text()
+        name = self.window_elements.preset_name_entry.get_text()
+        pwd1 = self.window_elements.password_entry.get_text()
+        pwd2 = self.window_elements.password_entry2.get_text()
 
         if name == '':
             d = Gtk.MessageDialog(
@@ -406,20 +416,54 @@ class ConnectionPresetWindow:
                     d.destroy()
                 else:
 
-                    self.result = {
-                        'button': 'ok',
-                        'name': name,
-                        'password': pwd1,
-                        'password2': pwd2
-                        }
+                    self.result['button'] = 'ok'
+
+
+                    self.result['name'] = self.window_elements.preset_name_entry.get_text()
+                    self.result['username'] = self.window_elements.username_entry.get_text()
+                    self.result['server'] = self.window_elements.server_entry.get_text()
+                    self.result['resource'] = self.window_elements.resource_entry.get_text()
+                    self.result['password'] = self.window_elements.password_entry.get_text()
+                    self.result['password2'] = self.window_elements.password_entry2.get_text()
+                    self.result['host'] = self.window_elements.host_entry.get_text()
+                    self.result['port'] = int(self.window_elements.port_entry.get_text())
+
+                    active_cb_value = self.window_elements.resource_switch_combobox.get_active()
+
+                    if active_cb_value == 0:
+                        self.result['resource_mode'] = 'manual'
+                    elif active_cb_value == 1:
+                        self.result['resource_mode'] = 'client'
+                    elif active_cb_value == 2:
+                        self.result['resource_mode'] = 'server'
+                    else:
+                        raise ValueError("Invalid resource_switch_combobox value")
+
+
+
+                    self.result['manual_host_and_port'] = self.window_elements.manual_server_cb.get_active()
+
+                    if self.window_elements.auto_routines_rb.get_active() == True:
+                        self.result['stream_features_handling'] = 'auto'
+                    else:
+                        self.result['stream_features_handling'] = 'manual'
+
+
+                    self.result['STARTTLS'] = self.window_elements.use_starttls_cb.get_active()
+                    self.result['register'] = self.window_elements.register_cb.get_active()
+                    self.result['login'] = self.window_elements.login_cb.get_active()
+                    self.result['bind'] = self.window_elements.bind_cb.get_active()
+                    self.result['session'] = self.window_elements.session_cb.get_active()
+
 
                     self.window_elements.win.destroy()
 
-    def _cancel(self, user_data):
+    def _cancel(self, button):
 
+        self.result['button'] = 'cancel'
         self.window_elements.win.destroy()
 
-    def resource_mode_changed(self, checkbox):
+    def _resource_mode_changed(self, checkbox):
 
         self.window_elements.resource_entry.set_sensitive(
             checkbox.get_active() == 0
@@ -427,14 +471,18 @@ class ConnectionPresetWindow:
 
         return
 
-    def manual_server_toggled(self, cb):
+    def _manual_server_toggled(self, cb):
 
         self.window_elements.host_port_grid.set_sensitive(cb.get_active())
 
-    def auto_routines_rb_toggled(self, cb):
+    def _auto_routines_rb_toggled(self, cb):
 
         self.window_elements.auto_routines_grid_or_box.set_sensitive(cb.get_active())
 
-    def manual_routines_rb_toggled(self, cb):
+    def _manual_routines_rb_toggled(self, cb):
 
         self.window_elements.manual_routines_label.set_sensitive(cb.get_active())
+
+    def _window_destroy(self, window):
+
+        self.exit_event.set()

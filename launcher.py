@@ -1,14 +1,15 @@
 
-import signal
+import logging
+
+logging.basicConfig(level='DEBUG')
 
 from gi.repository import Gtk
 
 import org.wayround.pyabber.mainwindow
 
-
-signal.signal(signal.SIGINT, signal.SIG_DFL)
-
 w = org.wayround.pyabber.mainwindow.MainWindow()
-w.window_elements.window.show_all()
+w.run()
 
-Gtk.main()
+
+ret = 0
+exit(ret)

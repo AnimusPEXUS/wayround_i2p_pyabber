@@ -1,10 +1,16 @@
 
+import threading
+
 from gi.repository import Gtk
 from gi.repository import Gdk
+
+class Dumb: pass
 
 class ProfileWindow:
 
     def __init__(self, parent, profile=None, typ='new'):
+
+        self.exit_event = threading.Event()
 
         if not typ in ['new', 'edit', 'open']:
             raise ValueError("`typ' must be in ['new', 'edit', 'open']")
@@ -13,6 +19,8 @@ class ProfileWindow:
             raise ValueError("in ['edit', 'open'] mode `profile' must be str")
 
         self.typ = typ
+
+        self.window_elements = Dumb()
 
         win = Gtk.Window()
 
@@ -90,7 +98,6 @@ class ProfileWindow:
         win.set_type_hint(Gdk.WindowTypeHint.DIALOG)
 #        win.set_attached_to(parent)
 
-        ok_button.connect('clicked', self._ok)
         ok_button.set_can_default(True)
 
         win.set_default(ok_button)
@@ -99,12 +106,18 @@ class ProfileWindow:
         passwd_editor.set_activates_default(True)
         passwd2_editor.set_activates_default(True)
 
+        self.window_elements.win = win
+        self.window_elements.ok_button = ok_button
+        self.window_elements.cancel_button = cancel_button
+        self.window_elements.name_editor = name_editor
+        self.window_elements.passwd_editor = passwd_editor
+        self.window_elements.passwd2_editor = passwd2_editor
+
+        ok_button.connect('clicked', self._ok)
         cancel_button.connect('clicked', self._cancel)
 
-        self.win = win
-        self.name_ed = name_editor
-        self.passwd_ed = passwd_editor
-        self.passwd2_ed = passwd2_editor
+        win.connect('destroy', self._window_destroy)
+
 
         self.result = {
             'button': 'cancel',
@@ -115,20 +128,23 @@ class ProfileWindow:
 
     def run(self):
 
-        self.win.show_all()
-#        Gtk.main()
+        self.window_elements.win.show_all()
+
+        self.exit_event.clear()
+        while not self.exit_event.is_set():
+            Gtk.main_iteration()
 
         return self.result
 
-    def _ok(self, user_data):
+    def _ok(self, button):
 
-        name = self.name_ed.get_text()
-        pwd1 = self.passwd_ed.get_text()
-        pwd2 = self.passwd2_ed.get_text()
+        name = self.window_elements.name_editor.get_text()
+        pwd1 = self.window_elements.passwd_editor.get_text()
+        pwd2 = self.window_elements.passwd2_editor.get_text()
 
         if name == '':
             d = Gtk.MessageDialog(
-                self.win,
+                self.window_elements.win,
                 Gtk.DialogFlags.MODAL
                 | Gtk.DialogFlags.DESTROY_WITH_PARENT,
                 Gtk.MessageType.ERROR,
@@ -141,7 +157,7 @@ class ProfileWindow:
 
             if self.typ in ['new', 'edit'] and pwd1 != pwd2:
                 d = Gtk.MessageDialog(
-                    self.win,
+                    self.window_elements.win,
                     Gtk.DialogFlags.MODAL
                     | Gtk.DialogFlags.DESTROY_WITH_PARENT,
                     Gtk.MessageType.ERROR,
@@ -154,7 +170,7 @@ class ProfileWindow:
 
                 if pwd1 == '':
                     d = Gtk.MessageDialog(
-                        self.win,
+                        self.window_elements.win,
                         Gtk.DialogFlags.MODAL
                         | Gtk.DialogFlags.DESTROY_WITH_PARENT,
                         Gtk.MessageType.ERROR,
@@ -172,17 +188,19 @@ class ProfileWindow:
                         'password2': pwd2
                         }
 
-#                    Gtk.main_quit()
-                    self.win.destroy()
+                    self.window_elements.win.destroy()
 
-    def _cancel(self, user_data):
+    def _cancel(self, button):
 
         self.result = {
             'button': 'cancel',
-            'name': self.name_ed.get_text(),
-            'password': self.passwd_ed.get_text(),
-            'password2': self.passwd2_ed.get_text()
+            'name': self.window_elements.name_editor.get_text(),
+            'password': self.window_elements.passwd_editor.get_text(),
+            'password2': self.window_elements.passwd2_editor.get_text()
             }
 
-#        Gtk.main_quit()
-        self.win.destroy()
+        self.window_elements.win.destroy()
+
+    def _window_destroy(self, window):
+
+        self.exit_event.set()

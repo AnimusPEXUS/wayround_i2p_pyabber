@@ -2,6 +2,7 @@
 import os.path
 import glob
 import sys
+import threading
 
 from gi.repository import Gtk
 from gi.repository import GdkPixbuf
@@ -11,16 +12,20 @@ import org.wayround.utils.path
 import org.wayround.utils.crypto
 import org.wayround.utils.error
 
-import org.wayround.xmpp.client
-
 import org.wayround.pyabber.profilewindow
 import org.wayround.pyabber.connpresetwindow
+import org.wayround.pyabber.controller
 
 class Dumb: pass
+
+# testing account at wayround.org: tests@wayround.org : frtsAJlPIfCLdVn7qdzbLA==
 
 class MainWindow:
 
     def __init__(self, pyabber_config='~/.config/pyabber'):
+
+        self.controller = None
+        self.exit_event = threading.Event()
 
         pyabber_config = os.path.expanduser(pyabber_config)
 
@@ -33,7 +38,6 @@ class MainWindow:
         if not os.path.isdir(self.profiles_path):
             os.makedirs(self.profiles_path)
 
-#        self.client = org.wayround.xmpp.client.XMPPC2SClient()
 
         self.window_elements = Dumb()
 
@@ -65,30 +69,39 @@ class MainWindow:
 
 
         _l = Gtk.Label("Program")
-        _l.set_width_chars(10)
         _b = Gtk.Button("Exit")
         _b.connect('clicked', self.app_exit)
         _b.set_relief(Gtk.ReliefStyle.NONE)
         main_notebook.append_page(_b, _l)
+        main_notebook.child_set_property(_b, 'tab-expand', True)
 
         _l = Gtk.Label("Profile")
-        _l.set_width_chars(10)
-
         profile_tab = self._build_profile_tab()
         main_notebook.append_page(profile_tab, _l)
+        main_notebook.child_set_property(profile_tab, 'tab-expand', True)
 
         _l = Gtk.Label("Connection")
-        _l.set_width_chars(10)
         connection_tab = self._build_connection_tab()
         main_notebook.append_page(connection_tab, _l)
+        main_notebook.child_set_property(connection_tab, 'tab-expand', True)
 
         _l = Gtk.Label("Stream Features")
-        _l.set_width_chars(10)
-        main_notebook.append_page(Gtk.Label(), _l)
+        stream_features_tab = self._build_stream_features_tab()
+        main_notebook.append_page(stream_features_tab, _l)
+        main_notebook.child_set_property(stream_features_tab, 'tab-expand', True)
 
-        _l = Gtk.Label("Roster and Stanzas")
-        _l.set_width_chars(10)
-        main_notebook.append_page(xmpp_core_box, _l)
+        _l = Gtk.Label("Messaging and Presence")
+        messaging_and_presence_tab = self._build_messaging_and_presence()
+        main_notebook.append_page(messaging_and_presence_tab, _l)
+        main_notebook.child_set_property(messaging_and_presence_tab, 'tab-expand', True)
+
+        _l = Gtk.Label("PubSub")
+        main_notebook.append_page(Gtk.Label(""), _l)
+#        main_notebook.child_set_property(profile_tab, 'tab-expand', True)
+
+        _l = Gtk.Label("XMPP Explorer")
+        main_notebook.append_page(Gtk.Label(""), _l)
+#        main_notebook.child_set_property(profile_tab, 'tab-expand', True)
 
         main_box.pack_start(main_notebook, True, True, 0)
 
@@ -98,12 +111,35 @@ class MainWindow:
 
         self.profile_name = None
         self.profile_data = None
+        self.profile_password = None
+        self.preset_name = None
+        self.preset_data = None
+
 
         self.window_elements.window = window
         self.window_elements.profile_tab = profile_tab
         self.window_elements.connection_tab = connection_tab
+        self.window_elements.stream_features_tab = stream_features_tab
+        self.window_elements.main_notebook = main_notebook
+
 
         return
+
+    def run(self):
+
+        self.window_elements.window.show_all()
+
+        self.window_elements.main_notebook.set_current_page(
+            self.window_elements.main_notebook.page_num(
+                self.window_elements.profile_tab
+                )
+            )
+
+        self.exit_event.clear()
+        while not self.exit_event.is_set():
+            Gtk.main_iteration()
+
+        return 0
 
     def _load_pixbufs(self):
 
@@ -136,6 +172,7 @@ class MainWindow:
 
         bb = Gtk.ButtonBox()
         bb.set_orientation(Gtk.Orientation.VERTICAL)
+        bb.set_spacing(3)
 
         but1 = Gtk.Button("Activate")
         but2 = Gtk.Button("Deactivate")
@@ -148,6 +185,7 @@ class MainWindow:
         but1.connect('clicked', self.profile_tab_activate_clicked)
         but2.connect('clicked', self.profile_tab_deactivate_clicked)
         but3.connect('clicked', self.profile_tab_new_clicked)
+        but5.connect('clicked', self.profile_tab_save_clicked)
         but6.connect('clicked', self.profile_tab_delete_clicked)
         but7.connect('clicked', self.profile_tab_refresh_list_clicked)
 
@@ -201,6 +239,7 @@ class MainWindow:
         self.window_elements.profile_icon_view = icon_view
         self.window_elements.profile_info_label = profile_info_label
 
+        icon_view.connect('item-activated', self.profile_tab_iconview_item_activated)
 #        b.set_sensitive(False)
 
         return b
@@ -217,6 +256,105 @@ class MainWindow:
         b.set_orientation(Gtk.Orientation.VERTICAL)
 
         conn_table = Gtk.TreeView()
+
+        _c = Gtk.TreeViewColumn()
+        _r = Gtk.CellRendererText()
+        _c.pack_start(_r, False)
+        _c.add_attribute(_r, 'text', 0)
+        _c.set_title('Preset Name')
+        conn_table.append_column(_c)
+
+        _c = Gtk.TreeViewColumn()
+        _r = Gtk.CellRendererText()
+        _c.pack_start(_r, False)
+        _c.add_attribute(_r, 'text', 1)
+        _c.set_title('User Name')
+        conn_table.append_column(_c)
+
+        _c = Gtk.TreeViewColumn()
+        _r = Gtk.CellRendererText()
+        _c.pack_start(_r, False)
+        _c.add_attribute(_r, 'text', 2)
+        _c.set_title('Server')
+        conn_table.append_column(_c)
+
+        _c = Gtk.TreeViewColumn()
+        _r = Gtk.CellRendererText()
+        _c.pack_start(_r, False)
+        _c.add_attribute(_r, 'text', 3)
+        _c.set_title('Resource Mode')
+        conn_table.append_column(_c)
+
+        _c = Gtk.TreeViewColumn()
+        _r = Gtk.CellRendererText()
+        _c.pack_start(_r, False)
+        _c.add_attribute(_r, 'text', 4)
+        _c.set_title('Resource')
+        conn_table.append_column(_c)
+
+        _c = Gtk.TreeViewColumn()
+        _r = Gtk.CellRendererText()
+        _c.pack_start(_r, False)
+        _c.add_attribute(_r, 'text', 5)
+        _c.set_title('Manual Host/Port?')
+        conn_table.append_column(_c)
+
+        _c = Gtk.TreeViewColumn()
+        _r = Gtk.CellRendererText()
+        _c.pack_start(_r, False)
+        _c.add_attribute(_r, 'text', 6)
+        _c.set_title('Host')
+        conn_table.append_column(_c)
+
+        _c = Gtk.TreeViewColumn()
+        _r = Gtk.CellRendererText()
+        _c.pack_start(_r, False)
+        _c.add_attribute(_r, 'text', 7)
+        _c.set_title('Port')
+        conn_table.append_column(_c)
+
+        _c = Gtk.TreeViewColumn()
+        _r = Gtk.CellRendererText()
+        _c.pack_start(_r, False)
+        _c.add_attribute(_r, 'text', 8)
+        _c.set_title('Automatic Stream Features?')
+        conn_table.append_column(_c)
+
+        _c = Gtk.TreeViewColumn()
+        _r = Gtk.CellRendererText()
+        _c.pack_start(_r, False)
+        _c.add_attribute(_r, 'text', 9)
+        _c.set_title('STARTTLS')
+        conn_table.append_column(_c)
+
+        _c = Gtk.TreeViewColumn()
+        _r = Gtk.CellRendererText()
+        _c.pack_start(_r, False)
+        _c.add_attribute(_r, 'text', 10)
+        _c.set_title('Register')
+        conn_table.append_column(_c)
+
+        _c = Gtk.TreeViewColumn()
+        _r = Gtk.CellRendererText()
+        _c.pack_start(_r, False)
+        _c.add_attribute(_r, 'text', 11)
+        _c.set_title('Login')
+        conn_table.append_column(_c)
+
+        _c = Gtk.TreeViewColumn()
+        _r = Gtk.CellRendererText()
+        _c.pack_start(_r, False)
+        _c.add_attribute(_r, 'text', 12)
+        _c.set_title('Bind')
+        conn_table.append_column(_c)
+
+        _c = Gtk.TreeViewColumn()
+        _r = Gtk.CellRendererText()
+        _c.pack_start(_r, False)
+        _c.add_attribute(_r, 'text', 13)
+        _c.set_title('Session')
+        conn_table.append_column(_c)
+
 
         conn_table_f = Gtk.Frame()
         conn_table_f.add(conn_table)
@@ -238,34 +376,125 @@ class MainWindow:
         bb01_ff.add(bb01)
         bb01_ff.set_label("Actions")
 
+        but6 = Gtk.Button('Refresh')
         but1 = Gtk.Button('Connect')
         but2 = Gtk.Button('Disconnect')
         but3 = Gtk.Button('New...')
         but4 = Gtk.Button('Edit...')
         but5 = Gtk.Button('Delete')
 
+        bb01.pack_start(but6, False, True, 0)
         bb01.pack_start(but1, False, True, 0)
         bb01.pack_start(but2, False, True, 0)
         bb01.pack_start(but3, False, True, 0)
         bb01.pack_start(but4, False, True, 0)
         bb01.pack_start(but5, False, True, 0)
 
+        but1.connect('clicked', self.connections_tab_connect_clicked)
         but3.connect('clicked', self.connections_tab_new_clicked)
+        but6.connect('clicked', self.connections_tab_refresh_clicked)
+        but4.connect('clicked', self.connections_tab_edit_clicked)
+        but5.connect('clicked', self.connections_tab_delete_clicked)
+
 
         b.pack_start(bb01_ff, False, True, 0)
         b.pack_start(conn_table_f, True, True, 0)
+
+        self.window_elements.conn_table = conn_table
+        self.window_elements.connection_tab_box = b
+
+        return b
+
+    def _build_stream_features_tab(self):
+
+        b = Gtk.Box()
+        b.set_orientation(Gtk.Orientation.VERTICAL)
+
+        featuress_grid_ff = Gtk.Frame()
+        featuress_grid_ff.set_label("Proposed Stream Features")
+        featuress_grid = Gtk.Grid()
+        featuress_grid_ff.add(featuress_grid)
+
+        featuress_grid.set_margin_top(5)
+        featuress_grid.set_margin_bottom(5)
+        featuress_grid.set_margin_left(5)
+        featuress_grid.set_margin_right(5)
+
+
+        bb = Gtk.ButtonBox()
+        bb.set_orientation(Gtk.Orientation.HORIZONTAL)
+
+        activate_button = Gtk.Button('Activate')
+
+        bb.pack_start(activate_button, True, True, 0)
+
+        b.pack_start(featuress_grid_ff, True, True, 0)
+        b.pack_start(bb, False, True, 0)
+
+        b.set_spacing(5)
+        b.set_margin_top(5)
+        b.set_margin_bottom(5)
+        b.set_margin_left(5)
+        b.set_margin_right(5)
+
+        return b
+
+    def _build_messaging_and_presence(self):
+
+        b = Gtk.Box()
+        b.set_orientation(Gtk.Orientation.VERTICAL)
+
+        roster_treeview = Gtk.TreeView()
+
+        main_paned = Gtk.Paned()
+        main_paned.set_orientation(Gtk.Orientation.HORIZONTAL)
+
+        messaging_notebook = Gtk.Notebook()
+
+
+        main_paned.pack1(roster_treeview, False, True)
+        main_paned.pack2(messaging_notebook, True, False)
+
+        b.pack_start(main_paned, True, True, 0)
 
         return b
 
     def app_exit(self, user_data):
 
-        Gtk.main_quit()
+        self.exit_event.set()
 
     def main_notebook_switch_page(self, notebook, page, pagenum):
 
         if page == self.window_elements.profile_tab:
             self.profile_tab_refresh_list()
             self.display_open_profile_info()
+
+        elif page == self.window_elements.connection_tab:
+            self.connections_tab_reload_list()
+            self.window_elements.connection_tab_box.set_sensitive(
+                isinstance(self.profile_data, dict)
+                )
+            self.connections_tab_reload_list()
+
+    def new_stream_features(self, obj, attract_attention=False, disable_controls=True):
+        pass
+
+    def connect(self, name, data):
+
+        if not self.controller:
+            self.preset_name = name
+            self.preset_data = data
+            self.controller = org.wayround.pyabber.controller.MainController()
+            self.controller.start(self)
+
+    def disconnect(self):
+
+        self.preset_name = None
+        self.preset_data = None
+        if self.controller:
+            self.controller.stop()
+            self.controller = None
+
 
     def profile_tab_new_clicked(self, button):
 
@@ -276,10 +505,43 @@ class MainWindow:
 
         if r['button'] == 'ok':
 
-            by = org.wayround.utils.crypto.encrypt_data({}, r['password'])
+            self.profile_tab_save(r['name'], {}, r['password'])
+
+            self.profile_tab_refresh_list()
+
+    def profile_tab_save_clicked(self, button):
+        self.profile_tab_save_active()
+
+    def profile_tab_save_active(self):
+        self.profile_tab_save(
+            self.profile_name,
+            self.profile_data,
+            self.profile_password
+            )
+
+    def profile_tab_save(self, name, data, password):
+
+        if not isinstance(name, str) or not isinstance(data, dict):
+            d = Gtk.MessageDialog(
+                self.window_elements.window,
+                Gtk.DialogFlags.MODAL
+                | Gtk.DialogFlags.DESTROY_WITH_PARENT,
+                Gtk.MessageType.ERROR,
+                Gtk.ButtonsType.OK,
+                "Profile not open - nothing to save"
+                )
+            d.run()
+            d.destroy()
+
+        else:
+
+            if not 'connection_presets' in data:
+                data['connection_presets'] = []
+
+            by = org.wayround.utils.crypto.encrypt_data(data, password)
 
             f = open(
-                org.wayround.utils.path.join(self.profiles_path, r['name'] + '.pfl'),
+                org.wayround.utils.path.join(self.profiles_path, name + '.pfl'),
                 'w'
                 )
 
@@ -287,7 +549,6 @@ class MainWindow:
 
             f.close()
 
-            self.profile_tab_refresh_list()
 
     def profile_tab_delete_clicked(self, button):
 
@@ -353,6 +614,7 @@ class MainWindow:
     def profile_tab_deactivate_clicked(self, button):
         self.profile_name = None
         self.profile_data = None
+        self.profile_password = None
         self.display_open_profile_info()
 
     def profile_tab_activate_clicked(self, button):
@@ -401,6 +663,14 @@ class MainWindow:
                     by, r['password']
                     )
 
+                self.profile_password = r['password']
+
+                self.window_elements.main_notebook.set_current_page(
+                    self.window_elements.main_notebook.page_num(
+                        self.window_elements.connection_tab
+                        )
+                    )
+
         self.display_open_profile_info()
 
         return
@@ -444,6 +714,9 @@ class MainWindow:
 
             self.window_elements.profile_icon_view.select_path(selected)
 
+    def profile_tab_iconview_item_activated(self, icon_view, path):
+        self.profile_tab_activate_clicked(None)
+
     def display_open_profile_info(self):
 
         if not hasattr(self, 'profile_name') or not isinstance(self.profile_data, dict):
@@ -461,3 +734,200 @@ class MainWindow:
             )
         r = w.run()
 
+        result_code = r['button']
+
+        del r['button']
+
+        if result_code == 'ok':
+            new_preset = {}
+            new_preset.update(r)
+
+#            print("preset: {}".format(new_preset))
+
+            for i in range(len(self.profile_data['connection_presets']) - 1, -1, -1):
+
+                if self.profile_data['connection_presets'][i]['name'] == new_preset['name']:
+                    del self.profile_data['connection_presets'][i]
+
+            self.profile_data['connection_presets'].append(new_preset)
+            self.connections_tab_reload_list()
+            self.profile_tab_save_active()
+
+    def connections_tab_get_selection_name_and_data(self):
+
+
+        items = self.window_elements.conn_table.get_selection().get_selected_rows()[1]
+
+        i_len = len(items)
+
+        name = None
+        data = None
+
+        if i_len == 0:
+            d = Gtk.MessageDialog(
+                self.window_elements.window,
+                Gtk.DialogFlags.MODAL
+                | Gtk.DialogFlags.DESTROY_WITH_PARENT,
+                Gtk.MessageType.ERROR,
+                Gtk.ButtonsType.OK,
+                "Preset not selected"
+                )
+            d.run()
+            d.destroy()
+
+        else:
+
+            name = self.window_elements.conn_table.get_model()[items[0][0]][0]
+            data = None
+
+            for i in self.profile_data['connection_presets']:
+                if i['name'] == name:
+                    data = i
+                    break
+
+            if not data:
+
+                d = Gtk.MessageDialog(
+                    self.window_elements.window,
+                    Gtk.DialogFlags.MODAL
+                    | Gtk.DialogFlags.DESTROY_WITH_PARENT,
+                    Gtk.MessageType.ERROR,
+                    Gtk.ButtonsType.OK,
+                    "Something isn't right here >:-|"
+                    )
+                d.run()
+                d.destroy()
+
+        if not name or not data:
+            name = None
+            data = None
+
+        return name, data
+
+
+    def connections_tab_edit_clicked(self, button):
+
+        name, data = self.connections_tab_get_selection_name_and_data()
+
+        if name and data:
+
+            w = org.wayround.pyabber.connpresetwindow.ConnectionPresetWindow(
+                self.window_elements.window,
+                typ='edit',
+                preset_name=name,
+                preset_data=data
+                )
+
+            r = w.run()
+
+            result_code = r['button']
+
+            del r['button']
+
+            if result_code == 'ok':
+                new_preset = {}
+                new_preset.update(r)
+
+                for i in range(
+                    len(self.profile_data['connection_presets']) - 1, -1, -1
+                    ):
+
+                    if self.profile_data['connection_presets'][i]['name'] == new_preset['name']:
+                        del self.profile_data['connection_presets'][i]
+
+                    elif self.profile_data['connection_presets'][i]['name'] == name:
+                        del self.profile_data['connection_presets'][i]
+
+                self.profile_data['connection_presets'].append(new_preset)
+                self.profile_tab_save_active()
+
+        self.connections_tab_reload_list()
+
+    def connections_tab_delete_clicked(self, button):
+
+        name, data = self.connections_tab_get_selection_name_and_data()
+
+        if name and data:
+
+            d = Gtk.MessageDialog(
+                self.window_elements.window,
+                Gtk.DialogFlags.MODAL
+                | Gtk.DialogFlags.DESTROY_WITH_PARENT,
+                Gtk.MessageType.QUESTION,
+                Gtk.ButtonsType.YES_NO,
+                "Do You really wish to delete profile `{}'".format(name)
+                )
+            r = d.run()
+            d.destroy()
+
+            if r == Gtk.ResponseType.YES:
+
+                for i in range(
+                    len(self.profile_data['connection_presets']) - 1, -1, -1
+                    ):
+
+                    if self.profile_data['connection_presets'][i]['name'] == name:
+                        del self.profile_data['connection_presets'][i]
+
+                self.profile_tab_save_active()
+
+        self.connections_tab_reload_list()
+
+    def connections_tab_connect_clicked(self, button):
+        name, data = self.connections_tab_get_selection_name_and_data()
+        if name and data:
+            self.connect(name, data)
+
+    def connections_tab_disconnect_clicked(self):
+        self.disconnect()
+
+
+    def connections_tab_reload_list(self):
+
+        storage = Gtk.ListStore(
+            str,  # 0. name
+            str,  # 1. username
+            str,  # 2. server
+            str,  # 3. resource mode
+            str,  # 4. resource
+            bool,  # 5. manual host, port
+            str,  # 6. host
+            int,  # 7. port
+            str,  # 8. stream features handling mode
+            bool,  # 9. starttls
+            bool,  # 10. register
+            bool,  # 11 .login
+            bool,  # 12. bind
+            bool  # 13. session
+            )
+
+        if (self.profile_data
+            and 'connection_presets' in self.profile_data
+            and isinstance(self.profile_data['connection_presets'], list)
+            ):
+
+            for i in self.profile_data['connection_presets']:
+                storage.append(
+                    [
+                    i['name'],
+                    i['username'],
+                    i['server'],
+                    i['resource_mode'],
+                    i['resource'],
+                    i['manual_host_and_port'],
+                    i['host'],
+                    i['port'],
+                    i['stream_features_handling'],
+                    i['STARTTLS'],
+                    i['register'],
+                    i['login'],
+                    i['bind'],
+                    i['session']
+                    ]
+                    )
+
+        self.window_elements.conn_table.set_model(storage)
+
+
+    def connections_tab_refresh_clicked(self, button):
+        self.connections_tab_reload_list()
