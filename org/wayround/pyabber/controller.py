@@ -30,6 +30,8 @@ class MainController:
         self.auth_info = None
         self.sock = None
 
+        self.stanza_processor = None
+
         self.statuses = []
 
         self.waiting_for_stream_features = False
@@ -39,6 +41,9 @@ class MainController:
         self.last_features = None
 
         self._simple_gsasl = None
+
+        self.resource = 'default'
+        self.bound_jid = None
 
 
 
@@ -90,8 +95,8 @@ class MainController:
             self.connection_info = self.jid.make_connection_info()
 
             self.auth_info = self.jid.make_authentication()
-            
-            self.auth_info.password=self.main_window.preset_data['password']
+
+            self.auth_info.password = self.main_window.preset_data['password']
 
             self.sock = socket.create_connection(
                 (
@@ -151,6 +156,39 @@ class MainController:
                     res = drv.drive(res)
 
                     self._simple_gsasl = None
+
+                    if not org.wayround.xmpp.core.is_features_element(res):
+                        print("Can't authenticate: {}".format(res))
+                    else:
+                        print("Authenticated")
+
+                        res = org.wayround.xmpp.client.bind(
+                            self.stanza_processor,
+                            self.resource
+                            )
+
+                        if not isinstance(res, str):
+
+                            print("bind error {}".format(res.determine_error()))
+                        else:
+
+                            self.bound_jid = org.wayround.xmpp.core.jid_from_str(res)
+
+                            print("Bound jid is: {}".format(self.bound_jid.full()))
+
+                            print("Starting session")
+
+                            res = org.wayround.xmpp.client.session(
+                                self.stanza_processor,
+                                self.bound_jid.domain
+                                )
+
+                            if (not org.wayround.xmpp.core.is_stanza(res)
+                                or res.is_error()):
+                                print("Session establishing error")
+                            else:
+                                print("Session established")
+
 
             self.waiting_for_stream_features = False
 
@@ -366,10 +404,11 @@ class MainController:
 
         ret = None
 
-        if status == 'bare_jid':
+        if status == 'bare_jid_from':
             ret = self.jid.bare()
 
-        elif status == 'connection_info_host':
+        elif status == 'bare_jid_to':
+            # TODO: fix self.connection_info.host
             ret = self.connection_info.host
 
         elif status == 'sock_streamer':
@@ -416,10 +455,11 @@ class MainController:
         if status == 'mechanism_name':
             ret = 'DIGEST-MD5'
 
-        elif status == 'bare_jid':
+        elif status == 'bare_jid_from':
             ret = self.jid.bare()
 
-        elif status == 'connection_info_host':
+        elif status == 'bare_jid_to':
+            # TODO: fix self.connection_info.host
             ret = self.connection_info.host
 
         elif status == 'sock_streamer':
@@ -456,6 +496,10 @@ class MainController:
                     )
 
             ret = str(res[1], 'utf-8')
+
+        elif status == 'success':
+            pass
+
         else:
             raise ValueError("status `{}' not supported".format(status))
 
