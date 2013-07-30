@@ -4,13 +4,15 @@ import threading
 from gi.repository import Gtk
 from gi.repository import Gdk
 
+import org.wayround.utils.gtk
+
 class Dumb: pass
 
 class ProfileWindow:
 
     def __init__(self, parent, profile=None, typ='new'):
 
-        self.exit_event = threading.Event()
+        self.iteration_loop = org.wayround.utils.gtk.GtkIteratedLoop()
 
         if not typ in ['new', 'edit', 'open']:
             raise ValueError("`typ' must be in ['new', 'edit', 'open']")
@@ -96,7 +98,6 @@ class ProfileWindow:
         win.set_transient_for(parent)
         win.set_destroy_with_parent(True)
         win.set_type_hint(Gdk.WindowTypeHint.DIALOG)
-#        win.set_attached_to(parent)
 
         ok_button.set_can_default(True)
 
@@ -130,9 +131,7 @@ class ProfileWindow:
 
         self.window_elements.win.show_all()
 
-        self.exit_event.clear()
-        while not self.exit_event.is_set():
-            Gtk.main_iteration()
+        self.iteration_loop.wait()
 
         return self.result
 
@@ -143,7 +142,7 @@ class ProfileWindow:
         pwd2 = self.window_elements.passwd2_editor.get_text()
 
         if name == '':
-            d = Gtk.MessageDialog(
+            d = org.wayround.utils.gtk.MessageDialog(
                 self.window_elements.win,
                 Gtk.DialogFlags.MODAL
                 | Gtk.DialogFlags.DESTROY_WITH_PARENT,
@@ -156,7 +155,7 @@ class ProfileWindow:
         else:
 
             if self.typ in ['new', 'edit'] and pwd1 != pwd2:
-                d = Gtk.MessageDialog(
+                d = org.wayround.utils.gtk.MessageDialog(
                     self.window_elements.win,
                     Gtk.DialogFlags.MODAL
                     | Gtk.DialogFlags.DESTROY_WITH_PARENT,
@@ -169,7 +168,7 @@ class ProfileWindow:
             else:
 
                 if pwd1 == '':
-                    d = Gtk.MessageDialog(
+                    d = org.wayround.utils.gtk.MessageDialog(
                         self.window_elements.win,
                         Gtk.DialogFlags.MODAL
                         | Gtk.DialogFlags.DESTROY_WITH_PARENT,
@@ -203,4 +202,4 @@ class ProfileWindow:
 
     def _window_destroy(self, window):
 
-        self.exit_event.set()
+        self.iteration_loop.stop()

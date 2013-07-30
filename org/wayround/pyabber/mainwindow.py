@@ -3,6 +3,7 @@ import os.path
 import glob
 import sys
 import threading
+import time
 
 from gi.repository import Gtk
 from gi.repository import GdkPixbuf
@@ -11,6 +12,7 @@ from gi.repository import Pango
 import org.wayround.utils.path
 import org.wayround.utils.crypto
 import org.wayround.utils.error
+import org.wayround.utils.gtk
 
 import org.wayround.pyabber.profilewindow
 import org.wayround.pyabber.connpresetwindow
@@ -25,7 +27,7 @@ class MainWindow:
     def __init__(self, pyabber_config='~/.config/pyabber'):
 
         self.controller = None
-        self.exit_event = threading.Event()
+        self.iteration_loop = org.wayround.utils.gtk.GtkIteratedLoop()
 
         pyabber_config = os.path.expanduser(pyabber_config)
 
@@ -103,6 +105,11 @@ class MainWindow:
         main_notebook.append_page(Gtk.Label(""), _l)
 #        main_notebook.child_set_property(profile_tab, 'tab-expand', True)
 
+        _l = Gtk.Label("Status")
+        status_tab = self._build_status_tab()
+        main_notebook.append_page(status_tab, _l)
+        main_notebook.child_set_property(status_tab, 'tab-expand', True)
+
         main_box.pack_start(main_notebook, True, True, 0)
 
         main_notebook.connect('switch-page', self.main_notebook_switch_page)
@@ -114,6 +121,8 @@ class MainWindow:
         self.profile_password = None
         self.preset_name = None
         self.preset_data = None
+
+        self.client_working = False
 
 
         self.window_elements.window = window
@@ -135,9 +144,7 @@ class MainWindow:
                 )
             )
 
-        self.exit_event.clear()
-        while not self.exit_event.is_set():
-            Gtk.main_iteration()
+        self.iteration_loop.wait()
 
         return 0
 
@@ -261,14 +268,14 @@ class MainWindow:
         _r = Gtk.CellRendererText()
         _c.pack_start(_r, False)
         _c.add_attribute(_r, 'text', 0)
-        _c.set_title('Preset Name')
+        _c.set_title('Pst Nm')
         conn_table.append_column(_c)
 
         _c = Gtk.TreeViewColumn()
         _r = Gtk.CellRendererText()
         _c.pack_start(_r, False)
         _c.add_attribute(_r, 'text', 1)
-        _c.set_title('User Name')
+        _c.set_title('Usr Nm')
         conn_table.append_column(_c)
 
         _c = Gtk.TreeViewColumn()
@@ -282,21 +289,21 @@ class MainWindow:
         _r = Gtk.CellRendererText()
         _c.pack_start(_r, False)
         _c.add_attribute(_r, 'text', 3)
-        _c.set_title('Resource Mode')
+        _c.set_title('Res Md')
         conn_table.append_column(_c)
 
         _c = Gtk.TreeViewColumn()
         _r = Gtk.CellRendererText()
         _c.pack_start(_r, False)
         _c.add_attribute(_r, 'text', 4)
-        _c.set_title('Resource')
+        _c.set_title('Resours')
         conn_table.append_column(_c)
 
         _c = Gtk.TreeViewColumn()
         _r = Gtk.CellRendererText()
         _c.pack_start(_r, False)
         _c.add_attribute(_r, 'text', 5)
-        _c.set_title('Manual Host/Port?')
+        _c.set_title('Mnl H/P?')
         conn_table.append_column(_c)
 
         _c = Gtk.TreeViewColumn()
@@ -317,42 +324,56 @@ class MainWindow:
         _r = Gtk.CellRendererText()
         _c.pack_start(_r, False)
         _c.add_attribute(_r, 'text', 8)
-        _c.set_title('Automatic Stream Features?')
+        _c.set_title('A SF?')
         conn_table.append_column(_c)
 
         _c = Gtk.TreeViewColumn()
         _r = Gtk.CellRendererText()
         _c.pack_start(_r, False)
         _c.add_attribute(_r, 'text', 9)
-        _c.set_title('STARTTLS')
+        _c.set_title('S.TLS')
         conn_table.append_column(_c)
 
         _c = Gtk.TreeViewColumn()
         _r = Gtk.CellRendererText()
         _c.pack_start(_r, False)
         _c.add_attribute(_r, 'text', 10)
-        _c.set_title('Register')
+        _c.set_title('Necess')
         conn_table.append_column(_c)
 
         _c = Gtk.TreeViewColumn()
         _r = Gtk.CellRendererText()
         _c.pack_start(_r, False)
         _c.add_attribute(_r, 'text', 11)
-        _c.set_title('Login')
+        _c.set_title('Verify')
         conn_table.append_column(_c)
 
         _c = Gtk.TreeViewColumn()
         _r = Gtk.CellRendererText()
         _c.pack_start(_r, False)
         _c.add_attribute(_r, 'text', 12)
-        _c.set_title('Bind')
+        _c.set_title('Reg')
         conn_table.append_column(_c)
 
         _c = Gtk.TreeViewColumn()
         _r = Gtk.CellRendererText()
         _c.pack_start(_r, False)
         _c.add_attribute(_r, 'text', 13)
-        _c.set_title('Session')
+        _c.set_title('Log')
+        conn_table.append_column(_c)
+
+        _c = Gtk.TreeViewColumn()
+        _r = Gtk.CellRendererText()
+        _c.pack_start(_r, False)
+        _c.add_attribute(_r, 'text', 14)
+        _c.set_title('Bind')
+        conn_table.append_column(_c)
+
+        _c = Gtk.TreeViewColumn()
+        _r = Gtk.CellRendererText()
+        _c.pack_start(_r, False)
+        _c.add_attribute(_r, 'text', 15)
+        _c.set_title('Sess')
         conn_table.append_column(_c)
 
 
@@ -459,9 +480,15 @@ class MainWindow:
 
         return b
 
-    def app_exit(self, user_data):
+    def _build_status_tab(self):
 
-        self.exit_event.set()
+        b = Gtk.Box()
+        b.set_orientation(Gtk.Orientation.VERTICAL)
+
+        return b
+
+    def app_exit(self, user_data):
+        self.iteration_loop.stop()
 
     def main_notebook_switch_page(self, notebook, page, pagenum):
 
@@ -477,22 +504,50 @@ class MainWindow:
             self.connections_tab_reload_list()
 
     def new_stream_features(self, obj, attract_attention=False, disable_controls=True):
+        # TODO: here must be a stream features tab constructor
         pass
 
     def connect(self, name, data):
 
-        if not self.controller:
+        if not self.client_working:
+
+            self.client_working = True
             self.preset_name = name
             self.preset_data = data
+
             self.controller = org.wayround.pyabber.controller.MainController()
-            self.controller.start(self)
+
+#            self.controller.start(
+#                self,
+#                self.profile_name,
+#                self.profile_password,
+#                self.profile_data,
+#                self.preset_name,
+#                self.preset_data
+#                )
+
+            threading.Thread(
+                name="Chat Controller Thread",
+                target=self.controller.start,
+                args=(
+                    self,
+                    self.profile_name,
+                    self.profile_password,
+                    self.profile_data,
+                    self.preset_name,
+                    self.preset_data,
+                    )
+                ).start()
 
     def disconnect(self):
 
         self.preset_name = None
         self.preset_data = None
-        if self.controller:
-            self.controller.stop()
+        if self.client_working:
+
+            if self.controller:
+                self.controller.stop()
+
             self.controller = None
 
 
@@ -522,7 +577,7 @@ class MainWindow:
     def profile_tab_save(self, name, data, password):
 
         if not isinstance(name, str) or not isinstance(data, dict):
-            d = Gtk.MessageDialog(
+            d = org.wayround.utils.gtk.MessageDialog(
                 self.window_elements.window,
                 Gtk.DialogFlags.MODAL
                 | Gtk.DialogFlags.DESTROY_WITH_PARENT,
@@ -557,7 +612,7 @@ class MainWindow:
         i_len = len(items)
 
         if i_len == 0:
-            d = Gtk.MessageDialog(
+            d = org.wayround.utils.gtk.MessageDialog(
                 self.window_elements.window,
                 Gtk.DialogFlags.MODAL
                 | Gtk.DialogFlags.DESTROY_WITH_PARENT,
@@ -572,7 +627,7 @@ class MainWindow:
 
             name = self.window_elements.profile_icon_view.get_model()[items[0]][0][:-4]
 
-            d = Gtk.MessageDialog(
+            d = org.wayround.utils.gtk.MessageDialog(
                 self.window_elements.window,
                 Gtk.DialogFlags.MODAL
                 | Gtk.DialogFlags.DESTROY_WITH_PARENT,
@@ -593,7 +648,7 @@ class MainWindow:
                 try:
                     os.unlink(profiles)
                 except:
-                    d = Gtk.MessageDialog(
+                    d = org.wayround.utils.gtk.MessageDialog(
                         self.window_elements.window,
                         Gtk.DialogFlags.MODAL
                         | Gtk.DialogFlags.DESTROY_WITH_PARENT,
@@ -624,7 +679,7 @@ class MainWindow:
         i_len = len(items)
 
         if i_len == 0:
-            d = Gtk.MessageDialog(
+            d = org.wayround.utils.gtk.MessageDialog(
                 self.window_elements.window,
                 Gtk.DialogFlags.MODAL
                 | Gtk.DialogFlags.DESTROY_WITH_PARENT,
@@ -764,7 +819,7 @@ class MainWindow:
         data = None
 
         if i_len == 0:
-            d = Gtk.MessageDialog(
+            d = org.wayround.utils.gtk.MessageDialog(
                 self.window_elements.window,
                 Gtk.DialogFlags.MODAL
                 | Gtk.DialogFlags.DESTROY_WITH_PARENT,
@@ -787,7 +842,7 @@ class MainWindow:
 
             if not data:
 
-                d = Gtk.MessageDialog(
+                d = org.wayround.utils.gtk.MessageDialog(
                     self.window_elements.window,
                     Gtk.DialogFlags.MODAL
                     | Gtk.DialogFlags.DESTROY_WITH_PARENT,
@@ -849,7 +904,7 @@ class MainWindow:
 
         if name and data:
 
-            d = Gtk.MessageDialog(
+            d = org.wayround.utils.gtk.MessageDialog(
                 self.window_elements.window,
                 Gtk.DialogFlags.MODAL
                 | Gtk.DialogFlags.DESTROY_WITH_PARENT,
@@ -895,10 +950,12 @@ class MainWindow:
             int,  # 7. port
             str,  # 8. stream features handling mode
             bool,  # 9. starttls
-            bool,  # 10. register
-            bool,  # 11 .login
-            bool,  # 12. bind
-            bool  # 13. session
+            str,  # 10. starttls necessarity
+            str,  # 11. starttls truest
+            bool,  # 12. register
+            bool,  # 13 .login
+            bool,  # 14. bind
+            bool  # 15. session
             )
 
         if (self.profile_data
@@ -919,6 +976,8 @@ class MainWindow:
                     i['port'],
                     i['stream_features_handling'],
                     i['STARTTLS'],
+                    i['starttls_necessarity_mode'],
+                    i['cert_verification_mode'],
                     i['register'],
                     i['login'],
                     i['bind'],

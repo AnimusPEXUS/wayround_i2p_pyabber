@@ -6,6 +6,8 @@ from gi.repository import Gdk
 from gi.repository import GLib
 from gi.repository import Pango
 
+import org.wayround.utils.gtk
+
 class Dumb: pass
 
 
@@ -13,7 +15,7 @@ class ConnectionPresetWindow:
 
     def __init__(self, parent, preset_name=None, preset_data=None, typ='new'):
 
-        self.exit_event = threading.Event()
+        self.iteration_loop = org.wayround.utils.gtk.GtkIteratedLoop()
 
         if not typ in ['new', 'edit']:
             raise ValueError("`typ' must be in ['new', 'edit']")
@@ -98,18 +100,24 @@ class ConnectionPresetWindow:
 
         password_entry = Gtk.Entry()
         password_entry2 = Gtk.Entry()
+        password_entry.set_hexpand(True)
+        password_entry2.set_hexpand(True)
 
         password_entry.set_visibility(False)
         password_entry2.set_visibility(False)
 
-        pwd_grid.attach(Gtk.Label("Password:"), 0, 0, 1, 1)
+        _l = Gtk.Label("Password:")
+#        _l.set_hexpand(False)
+        pwd_grid.attach(_l, 0, 0, 1, 1)
+        _l = Gtk.Label("Confirm:")
+#        _l.set_hexpand(False)
+        pwd_grid.attach(_l, 0, 1, 1, 1)
         pwd_grid.attach(password_entry, 1, 0, 1, 1)
-        pwd_grid.attach(Gtk.Label("Confirm:"), 2, 0, 1, 1)
-        pwd_grid.attach(password_entry2, 3, 0, 1, 1)
+        pwd_grid.attach(password_entry2, 1, 1, 1, 1)
 
         pwd_grid.set_row_homogeneous(True)
         pwd_grid.set_row_spacing(5)
-        pwd_grid.set_column_homogeneous(True)
+#        pwd_grid.set_column_homogeneous(True)
         pwd_grid.set_column_spacing(5)
         pwd_grid.set_margin_top(5)
         pwd_grid.set_margin_bottom(5)
@@ -132,7 +140,9 @@ class ConnectionPresetWindow:
 
         manual_server_ff = Gtk.Frame()
         b.pack_start(manual_server_ff, True, True, 0)
-        manual_server_cb = Gtk.CheckButton.new_with_label("Manual Host And Port Specification")
+        manual_server_cb = Gtk.CheckButton.new_with_label(
+            "Manual Host And Port Specification"
+            )
         manual_server_ff.set_label_widget(manual_server_cb)
 
         host_port_grid = Gtk.Grid()
@@ -180,14 +190,13 @@ class ConnectionPresetWindow:
         manual_routines_rb.set_label("Manual")
 
         auto_routines_ff = Gtk.Frame()
-        auto_routines_grid_or_box = Gtk.Box()
+        auto_routines_grid_or_box = Gtk.Grid()
         auto_routines_ff.add(auto_routines_grid_or_box)
-        auto_routines_grid_or_box.set_orientation(Gtk.Orientation.VERTICAL)
 
         use_starttls_cb = Gtk.CheckButton.new_with_label("STARTTLS")
 
         register_cb = Gtk.CheckButton.new_with_label(
-            "Perform registration after SASL and restart without this option"
+            "Register"
             )
 
         login_cb = Gtk.CheckButton.new_with_label("SASL Login")
@@ -195,18 +204,68 @@ class ConnectionPresetWindow:
         bind_cb = Gtk.CheckButton.new_with_label("Bind Resource")
 
         session_cb = Gtk.CheckButton.new_with_label(
-            "Acquire Session (deprecated but required by some modern servers)"
+            "Acquire Session if proposed\n(deprecated but required by some modern servers)"
             )
 
+        tls_routines_ff = Gtk.Frame()
+        tls_routines_ff.set_label_widget(use_starttls_cb)
+        tls_routines_box = Gtk.Box()
+        tls_routines_box.set_orientation(Gtk.Orientation.VERTICAL)
+        tls_routines_ff.add(tls_routines_box)
+        tls_routines_box.set_homogeneous(True)
+        tls_routines_box.set_spacing(5)
+        tls_routines_box.set_margin_top(5)
+        tls_routines_box.set_margin_bottom(5)
+        tls_routines_box.set_margin_left(5)
+        tls_routines_box.set_margin_right(5)
 
-        auto_routines_grid_or_box.pack_start(use_starttls_cb, True, False, 0)
-        auto_routines_grid_or_box.pack_start(register_cb, True, False, 0)
-        auto_routines_grid_or_box.pack_start(login_cb, True, False, 0)
-        auto_routines_grid_or_box.pack_start(bind_cb, True, False, 0)
-        auto_routines_grid_or_box.pack_start(session_cb, True, False, 0)
 
-        auto_routines_grid_or_box.set_homogeneous(True)
-        auto_routines_grid_or_box.set_spacing(5)
+        starttls_necessarity_mode_combobox = Gtk.ComboBox()
+        starttls_necessarity_mode_combobox.set_valign(Gtk.Align.CENTER)
+
+        starttls_necessarity_mode_combobox_model = Gtk.ListStore(int, str)
+        starttls_necessarity_mode_combobox_model.append([0, "Necessary"])
+        starttls_necessarity_mode_combobox_model.append([1, "Can continue without TLS"])
+
+        starttls_necessarity_mode_combobox.set_model(starttls_necessarity_mode_combobox_model)
+        starttls_necessarity_mode_combobox.set_id_column(0)
+
+        renderer_text = Gtk.CellRendererText()
+        starttls_necessarity_mode_combobox.pack_start(renderer_text, True)
+        starttls_necessarity_mode_combobox.add_attribute(renderer_text, "text", 1)
+
+
+
+        cert_verification_mode_combobox = Gtk.ComboBox()
+        cert_verification_mode_combobox.set_valign(Gtk.Align.CENTER)
+
+        cert_verification_mode_combobox_model = Gtk.ListStore(int, str)
+        cert_verification_mode_combobox_model.append([0, "Must be Trusted"])
+        cert_verification_mode_combobox_model.append([1, "Can be Self-Signed"])
+        cert_verification_mode_combobox_model.append([2, "Can be Self-Signed or Untrusted"])
+        cert_verification_mode_combobox_model.append([3, "No verification"])
+
+        cert_verification_mode_combobox.set_model(cert_verification_mode_combobox_model)
+        cert_verification_mode_combobox.set_id_column(0)
+
+        renderer_text = Gtk.CellRendererText()
+        cert_verification_mode_combobox.pack_start(renderer_text, True)
+        cert_verification_mode_combobox.add_attribute(renderer_text, "text", 1)
+
+
+        tls_routines_box.pack_start(starttls_necessarity_mode_combobox, False, True, 0)
+        tls_routines_box.pack_start(cert_verification_mode_combobox, False, True, 0)
+
+        auto_routines_grid_or_box.attach(tls_routines_ff, 0, 0, 1, 1)
+        auto_routines_grid_or_box.attach(register_cb, 0, 1, 1, 1)
+        auto_routines_grid_or_box.attach(login_cb, 0, 2, 1, 1)
+        auto_routines_grid_or_box.attach(bind_cb, 0, 3, 1, 1)
+        auto_routines_grid_or_box.attach(session_cb, 0, 4, 1, 1)
+
+#        auto_routines_grid_or_box.set_row_homogeneous(True)
+        auto_routines_grid_or_box.set_column_homogeneous(True)
+        auto_routines_grid_or_box.set_row_spacing(5)
+        auto_routines_grid_or_box.set_column_spacing(5)
         auto_routines_grid_or_box.set_margin_top(5)
         auto_routines_grid_or_box.set_margin_bottom(5)
         auto_routines_grid_or_box.set_margin_left(5)
@@ -284,6 +343,8 @@ class ConnectionPresetWindow:
         self.window_elements.auto_routines_rb = auto_routines_rb
         self.window_elements.manual_routines_rb = manual_routines_rb
         self.window_elements.use_starttls_cb = use_starttls_cb
+        self.window_elements.starttls_necessarity_mode_combobox = starttls_necessarity_mode_combobox
+        self.window_elements.cert_verification_mode_combobox = cert_verification_mode_combobox
         self.window_elements.register_cb = register_cb
         self.window_elements.login_cb = login_cb
         self.window_elements.bind_cb = bind_cb
@@ -308,6 +369,8 @@ class ConnectionPresetWindow:
             'port': 5222,
             'stream_features_handling': 'auto',
             'STARTTLS': True,
+            'starttls_necessarity_mode': 'necessary',
+            'cert_verification_mode': 'can_selfsigned',
             'register': False,
             'login': True,
             'bind': True,
@@ -341,6 +404,35 @@ class ConnectionPresetWindow:
 
         resource_switch_combobox.set_active(active_cb_value)
 
+
+        active_cb_value = 0
+
+        if self.result['starttls_necessarity_mode'] == 'necessary':
+            active_cb_value = 0
+        elif self.result['starttls_necessarity_mode'] == 'unnecessary':
+            active_cb_value = 1
+        else:
+            raise ValueError("Invalid result['starttls_necessarity_mode'] value")
+
+        starttls_necessarity_mode_combobox.set_active(active_cb_value)
+
+
+        active_cb_value = 0
+
+        if self.result['cert_verification_mode'] == 'trusted':
+            active_cb_value = 0
+        elif self.result['cert_verification_mode'] == 'can_selfsigned':
+            active_cb_value = 1
+        elif self.result['cert_verification_mode'] == 'can_selfsigned_can_untrusted':
+            active_cb_value = 2
+        elif self.result['cert_verification_mode'] == 'no_verification':
+            active_cb_value = 3
+        else:
+            raise ValueError("Invalid result['cert_verification_mode'] value")
+
+        cert_verification_mode_combobox.set_active(active_cb_value)
+
+
         manual_server_cb.set_active(self.result['manual_host_and_port'])
         self._manual_server_toggled(manual_server_cb)
 
@@ -365,9 +457,7 @@ class ConnectionPresetWindow:
 
         self.window_elements.win.show_all()
 
-        self.exit_event.clear()
-        while not self.exit_event.is_set():
-            Gtk.main_iteration()
+        self.iteration_loop.wait()
 
         return self.result
 
@@ -378,7 +468,7 @@ class ConnectionPresetWindow:
         pwd2 = self.window_elements.password_entry2.get_text()
 
         if name == '':
-            d = Gtk.MessageDialog(
+            d = org.wayround.utils.gtk.MessageDialog(
                 self.window_elements.win,
                 Gtk.DialogFlags.MODAL
                 | Gtk.DialogFlags.DESTROY_WITH_PARENT,
@@ -391,7 +481,7 @@ class ConnectionPresetWindow:
         else:
 
             if self.typ in ['new', 'edit'] and pwd1 != pwd2:
-                d = Gtk.MessageDialog(
+                d = org.wayround.utils.gtk.MessageDialog(
                     self.window_elements.win,
                     Gtk.DialogFlags.MODAL
                     | Gtk.DialogFlags.DESTROY_WITH_PARENT,
@@ -404,7 +494,7 @@ class ConnectionPresetWindow:
             else:
 
                 if pwd1 == '':
-                    d = Gtk.MessageDialog(
+                    d = org.wayround.utils.gtk.MessageDialog(
                         self.window_elements.win,
                         Gtk.DialogFlags.MODAL
                         | Gtk.DialogFlags.DESTROY_WITH_PARENT,
@@ -437,7 +527,33 @@ class ConnectionPresetWindow:
                     elif active_cb_value == 2:
                         self.result['resource_mode'] = 'server'
                     else:
-                        raise ValueError("Invalid resource_switch_combobox value")
+                        raise ValueError("Invalid result['resource_switch_combobox'] value")
+
+
+                    active_cb_value = self.window_elements.starttls_necessarity_mode_combobox.get_active()
+
+                    if active_cb_value == 0:
+                        self.result['starttls_necessarity_mode'] = 'necessary'
+                    elif active_cb_value == 1:
+                        self.result['starttls_necessarity_mode'] = 'unnecessary'
+                    else:
+                        raise ValueError("Invalid result['starttls_necessarity_mode'] value")
+
+
+
+
+                    active_cb_value = self.window_elements.cert_verification_mode_combobox.get_active()
+
+                    if active_cb_value == 0:
+                        self.result['cert_verification_mode'] = 'trusted'
+                    elif active_cb_value == 1:
+                        self.result['cert_verification_mode'] = 'can_selfsigned'
+                    elif active_cb_value == 2:
+                        self.result['cert_verification_mode'] = 'can_selfsigned_can_untrusted'
+                    elif active_cb_value == 3:
+                        self.result['cert_verification_mode'] = 'no_verification'
+                    else:
+                        raise ValueError("Invalid result['cert_verification_mode'] value")
 
 
 
@@ -485,4 +601,4 @@ class ConnectionPresetWindow:
 
     def _window_destroy(self, window):
 
-        self.exit_event.set()
+        self.iteration_loop.stop()

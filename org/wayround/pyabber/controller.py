@@ -16,14 +16,19 @@ class MainController:
 
     def __init__(self):
 
-        self.main_window = None
-
         self.clear(init=True)
 
     def clear(self, init=False):
 
         self.client = None
         self._driven = False
+
+        self.main_window = None
+        self.profile_name = None
+        self.profile_password = None
+        self.profile_data = None
+        self.preset_name = None
+        self.preset_data = None
 
         self.jid = None
         self.connection_info = None
@@ -47,7 +52,7 @@ class MainController:
 
 
 
-    def main_window_consistency_check_is_ok(self):
+    def input_data_consistency_check_is_ok(self):
 
         """
         Checks whatever user of GUI is legitimate to access chat controls
@@ -61,42 +66,55 @@ class MainController:
             ret = False
         else:
 
-            if (not self.main_window.profile_name or
-                not self.main_window.profile_data or
-                not self.main_window.profile_password or
-                not self.main_window.preset_name or
-                not self.main_window.preset_data):
+            if (not self.profile_name or
+                not self.profile_data or
+                not self.profile_password or
+                not self.preset_name or
+                not self.preset_data):
 
                 ret = False
 
         return ret
 
-    def start(self, main_window):
+    def start(
+        self,
+        main_window,
+        profile_name,
+        profile_password,
+        profile_data,
+        preset_name,
+        preset_data
+        ):
 
         """
         Start Connection
         """
 
-        ret = False
+        ret = 0
 
         self.main_window = main_window
+        self.profile_name = profile_name
+        self.profile_password = profile_password
+        self.profile_data = profile_data
+        self.preset_name = preset_name
+        self.preset_data = preset_data
 
-        if not self.main_window_consistency_check_is_ok():
-            ret = False
+        if not self.input_data_consistency_check_is_ok():
+            ret = 1
         else:
 
             self.waiting_for_stream_features = True
 
             self.jid = org.wayround.xmpp.core.JID(
-                user=self.main_window.preset_data['username'],
-                domain=self.main_window.preset_data['server']
+                user=self.preset_data['username'],
+                domain=self.preset_data['server']
                 )
 
             self.connection_info = self.jid.make_connection_info()
 
             self.auth_info = self.jid.make_authentication()
 
-            self.auth_info.password = self.main_window.preset_data['password']
+            self.auth_info.password = self.preset_data['password']
 
             self.sock = socket.create_connection(
                 (
@@ -125,23 +143,36 @@ class MainController:
                 )
             self.stanza_processor.connect_io_machine(self.client.io_machine)
 
-            auto = self.main_window.preset_data['stream_features_handling'] == 'auto'
+            auto = self.preset_data['stream_features_handling'] == 'auto'
 
             if auto:
                 self.stream_featires_arrived.wait()
                 self.waiting_for_stream_features = False
 
-                drv = org.wayround.xmpp.client.STARTTLSClientDriver(
-                    self._auto_starttls_controller
-                    )
+                ret = 0
+                res = None
 
-                res = drv.drive(self.last_features)
+                if self.preset_data['STARTTLS'] and ret == 0:
+                    print("Starting TLS")
 
-                if not org.wayround.xmpp.core.is_features_element(res):
-                    print("Can't establish TLS encryption")
-                else:
-                    print("Encryption established")
-                    print("Logging")
+                    drv = org.wayround.xmpp.client.STARTTLSClientDriver(
+                        self._auto_starttls_controller
+                        )
+
+                    res = drv.drive(self.last_features)
+
+                    if not org.wayround.xmpp.core.is_features_element(res):
+                        print("Can't establish TLS encryption")
+                        ret = 2
+                    else:
+                        print("Encryption established")
+
+                if self.preset_data['register'] and ret == 0:
+                    # TODO: registration need to be done
+                    pass
+
+                if self.preset_data['login'] and ret == 0:
+                    print("Logging in")
 
                     if not self._simple_gsasl:
                         self._simple_gsasl = org.wayround.gsasl.gsasl.GSASLSimple(
@@ -159,40 +190,40 @@ class MainController:
 
                     if not org.wayround.xmpp.core.is_features_element(res):
                         print("Can't authenticate: {}".format(res))
+                        ret = 3
                     else:
                         print("Authenticated")
 
-                        res = org.wayround.xmpp.client.bind(
-                            self.stanza_processor,
-                            self.resource
-                            )
+                if self.preset_data['bind'] and ret == 0:
+                    res = org.wayround.xmpp.client.bind(
+                        self.stanza_processor,
+                        self.resource
+                        )
+                    if not isinstance(res, str):
+                        print("bind error {}".format(res.determine_error()))
+                        ret = 4
+                    else:
+                        self.bound_jid = org.wayround.xmpp.core.jid_from_str(res)
+                        print("Bound jid is: {}".format(self.bound_jid.full()))
 
-                        if not isinstance(res, str):
+                if self.preset_data['session'] and ret == 0:
 
-                            print("bind error {}".format(res.determine_error()))
-                        else:
+                    print("Starting session")
 
-                            self.bound_jid = org.wayround.xmpp.core.jid_from_str(res)
+                    res = org.wayround.xmpp.client.session(
+                        self.stanza_processor,
+                        self.bound_jid.domain
+                        )
 
-                            print("Bound jid is: {}".format(self.bound_jid.full()))
-
-                            print("Starting session")
-
-                            res = org.wayround.xmpp.client.session(
-                                self.stanza_processor,
-                                self.bound_jid.domain
-                                )
-
-                            if (not org.wayround.xmpp.core.is_stanza(res)
-                                or res.is_error()):
-                                print("Session establishing error")
-                            else:
-                                print("Session established")
+                    if (not org.wayround.xmpp.core.is_stanza(res)
+                        or res.is_error()):
+                        print("Session establishing error")
+                        ret = 5
+                    else:
+                        print("Session established")
 
 
             self.waiting_for_stream_features = False
-
-
 
         return ret
 
