@@ -124,23 +124,43 @@ class MainController:
                 )
 
 
-            logging.debug("Starting socket watcher")
+            logging.debug("creating client")
 
             self.client = org.wayround.xmpp.client.XMPPC2SClient(
                 self.sock
                 )
 
-            self._reset_hubs()
+            logging.debug("client created")
 
+            self.client.sock_streamer.connect_signal(
+                ['start', 'stop', 'error'],
+                self._on_connection_event
+                )
+
+            logging.debug("streamer connected")
+
+            self.client.io_machine.connect_signal(
+                ['in_start', 'in_stop', 'in_error',
+                 'out_start', 'out_stop', 'out_error'],
+                self._on_stream_io_event
+                )
+
+            logging.debug("io connected")
+
+            self.client.io_machine.connect_signal(
+                'in_element_readed',
+                self._on_stream_object
+                )
+
+            logging.debug("in_element_readed connected")
 
             self.client.start()
+            logging.debug("client started")
 
             self.client.wait('working')
+            logging.debug("working")
 
             self.stanza_processor = org.wayround.xmpp.core.StanzaProcessor()
-            self.stanza_processor.connect_input_object_stream_hub(
-                self.client.input_stream_objects_hub
-                )
             self.stanza_processor.connect_io_machine(self.client.io_machine)
 
             auto = self.preset_data['stream_features_handling'] == 'auto'
@@ -155,11 +175,13 @@ class MainController:
                 if self.preset_data['STARTTLS'] and ret == 0:
                     print("Starting TLS")
 
-                    drv = org.wayround.xmpp.client.STARTTLSClientDriver(
+                    res = org.wayround.xmpp.client.drive_starttls(
+                        self.client,
+                        self.last_features,
+                        self.jid.bare(),
+                        self.connection_info.host,
                         self._auto_starttls_controller
                         )
-
-                    res = drv.drive(self.last_features)
 
                     if not org.wayround.xmpp.core.is_features_element(res):
                         print("Can't establish TLS encryption")
@@ -167,88 +189,65 @@ class MainController:
                     else:
                         print("Encryption established")
 
-                if self.preset_data['register'] and ret == 0:
-                    # TODO: registration need to be done
-                    pass
-
-                if self.preset_data['login'] and ret == 0:
-                    print("Logging in")
-
-                    if not self._simple_gsasl:
-                        self._simple_gsasl = org.wayround.gsasl.gsasl.GSASLSimple(
-                            mechanism='DIGEST-MD5',
-                            callback=self._gsasl_cb
-                            )
-
-                    drv = org.wayround.xmpp.client.SASLClientDriver(
-                        self._auto_auth_controller
-                        )
-
-                    res = drv.drive(res)
-
-                    self._simple_gsasl = None
-
-                    if not org.wayround.xmpp.core.is_features_element(res):
-                        print("Can't authenticate: {}".format(res))
-                        ret = 3
-                    else:
-                        print("Authenticated")
-
-                if self.preset_data['bind'] and ret == 0:
-                    res = org.wayround.xmpp.client.bind(
-                        self.stanza_processor,
-                        self.resource
-                        )
-                    if not isinstance(res, str):
-                        print("bind error {}".format(res.determine_error()))
-                        ret = 4
-                    else:
-                        self.bound_jid = org.wayround.xmpp.core.jid_from_str(res)
-                        print("Bound jid is: {}".format(self.bound_jid.full()))
-
-                if self.preset_data['session'] and ret == 0:
-
-                    print("Starting session")
-
-                    res = org.wayround.xmpp.client.session(
-                        self.stanza_processor,
-                        self.bound_jid.domain
-                        )
-
-                    if (not org.wayround.xmpp.core.is_stanza(res)
-                        or res.is_error()):
-                        print("Session establishing error")
-                        ret = 5
-                    else:
-                        print("Session established")
+#                if self.preset_data['register'] and ret == 0:
+#                    # TODO: registration need to be done
+#                    pass
+#
+#                if self.preset_data['login'] and ret == 0:
+#                    print("Logging in")
+#
+#                    if not self._simple_gsasl:
+#                        self._simple_gsasl = org.wayround.gsasl.gsasl.GSASLSimple(
+#                            mechanism='DIGEST-MD5',
+#                            callback=self._gsasl_cb
+#                            )
+#
+#                    drv = org.wayround.xmpp.client.SASLClientDriver(
+#                        self._auto_auth_controller
+#                        )
+#
+#                    res = drv.drive(res)
+#
+#                    self._simple_gsasl = None
+#
+#                    if not org.wayround.xmpp.core.is_features_element(res):
+#                        print("Can't authenticate: {}".format(res))
+#                        ret = 3
+#                    else:
+#                        print("Authenticated")
+#
+#                if self.preset_data['bind'] and ret == 0:
+#                    res = org.wayround.xmpp.client.bind(
+#                        self.stanza_processor,
+#                        self.resource
+#                        )
+#                    if not isinstance(res, str):
+#                        print("bind error {}".format(res.determine_error()))
+#                        ret = 4
+#                    else:
+#                        self.bound_jid = org.wayround.xmpp.core.jid_from_str(res)
+#                        print("Bound jid is: {}".format(self.bound_jid.full()))
+#
+#                if self.preset_data['session'] and ret == 0:
+#
+#                    print("Starting session")
+#
+#                    res = org.wayround.xmpp.client.session(
+#                        self.stanza_processor,
+#                        self.bound_jid.domain
+#                        )
+#
+#                    if (not org.wayround.xmpp.core.is_stanza(res)
+#                        or res.is_error()):
+#                        print("Session establishing error")
+#                        ret = 5
+#                    else:
+#                        print("Session established")
 
 
             self.waiting_for_stream_features = False
 
         return ret
-
-    def _reset_hubs(self):
-
-        self.client.connection_events_hub.clear()
-        self.client.input_stream_events_hub.clear()
-        self.client.input_stream_objects_hub.clear()
-        self.client.output_stream_events_hub.clear()
-
-        self.client.connection_events_hub.set_waiter(
-            'main', self._on_connection_event,
-            )
-
-        self.client.input_stream_events_hub.set_waiter(
-            'main', self._on_stream_in_event,
-            )
-
-        self.client.input_stream_objects_hub.set_waiter(
-            'main', self._on_stream_object,
-            )
-
-        self.client.output_stream_events_hub.set_waiter(
-            'main', self._on_stream_out_event,
-            )
 
 
     def _inbound_stanzas(self, obj):
@@ -333,7 +332,7 @@ class MainController:
 
                 self.stanza_processor.send(ret_stanza)
 
-    def _on_connection_event(self, event, sock):
+    def _on_connection_event(self, event, streamer, sock):
 
         if not self._driven:
 
@@ -369,43 +368,36 @@ class MainController:
                 self.stop()
 
 
-    def _on_stream_in_event(self, event, attrs=None):
+    def _on_stream_io_event(self, event, io_machine, attrs=None):
 
         if not self._driven:
 
-            logging.debug("Stream in event `{}' : `{}'".format(event, attrs))
+            logging.debug("Stream io event `{}' : `{}'".format(event, attrs))
 
-            if event == 'start':
-
+            if event == 'in_start':
                 self._stream_in = True
 
-            elif event == 'stop':
+            elif event == 'in_stop':
                 self._stream_in = False
                 self.stop()
 
-            elif event == 'error':
+            elif event == 'in_error':
                 self._stream_in = False
                 self.stop()
 
-    def _on_stream_out_event(self, event, attrs=None):
-
-        if not self._driven:
-
-            logging.debug("Stream out event `{}' : `{}'".format(event, attrs))
-
-            if event == 'start':
-
+            elif event == 'out_start':
                 self._stream_out = True
 
-            elif event == 'stop':
+            elif event == 'out_stop':
                 self._stream_out = False
                 self.stop()
 
-            elif event == 'error':
+            elif event == 'out_error':
                 self._stream_out = False
                 self.stop()
 
-    def _on_stream_object(self, obj):
+
+    def _on_stream_object(self, event, io_machine, obj):
 
         logging.debug(
             "_on_stream_object (first 255 bytes):`{}'".format(
@@ -435,40 +427,7 @@ class MainController:
 
         ret = None
 
-        if status == 'bare_jid_from':
-            ret = self.jid.bare()
-
-        elif status == 'bare_jid_to':
-            # TODO: fix self.connection_info.host
-            ret = self.connection_info.host
-
-        elif status == 'sock_streamer':
-            ret = self.client.sock_streamer
-
-        elif status == 'io_machine':
-            ret = self.client.io_machine
-
-        elif status == 'connection_events_hub':
-            ret = self.client.connection_events_hub
-
-        elif status == 'input_stream_events_hub':
-            ret = self.client.input_stream_events_hub
-
-        elif status == 'input_stream_objects_hub':
-            ret = self.client.input_stream_objects_hub
-
-        elif status == 'output_stream_events_hub':
-            ret = self.client.output_stream_events_hub
-#        elif status=='':
-#            ret = self.client.sock_streamer
-#        elif status=='':
-#            ret = self.client.sock_streamer
-#        elif status=='':
-#            ret = self.client.sock_streamer
-
-
-        else:
-            raise ValueError("status `{}' not supported".format(status))
+        raise ValueError("status `{}' not supported".format(status))
 
         return ret
 
@@ -498,18 +457,6 @@ class MainController:
 
         elif status == 'io_machine':
             ret = self.client.io_machine
-
-        elif status == 'connection_events_hub':
-            ret = self.client.connection_events_hub
-
-        elif status == 'input_stream_events_hub':
-            ret = self.client.input_stream_events_hub
-
-        elif status == 'input_stream_objects_hub':
-            ret = self.client.input_stream_objects_hub
-
-        elif status == 'output_stream_events_hub':
-            ret = self.client.output_stream_events_hub
 
         elif status == 'challenge':
             res = self._simple_gsasl.step64(data['text'])
