@@ -189,60 +189,62 @@ class MainController:
                     else:
                         print("Encryption established")
 
-#                if self.preset_data['register'] and ret == 0:
-#                    # TODO: registration need to be done
-#                    pass
-#
-#                if self.preset_data['login'] and ret == 0:
-#                    print("Logging in")
-#
-#                    if not self._simple_gsasl:
-#                        self._simple_gsasl = org.wayround.gsasl.gsasl.GSASLSimple(
-#                            mechanism='DIGEST-MD5',
-#                            callback=self._gsasl_cb
-#                            )
-#
-#                    drv = org.wayround.xmpp.client.SASLClientDriver(
-#                        self._auto_auth_controller
-#                        )
-#
-#                    res = drv.drive(res)
-#
-#                    self._simple_gsasl = None
-#
-#                    if not org.wayround.xmpp.core.is_features_element(res):
-#                        print("Can't authenticate: {}".format(res))
-#                        ret = 3
-#                    else:
-#                        print("Authenticated")
-#
-#                if self.preset_data['bind'] and ret == 0:
-#                    res = org.wayround.xmpp.client.bind(
-#                        self.stanza_processor,
-#                        self.resource
-#                        )
-#                    if not isinstance(res, str):
-#                        print("bind error {}".format(res.determine_error()))
-#                        ret = 4
-#                    else:
-#                        self.bound_jid = org.wayround.xmpp.core.jid_from_str(res)
-#                        print("Bound jid is: {}".format(self.bound_jid.full()))
-#
-#                if self.preset_data['session'] and ret == 0:
-#
-#                    print("Starting session")
-#
-#                    res = org.wayround.xmpp.client.session(
-#                        self.stanza_processor,
-#                        self.bound_jid.domain
-#                        )
-#
-#                    if (not org.wayround.xmpp.core.is_stanza(res)
-#                        or res.is_error()):
-#                        print("Session establishing error")
-#                        ret = 5
-#                    else:
-#                        print("Session established")
+                if self.preset_data['register'] and ret == 0:
+                    # TODO: registration need to be done
+                    pass
+
+                if self.preset_data['login'] and ret == 0:
+                    print("Logging in")
+
+                    if not self._simple_gsasl:
+                        self._simple_gsasl = org.wayround.gsasl.gsasl.GSASLSimple(
+                            mechanism='DIGEST-MD5',
+                            callback=self._gsasl_cb
+                            )
+
+                    res = org.wayround.xmpp.client.drive_sasl(
+                        self.client,
+                        self.last_features,
+                        self.jid.bare(),
+                        self.connection_info.host,
+                        self._auto_auth_controller
+                        )
+
+                    self._simple_gsasl = None
+
+                    if not org.wayround.xmpp.core.is_features_element(res):
+                        print("Can't authenticate: {}".format(res))
+                        ret = 3
+                    else:
+                        print("Authenticated")
+
+                if self.preset_data['bind'] and ret == 0:
+                    res = org.wayround.xmpp.client.bind(
+                        self.stanza_processor,
+                        self.resource
+                        )
+                    if not isinstance(res, str):
+                        print("bind error {}".format(res.determine_error()))
+                        ret = 4
+                    else:
+                        self.bound_jid = org.wayround.xmpp.core.jid_from_str(res)
+                        print("Bound jid is: {}".format(self.bound_jid.full()))
+
+                if self.preset_data['session'] and ret == 0:
+
+                    print("Starting session")
+
+                    res = org.wayround.xmpp.client.session(
+                        self.stanza_processor,
+                        self.bound_jid.domain
+                        )
+
+                    if (not org.wayround.xmpp.core.is_stanza(res)
+                        or res.is_error()):
+                        print("Session establishing error")
+                        ret = 5
+                    else:
+                        print("Session established")
 
 
             self.waiting_for_stream_features = False
@@ -421,9 +423,9 @@ class MainController:
 
 
 
-    def _auto_starttls_controller(self, driver, status, data):
+    def _auto_starttls_controller(self, status, data):
 
-        print("_auto_starttls_controller {}, {}, {}".format(driver, status, data))
+        print("_auto_starttls_controller {}, {}".format(status, data))
 
         ret = None
 
@@ -436,11 +438,11 @@ class MainController:
         pass
 
 
-    def _auto_auth_controller(self, driver, status, data):
+    def _auto_auth_controller(self, status, data):
 
         ret = ''
 
-        print("_auto_auth_controller {}, {}, {}".format(driver, status, data))
+        print("_auto_auth_controller {}, {}".format(status, data))
 
         if status == 'mechanism_name':
             ret = 'DIGEST-MD5'
