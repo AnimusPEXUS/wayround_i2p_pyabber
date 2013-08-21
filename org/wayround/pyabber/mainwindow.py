@@ -17,6 +17,7 @@ import org.wayround.utils.gtk
 import org.wayround.pyabber.profilewindow
 import org.wayround.pyabber.connpresetwindow
 import org.wayround.pyabber.controller
+import org.wayround.pyabber.rosterwidget
 
 class Dumb: pass
 
@@ -153,7 +154,7 @@ class MainWindow:
         _dir = os.path.dirname(org.wayround.utils.path.abspath(__file__))
 
         icons = {}
-        for i in ['pyabber', 'profile']:
+        for i in ['pyabber', 'profile', 'plus']:
             icons[i] = GdkPixbuf.Pixbuf.new_from_file(
                 org.wayround.utils.path.join(_dir, 'icons', i + '.png')
                 )
@@ -465,7 +466,24 @@ class MainWindow:
         b = Gtk.Box()
         b.set_orientation(Gtk.Orientation.VERTICAL)
 
+        roster_box = Gtk.Box()
+        roster_box.set_orientation(Gtk.Orientation.HORIZONTAL)
+
+        roster_toolbar = Gtk.Toolbar()
+        roster_toolbar.set_orientation(Gtk.Orientation.VERTICAL)
+
         roster_treeview = Gtk.TreeView()
+
+        roster_box.pack_start(roster_toolbar, False, False, 0)
+        roster_box.pack_start(roster_treeview, True, True, 0)
+
+        roster_toolbar_add_contact_button = Gtk.ToolButton()
+
+        add_contact_image = Gtk.Image()
+        add_contact_image.set_from_pixbuf(self.icons['plus'])
+
+        roster_toolbar_add_contact_button.set_icon_widget(add_contact_image)
+        roster_toolbar.insert(roster_toolbar_add_contact_button, -1)
 
         main_paned = Gtk.Paned()
         main_paned.set_orientation(Gtk.Orientation.HORIZONTAL)
@@ -473,8 +491,39 @@ class MainWindow:
         messaging_notebook = Gtk.Notebook()
 
 
-        main_paned.pack1(roster_treeview, False, True)
+        main_paned.pack1(roster_box, False, True)
         main_paned.pack2(messaging_notebook, True, False)
+
+        self.roster_widget = org.wayround.pyabber.rosterwidget.RosterWidget(
+            roster_treeview
+            )
+
+#        test_initial_roster_data = {
+#            'animus@wayround.org': {
+#                'groups': set('best friends', 'gods', 'workers of the century'),
+#                'approved':     True,
+#                'ask':          'subscribe',
+#                'name':         'santa claus',
+#                'subscription': 'both',
+#                },
+#            }
+
+        self.roster_widget.set_contact(
+            name_or_title='test title or name',
+            bare_jid='robot@wayround.org',
+            groups=['sailors'],
+            resources=['ass'],
+            approved=True,
+            ask='subscribe',
+            subscription='both',
+            nick='cage',
+            userpic=None,
+            available=True,
+            status='online',
+            status_text='rabbit tale',
+            has_new_messages=False,
+            not_in_roster=False
+            )
 
         b.pack_start(main_paned, True, True, 0)
 
@@ -809,7 +858,6 @@ class MainWindow:
             self.profile_tab_save_active()
 
     def connections_tab_get_selection_name_and_data(self):
-
 
         items = self.window_elements.conn_table.get_selection().get_selected_rows()[1]
 

@@ -35,8 +35,6 @@ class MainController:
         self.auth_info = None
         self.sock = None
 
-        self.stanza_processor = None
-
         self.statuses = []
 
         self.waiting_for_stream_features = False
@@ -160,8 +158,6 @@ class MainController:
             self.client.wait('working')
             logging.debug("working")
 
-            self.stanza_processor = org.wayround.xmpp.core.StanzaProcessor()
-            self.stanza_processor.connect_io_machine(self.client.io_machine)
 
             auto = self.preset_data['stream_features_handling'] == 'auto'
 
@@ -220,7 +216,7 @@ class MainController:
 
                 if self.preset_data['bind'] and ret == 0:
                     res = org.wayround.xmpp.client.bind(
-                        self.stanza_processor,
+                        self.client,
                         self.resource
                         )
                     if not isinstance(res, str):
@@ -235,7 +231,7 @@ class MainController:
                     print("Starting session")
 
                     res = org.wayround.xmpp.client.session(
-                        self.stanza_processor,
+                        self.client,
                         self.bound_jid.domain
                         )
 
@@ -254,7 +250,7 @@ class MainController:
 
     def _inbound_stanzas(self, obj):
 
-        if obj.kind == 'message' and obj.typ == 'chat':
+        if obj.tag == 'message' and obj.typ == 'chat':
 
             cmd_line = org.wayround.utils.shlex.split(
                 obj.body.find('{jabber:client}body').text.splitlines()[0]
@@ -268,7 +264,7 @@ class MainController:
 
 #                self.stanza_processor.send(
 #                    org.wayround.xmpp.core.Stanza(
-#                        kind='message',
+#                        tag='message',
 #                        typ='chat',
 #                        jid_from=self.jid.full(),
 #                        jid_to='animus@wayround.org',
@@ -279,7 +275,7 @@ class MainController:
                 ret_stanza = org.wayround.xmpp.core.Stanza(
                     jid_from=self.jid.bare(),
                     jid_to=obj.jid_from,
-                    kind='message',
+                    tag='message',
                     typ='chat',
                     body=[
                         org.wayround.xmpp.stanza_elements.Body(
@@ -332,7 +328,7 @@ class MainController:
                             )
                         break
 
-                self.stanza_processor.send(ret_stanza)
+                self.client.stanza_processor.send(ret_stanza)
 
     def _on_connection_event(self, event, streamer, sock):
 
