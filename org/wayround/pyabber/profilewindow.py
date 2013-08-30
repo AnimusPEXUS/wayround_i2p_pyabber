@@ -34,8 +34,6 @@ class ProfileWindow:
         elif typ == 'open':
             title = "Opening Profile `{}'".format(profile)
 
-        win.set_title(title)
-
         b = Gtk.Box()
         b.set_orientation(Gtk.Orientation.VERTICAL)
 
@@ -48,7 +46,7 @@ class ProfileWindow:
 
         b2.set_orientation(Gtk.Orientation.VERTICAL)
         b2.set_row_homogeneous(True)
-        b2.set_column_homogeneous(True)
+#        b2.set_column_homogeneous(True)
         b2.set_column_spacing(5)
         b2.set_margin_bottom(5)
 
@@ -63,14 +61,26 @@ class ProfileWindow:
         passwd_editor.set_visibility(False)
         passwd2_editor.set_visibility(False)
 
-        b2.attach(Gtk.Label("Login"), 0, 0, 1, 1)
+        l = Gtk.Label("Login")
+        b2.attach(l, 0, 0, 1, 1)
         b2.attach(name_editor, 1, 0, 1, 1)
+        l.set_alignment(0, 0.5)
+        name_editor.set_halign(Gtk.Align.FILL)
+        name_editor.set_hexpand(True)
 
-        b2.attach(Gtk.Label("Password"), 0, 1, 1, 1)
+        l = Gtk.Label("Password")
+        b2.attach(l, 0, 1, 1, 1)
         b2.attach(passwd_editor, 1, 1, 1, 1)
+        l.set_alignment(0, 0.5)
+        passwd_editor.set_halign(Gtk.Align.FILL)
+        passwd_editor.set_hexpand(True)
 
-        b2.attach(Gtk.Label("Confirm Password"), 0, 2, 1, 1)
+        l = Gtk.Label("Confirm Password")
+        b2.attach(l, 0, 2, 1, 1)
         b2.attach(passwd2_editor, 1, 2, 1, 1)
+        l.set_alignment(0, 0.5)
+        passwd2_editor.set_halign(Gtk.Align.FILL)
+        passwd2_editor.set_hexpand(True)
 
         b.pack_start(b2, True, True, 0)
 
@@ -94,6 +104,7 @@ class ProfileWindow:
 
         win.add(b)
 
+        win.set_title(title)
         win.set_modal(True)
         win.set_transient_for(parent)
         win.set_destroy_with_parent(True)

@@ -128,6 +128,16 @@ class MainController:
                 self.sock
                 )
 
+            self.roster = org.wayround.xmpp.client.Roster(
+                self.client,
+                self.jid
+                )
+
+            self.presence = org.wayround.xmpp.client.Presence(
+                self.client,
+                self.jid
+                )
+
             logging.debug("client created")
 
             self.client.sock_streamer.connect_signal(
@@ -220,11 +230,15 @@ class MainController:
                         self.resource
                         )
                     if not isinstance(res, str):
-                        print("bind error {}".format(res.determine_error()))
+                        print("bind error {}".format(res.get_error()))
                         ret = 4
                     else:
-                        self.bound_jid = org.wayround.xmpp.core.jid_from_str(res)
-                        print("Bound jid is: {}".format(self.bound_jid.full()))
+                        self.jid.update(org.wayround.xmpp.core.jid_from_str(res))
+                        print("Bound jid is: {}".format(self.jid.full()))
+                        self.main_window.roster_widget.set_contact(
+                            bare_jid=self.jid.bare(),
+                            is_self=True
+                            )
 
                 if self.preset_data['session'] and ret == 0:
 
@@ -232,7 +246,7 @@ class MainController:
 
                     res = org.wayround.xmpp.client.session(
                         self.client,
-                        self.bound_jid.domain
+                        self.jid.domain
                         )
 
                     if (not org.wayround.xmpp.core.is_stanza(res)
@@ -241,6 +255,13 @@ class MainController:
                         ret = 5
                     else:
                         print("Session established")
+
+                if ret == 0:
+                    self.roster.connect_signal(['push'], self._on_roster_push)
+
+                    self.presence.connect_signal(['presence'],
+                                                 self._on_presence
+                                                 )
 
 
             self.waiting_for_stream_features = False
@@ -447,7 +468,7 @@ class MainController:
             ret = self.jid.bare()
 
         elif status == 'bare_jid_to':
-            # TODO: fix self.connection_info.host
+#            TODO: fix self.connection_info.host
             ret = self.connection_info.host
 
         elif status == 'sock_streamer':
@@ -570,6 +591,92 @@ class MainController:
             logging.error("Requested SASL property not available")
             ret = 1
 
-
         return ret
 
+    def _on_roster_push(self, event, roster_obj, stanza_data):
+
+        if event != 'push':
+            pass
+        else:
+
+            jid = stanza_data[0]
+            data = stanza_data[1]
+
+            not_in_roster = data['subscription'] == 'remove'
+
+            self.main_window.roster_widget.set_contact(
+                name_or_title=data['name'],
+                bare_jid=jid,
+                groups=data['groups'],
+                approved=data['approved'],
+                ask=data['ask'],
+                subscription=data['subscription'],
+                not_in_roster=not_in_roster,
+                is_self=self.jid.bare() == org.wayround.xmpp.core.jid_from_str(jid).bare()
+                )
+
+        return
+
+    def _on_presence(self, event, presence_obj, jid_from, jid_to, stanza):
+
+#        print("_on_presence: {}, {}, {}, {}, {}".format(event, presence_obj, jid_from, jid_to, stanza))
+
+        if event == 'presence':
+
+            if not stanza.typ in [
+                'subscribe', 'unsubscribe', 'subscribed', 'unsubscribed'
+                ]:
+
+                f_jid = None
+
+                if jid_from:
+                    f_jid = org.wayround.xmpp.core.jid_from_str(jid_from)
+                else:
+                    f_jid = self.jid.copy()
+                    f_jid.user = None
+
+                if jid_to:
+                    logging.warning("jid_to is: `{}'".format(jid_to))
+
+                show = None
+                status = None
+
+                show_elm = stanza.body.find('{jabber:client}show')
+                if show_elm != None:
+                    show = show_elm.text
+                else:
+                    show = 'available'
+                    if stanza.typ == 'unavailable':
+                        show = 'unavailable'
+
+                status_elm = stanza.body.find('{jabber:client}status')
+                if status_elm != None:
+                    status = status_elm.text
+                else:
+                    status = ''
+
+                not_in_roster = None
+                if stanza.typ == 'remove':
+                    not_in_roster = True
+
+                if f_jid.is_full():
+                    self.main_window.roster_widget.set_contact_resource(
+                        bare_jid=f_jid.bare(),
+                        resource=f_jid.resource,
+                        available=stanza.typ != 'unavailable',
+                        show=show,
+                        status=status,
+                        is_self=f_jid.bare() == self.jid.bare(),
+                        not_in_roster=not_in_roster
+                        )
+                elif f_jid.is_bare():
+                    self.main_window.roster_widget.set_contact(
+                        bare_jid=f_jid.bare(),
+                        available=stanza.typ != 'unavailable',
+                        show=show,
+                        status=status,
+                        is_self=f_jid.bare() == self.jid.bare(),
+                        not_in_roster=not_in_roster
+                        )
+                else:
+                    logging.error("Don't know what to do")

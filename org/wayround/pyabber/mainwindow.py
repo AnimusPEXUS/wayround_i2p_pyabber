@@ -4,6 +4,8 @@ import glob
 import sys
 import threading
 import time
+import pprint
+import logging
 
 from gi.repository import Gtk
 from gi.repository import GdkPixbuf
@@ -18,6 +20,7 @@ import org.wayround.pyabber.profilewindow
 import org.wayround.pyabber.connpresetwindow
 import org.wayround.pyabber.controller
 import org.wayround.pyabber.rosterwidget
+import org.wayround.pyabber.presence_control_popup
 
 class Dumb: pass
 
@@ -46,7 +49,9 @@ class MainWindow:
 
         self._load_pixbufs()
 
-        window = Gtk.Window()
+        self.window_elements.window = Gtk.Window()
+
+        window = self.window_elements.window
 
         window.set_icon(self.icons['pyabber'])
         window.set_title("Pyabber :P")
@@ -154,7 +159,12 @@ class MainWindow:
         _dir = os.path.dirname(org.wayround.utils.path.abspath(__file__))
 
         icons = {}
-        for i in ['pyabber', 'profile', 'plus']:
+        for i in [
+                  'pyabber', 'profile', 'plus',
+                  'initial_presence', 'bye_presence',
+                  'refresh_roster', 'new_presence_button'
+                  ]:
+
             icons[i] = GdkPixbuf.Pixbuf.new_from_file(
                 org.wayround.utils.path.join(_dir, 'icons', i + '.png')
                 )
@@ -469,21 +479,76 @@ class MainWindow:
         roster_box = Gtk.Box()
         roster_box.set_orientation(Gtk.Orientation.HORIZONTAL)
 
-        roster_toolbar = Gtk.Toolbar()
-        roster_toolbar.set_orientation(Gtk.Orientation.VERTICAL)
+        roster_tools_box = Gtk.Box()
+        roster_tools_box.set_orientation(Gtk.Orientation.VERTICAL)
 
         roster_treeview = Gtk.TreeView()
 
-        roster_box.pack_start(roster_toolbar, False, False, 0)
-        roster_box.pack_start(roster_treeview, True, True, 0)
+        scrolled = Gtk.ScrolledWindow(None, None)
+        scrolled.add(roster_treeview)
 
-        roster_toolbar_add_contact_button = Gtk.ToolButton()
+        scrolled.set_size_request(200, -1)
+
+        roster_box.pack_start(roster_tools_box, False, False, 0)
+        roster_box.pack_start(scrolled, True, True, 0)
+
+        roster_toolbar_add_contact_button = Gtk.Button()
+        roster_toolbar_initial_presence_button = Gtk.Button()
+        roster_toolbar_bye_presence_button = Gtk.Button()
+        roster_toolbar_get_roster_button = Gtk.Button()
+        roster_toolbar_change_presence_button = Gtk.Button()
+
+        self.presence_control_popup_window = (
+            org.wayround.pyabber.presence_control_popup.PresenceControlPopup(
+                self.window_elements.window,
+                self
+                )
+            )
 
         add_contact_image = Gtk.Image()
         add_contact_image.set_from_pixbuf(self.icons['plus'])
 
-        roster_toolbar_add_contact_button.set_icon_widget(add_contact_image)
-        roster_toolbar.insert(roster_toolbar_add_contact_button, -1)
+        initial_presence_image = Gtk.Image()
+        initial_presence_image.set_from_pixbuf(self.icons['initial_presence'])
+
+        bye_presence_image = Gtk.Image()
+        bye_presence_image.set_from_pixbuf(self.icons['bye_presence'])
+
+        get_roster_image = Gtk.Image()
+        get_roster_image.set_from_pixbuf(self.icons['refresh_roster'])
+
+        new_presence_image = Gtk.Image()
+        new_presence_image.set_from_pixbuf(self.icons['new_presence_button'])
+
+        roster_toolbar_add_contact_button.set_image(add_contact_image)
+
+        roster_toolbar_initial_presence_button.set_image(initial_presence_image)
+        roster_toolbar_initial_presence_button.connect(
+            "clicked", self._on_initial_presence_button_clicked
+            )
+
+        roster_toolbar_bye_presence_button.set_image(bye_presence_image)
+        roster_toolbar_bye_presence_button.connect(
+            "clicked", self._on_bye_presence_button_clicked
+            )
+
+
+        roster_toolbar_get_roster_button.set_image(get_roster_image)
+        roster_toolbar_get_roster_button.connect(
+            "clicked", self._on_get_roster_button_clicked
+            )
+
+
+        roster_toolbar_change_presence_button.set_image(new_presence_image)
+        roster_toolbar_change_presence_button.connect(
+            "clicked", self._on_change_presence_button_clicked
+            )
+
+        roster_tools_box.pack_start(roster_toolbar_add_contact_button, False, False, 0)
+        roster_tools_box.pack_start(roster_toolbar_initial_presence_button, False, False, 0)
+        roster_tools_box.pack_start(roster_toolbar_bye_presence_button, False, False, 0)
+        roster_tools_box.pack_start(roster_toolbar_get_roster_button, False, False, 0)
+        roster_tools_box.pack_start(roster_toolbar_change_presence_button, False, False, 0)
 
         main_paned = Gtk.Paned()
         main_paned.set_orientation(Gtk.Orientation.HORIZONTAL)
@@ -498,32 +563,13 @@ class MainWindow:
             roster_treeview
             )
 
-#        test_initial_roster_data = {
-#            'animus@wayround.org': {
-#                'groups': set('best friends', 'gods', 'workers of the century'),
-#                'approved':     True,
-#                'ask':          'subscribe',
-#                'name':         'santa claus',
-#                'subscription': 'both',
-#                },
-#            }
-
-        self.roster_widget.set_contact(
-            name_or_title='test title or name',
-            bare_jid='robot@wayround.org',
-            groups=['sailors'],
-            resources=['ass'],
-            approved=True,
-            ask='subscribe',
-            subscription='both',
-            nick='cage',
-            userpic=None,
-            available=True,
-            status='online',
-            status_text='rabbit tale',
-            has_new_messages=False,
-            not_in_roster=False
-            )
+#        print('333')
+#        print(
+#            "Result contacts:\n{}".format(
+#                pprint.pformat(self.roster_widget.get_contacts())
+#                )
+#            )
+#        print('444')
 
         b.pack_start(main_paned, True, True, 0)
 
@@ -1038,3 +1084,81 @@ class MainWindow:
 
     def connections_tab_refresh_clicked(self, button):
         self.connections_tab_reload_list()
+
+    def _on_get_roster_button_clicked(self, button):
+
+        res = self.controller.roster.get(jid_from=self.controller.jid.full())
+        logging.debug("Roster Get Result: {}".format(pprint.pformat(res)))
+
+        if res == None:
+            d = org.wayround.utils.gtk.MessageDialog(
+                self.window_elements.window,
+                Gtk.DialogFlags.MODAL
+                | Gtk.DialogFlags.DESTROY_WITH_PARENT,
+                Gtk.MessageType.ERROR,
+                Gtk.ButtonsType.OK,
+                "Roster retrieval attempt returned not a stanza"
+                )
+            d.run()
+            d.destroy()
+        else:
+            if org.wayround.xmpp.core.is_stanza(res) and res.is_error():
+                d = org.wayround.utils.gtk.MessageDialog(
+                    self.window_elements.window,
+                    Gtk.DialogFlags.MODAL
+                    | Gtk.DialogFlags.DESTROY_WITH_PARENT,
+                    Gtk.MessageType.ERROR,
+                    Gtk.ButtonsType.OK,
+                    "Error getting roster:\n{}".format(repr(res.get_error()))
+                    )
+                d.run()
+                d.destroy()
+
+            elif org.wayround.xmpp.core.is_stanza(res) and not res.is_error():
+
+                d = org.wayround.utils.gtk.MessageDialog(
+                    self.window_elements.window,
+                    Gtk.DialogFlags.MODAL
+                    | Gtk.DialogFlags.DESTROY_WITH_PARENT,
+                    Gtk.MessageType.ERROR,
+                    Gtk.ButtonsType.OK,
+                    "Unexpected return value:\n{}".format(res)
+                    )
+                d.run()
+                d.destroy()
+
+            elif isinstance(res, dict):
+                conts = self.roster_widget.get_contacts()
+
+                for i in res.keys():
+                    self.roster_widget.set_contact(
+                        name_or_title=res[i]['name'],
+                        bare_jid=i,
+                        groups=res[i]['groups'],
+                        approved=res[i]['approved'],
+                        ask=res[i]['ask'],
+                        subscription=res[i]['subscription'],
+                        is_self=self.controller.jid.bare() == i
+                        )
+
+                for i in conts.keys():
+                    if not i in res:
+                        self.roster_widget.set_contact(
+                            bare_jid=i, 
+                            not_in_roster=True,
+                            is_self=self.controller.jid.bare() == i
+                            )
+            else:
+                raise Exception("DNA error")
+
+    def _on_add_contact_button_clicked(self, button):
+        pass
+
+    def _on_initial_presence_button_clicked(self, button):
+        self.controller.presence.presence()
+
+    def _on_bye_presence_button_clicked(self, button):
+        self.controller.presence.presence(typ='unavailable')
+
+    def _on_change_presence_button_clicked(self, button):
+        self.presence_control_popup_window.show()
