@@ -92,10 +92,8 @@ class PresenceControlPopup:
 #        cancel_button.connect('clicked', self._cancel)
 
     def show(self):
-
         self.window.set_position(Gtk.WindowPosition.CENTER)
         self.window.show_all()
-
 
     def hide(self):
         self.window.hide()

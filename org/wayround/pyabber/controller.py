@@ -14,8 +14,9 @@ import org.wayround.pyabber.mainwindow
 
 class MainController:
 
-    def __init__(self):
+    def __init__(self, main_window):
 
+        self.main_window = main_window
         self.clear(init=True)
 
     def clear(self, init=False):
@@ -23,7 +24,6 @@ class MainController:
         self.client = None
         self._driven = False
 
-        self.main_window = None
         self.profile_name = None
         self.profile_password = None
         self.profile_data = None
@@ -76,7 +76,6 @@ class MainController:
 
     def start(
         self,
-        main_window,
         profile_name,
         profile_password,
         profile_data,
@@ -90,7 +89,6 @@ class MainController:
 
         ret = 0
 
-        self.main_window = main_window
         self.profile_name = profile_name
         self.profile_password = profile_password
         self.profile_data = profile_data
@@ -107,6 +105,8 @@ class MainController:
                 user=self.preset_data['username'],
                 domain=self.preset_data['server']
                 )
+
+            self.main_window.roster_widget.set_self(self.jid.bare())
 
             self.connection_info = self.jid.make_connection_info()
 
@@ -236,8 +236,7 @@ class MainController:
                         self.jid.update(org.wayround.xmpp.core.jid_from_str(res))
                         print("Bound jid is: {}".format(self.jid.full()))
                         self.main_window.roster_widget.set_contact(
-                            bare_jid=self.jid.bare(),
-                            is_self=True
+                            bare_jid=self.jid.bare()
                             )
 
                 if self.preset_data['session'] and ret == 0:
@@ -599,8 +598,8 @@ class MainController:
             pass
         else:
 
-            jid = stanza_data[0]
-            data = stanza_data[1]
+            jid = list(stanza_data.keys())[0]
+            data = stanza_data[jid]
 
             not_in_roster = data['subscription'] == 'remove'
 
@@ -611,20 +610,17 @@ class MainController:
                 approved=data['approved'],
                 ask=data['ask'],
                 subscription=data['subscription'],
-                not_in_roster=not_in_roster,
-                is_self=self.jid.bare() == org.wayround.xmpp.core.jid_from_str(jid).bare()
+                not_in_roster=not_in_roster
                 )
 
         return
 
     def _on_presence(self, event, presence_obj, jid_from, jid_to, stanza):
 
-#        print("_on_presence: {}, {}, {}, {}, {}".format(event, presence_obj, jid_from, jid_to, stanza))
-
         if event == 'presence':
 
             if not stanza.typ in [
-                'subscribe', 'unsubscribe', 'subscribed', 'unsubscribed'
+                'unsubscribe', 'subscribed', 'unsubscribed'
                 ]:
 
                 f_jid = None
@@ -634,9 +630,6 @@ class MainController:
                 else:
                     f_jid = self.jid.copy()
                     f_jid.user = None
-
-                if jid_to:
-                    logging.warning("jid_to is: `{}'".format(jid_to))
 
                 show = None
                 status = None
@@ -659,6 +652,9 @@ class MainController:
                 if stanza.typ == 'remove':
                     not_in_roster = True
 
+                if not f_jid.bare() in self.main_window.roster_widget.get_data():
+                    not_in_roster = True
+
                 if f_jid.is_full():
                     self.main_window.roster_widget.set_contact_resource(
                         bare_jid=f_jid.bare(),
@@ -666,7 +662,6 @@ class MainController:
                         available=stanza.typ != 'unavailable',
                         show=show,
                         status=status,
-                        is_self=f_jid.bare() == self.jid.bare(),
                         not_in_roster=not_in_roster
                         )
                 elif f_jid.is_bare():
@@ -675,8 +670,14 @@ class MainController:
                         available=stanza.typ != 'unavailable',
                         show=show,
                         status=status,
-                        is_self=f_jid.bare() == self.jid.bare(),
                         not_in_roster=not_in_roster
                         )
                 else:
                     logging.error("Don't know what to do")
+
+            else:
+                logging.warning(
+                    "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stanza.typ is {}".format(
+                        stanza.typ
+                        )
+                    )

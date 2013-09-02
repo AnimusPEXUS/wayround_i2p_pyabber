@@ -3,7 +3,6 @@ import os.path
 import glob
 import sys
 import threading
-import time
 import pprint
 import logging
 
@@ -21,6 +20,9 @@ import org.wayround.pyabber.connpresetwindow
 import org.wayround.pyabber.controller
 import org.wayround.pyabber.rosterwidget
 import org.wayround.pyabber.presence_control_popup
+import org.wayround.pyabber.contact_popup_menu
+import org.wayround.pyabber.icondb
+import org.wayround.pyabber.contact_editor
 
 class Dumb: pass
 
@@ -30,7 +32,8 @@ class MainWindow:
 
     def __init__(self, pyabber_config='~/.config/pyabber'):
 
-        self.controller = None
+        self.controller = org.wayround.pyabber.controller.MainController(self)
+
         self.iteration_loop = org.wayround.utils.gtk.GtkIteratedLoop()
 
         pyabber_config = os.path.expanduser(pyabber_config)
@@ -47,13 +50,18 @@ class MainWindow:
 
         self.window_elements = Dumb()
 
-        self._load_pixbufs()
+        org.wayround.pyabber.icondb.set_dir(
+            org.wayround.utils.path.join(
+                os.path.dirname(org.wayround.utils.path.abspath(__file__)),
+                'icons'
+                )
+            )
 
         self.window_elements.window = Gtk.Window()
 
         window = self.window_elements.window
 
-        window.set_icon(self.icons['pyabber'])
+        window.set_icon(org.wayround.pyabber.icondb.get('pyabber'))
         window.set_title("Pyabber :P")
         window.maximize()
         window.set_hide_titlebar_when_maximized(True)
@@ -137,7 +145,6 @@ class MainWindow:
         self.window_elements.stream_features_tab = stream_features_tab
         self.window_elements.main_notebook = main_notebook
 
-
         return
 
     def run(self):
@@ -153,24 +160,6 @@ class MainWindow:
         self.iteration_loop.wait()
 
         return 0
-
-    def _load_pixbufs(self):
-
-        _dir = os.path.dirname(org.wayround.utils.path.abspath(__file__))
-
-        icons = {}
-        for i in [
-                  'pyabber', 'profile', 'plus',
-                  'initial_presence', 'bye_presence',
-                  'refresh_roster', 'new_presence_button'
-                  ]:
-
-            icons[i] = GdkPixbuf.Pixbuf.new_from_file(
-                org.wayround.utils.path.join(_dir, 'icons', i + '.png')
-                )
-
-        self.icons = icons
-
 
     def _build_profile_tab(self):
 
@@ -497,6 +486,7 @@ class MainWindow:
         roster_toolbar_bye_presence_button = Gtk.Button()
         roster_toolbar_get_roster_button = Gtk.Button()
         roster_toolbar_change_presence_button = Gtk.Button()
+        roster_prind_data_button = Gtk.Button()
 
         self.presence_control_popup_window = (
             org.wayround.pyabber.presence_control_popup.PresenceControlPopup(
@@ -506,21 +496,24 @@ class MainWindow:
             )
 
         add_contact_image = Gtk.Image()
-        add_contact_image.set_from_pixbuf(self.icons['plus'])
+        add_contact_image.set_from_pixbuf(org.wayround.pyabber.icondb.get('plus'))
 
         initial_presence_image = Gtk.Image()
-        initial_presence_image.set_from_pixbuf(self.icons['initial_presence'])
+        initial_presence_image.set_from_pixbuf(org.wayround.pyabber.icondb.get('initial_presence'))
 
         bye_presence_image = Gtk.Image()
-        bye_presence_image.set_from_pixbuf(self.icons['bye_presence'])
+        bye_presence_image.set_from_pixbuf(org.wayround.pyabber.icondb.get('bye_presence'))
 
         get_roster_image = Gtk.Image()
-        get_roster_image.set_from_pixbuf(self.icons['refresh_roster'])
+        get_roster_image.set_from_pixbuf(org.wayround.pyabber.icondb.get('refresh_roster'))
 
         new_presence_image = Gtk.Image()
-        new_presence_image.set_from_pixbuf(self.icons['new_presence_button'])
+        new_presence_image.set_from_pixbuf(org.wayround.pyabber.icondb.get('new_presence_button'))
 
         roster_toolbar_add_contact_button.set_image(add_contact_image)
+        roster_toolbar_add_contact_button.connect(
+            'clicked', self._on_add_contact_button_clicked
+            )
 
         roster_toolbar_initial_presence_button.set_image(initial_presence_image)
         roster_toolbar_initial_presence_button.connect(
@@ -529,7 +522,7 @@ class MainWindow:
 
         roster_toolbar_bye_presence_button.set_image(bye_presence_image)
         roster_toolbar_bye_presence_button.connect(
-            "clicked", self._on_bye_presence_button_clicked
+            "clicked", self._on_print_debug_data
             )
 
 
@@ -544,11 +537,16 @@ class MainWindow:
             "clicked", self._on_change_presence_button_clicked
             )
 
+        roster_prind_data_button.connect(
+            "clicked", self._on_prind_data_button_clicked
+            )
+
         roster_tools_box.pack_start(roster_toolbar_add_contact_button, False, False, 0)
         roster_tools_box.pack_start(roster_toolbar_initial_presence_button, False, False, 0)
         roster_tools_box.pack_start(roster_toolbar_bye_presence_button, False, False, 0)
         roster_tools_box.pack_start(roster_toolbar_get_roster_button, False, False, 0)
         roster_tools_box.pack_start(roster_toolbar_change_presence_button, False, False, 0)
+        roster_tools_box.pack_start(roster_prind_data_button, False, False, 0)
 
         main_paned = Gtk.Paned()
         main_paned.set_orientation(Gtk.Orientation.HORIZONTAL)
@@ -560,8 +558,9 @@ class MainWindow:
         main_paned.pack2(messaging_notebook, True, False)
 
         self.roster_widget = org.wayround.pyabber.rosterwidget.RosterWidget(
-            roster_treeview
+            roster_treeview, main_window=self
             )
+
 
 #        print('333')
 #        print(
@@ -610,8 +609,6 @@ class MainWindow:
             self.preset_name = name
             self.preset_data = data
 
-            self.controller = org.wayround.pyabber.controller.MainController()
-
 #            self.controller.start(
 #                self,
 #                self.profile_name,
@@ -625,7 +622,6 @@ class MainWindow:
                 name="Chat Controller Thread",
                 target=self.controller.start,
                 args=(
-                    self,
                     self.profile_name,
                     self.profile_password,
                     self.profile_data,
@@ -854,7 +850,7 @@ class MainWindow:
 
         for i in profiles:
 
-            tree.append([i, self.icons['profile']])
+            tree.append([i, org.wayround.pyabber.icondb.get('profile')])
 
         self.window_elements.profile_icon_view.set_model(tree)
         self.window_elements.profile_icon_view.set_text_column(0)
@@ -1137,28 +1133,33 @@ class MainWindow:
                         groups=res[i]['groups'],
                         approved=res[i]['approved'],
                         ask=res[i]['ask'],
-                        subscription=res[i]['subscription'],
-                        is_self=self.controller.jid.bare() == i
+                        subscription=res[i]['subscription']
                         )
 
-                for i in conts.keys():
+                for i in conts:
                     if not i in res:
                         self.roster_widget.set_contact(
-                            bare_jid=i, 
-                            not_in_roster=True,
-                            is_self=self.controller.jid.bare() == i
+                            bare_jid=i,
+                            not_in_roster=True
                             )
             else:
                 raise Exception("DNA error")
 
     def _on_add_contact_button_clicked(self, button):
-        pass
+
+        w = org.wayround.pyabber.contact_editor.ContactEditor(
+            self.controller
+            )
+        w.show()
 
     def _on_initial_presence_button_clicked(self, button):
         self.controller.presence.presence()
 
-    def _on_bye_presence_button_clicked(self, button):
-        self.controller.presence.presence(typ='unavailable')
+    def _on_print_debug_data(self, button):
+        pass
 
     def _on_change_presence_button_clicked(self, button):
         self.presence_control_popup_window.show()
+
+    def _on_prind_data_button_clicked(self, button):
+        pprint.pprint(self.roster_widget.get_data())
