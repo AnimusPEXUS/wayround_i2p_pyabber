@@ -42,6 +42,8 @@ class ContactEditor:
         self.jid_entry = jid_entry
 
         jid_frame.add(jid_entry)
+        if mode == 'edit':
+            jid_entry.set_text(jid)
 
 
         nick_box = Gtk.Box()
@@ -279,12 +281,13 @@ class ContactEditor:
 
         lst = []
 
-        sele = self.current_groups_treeview.get_selection()
+        mod = self.current_groups_treeview.get_model()
 
-        am, rows = sele.get_selected_rows()
+        it = mod.get_iter_first()
 
-        for i in rows:
-            lst.append(am[am.get_iter(i)][0])
+        while it:
+            lst.append(mod[it][0])
+            it = mod.iter_next(it)
 
         name = self.nick_edit.get_text()
 

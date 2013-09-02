@@ -428,17 +428,13 @@ class RosterWidget:
 
         ifr = self._store.get_iter_first()
 
-        if not ifr:
-            ret = None
-        else:
+        while ifr:
 
-            while ifr != None:
+            if self._store[ifr][ROW_CELL_NICK] == nick:
+                ret = ifr
+                break
 
-                if self._store[ifr][ROW_CELL_NICK] == nick:
-                    ret = ifr
-                    break
-
-                ifr = self._store.iter_next(ifr)
+            ifr = self._store.iter_next(ifr)
 
         return ret
 
@@ -688,7 +684,7 @@ class RosterWidget:
         if ((mode == 'contact' and not itera_type in ['division', 'group'])
             or (mode == 'resource' and itera_type != 'contact')):
             raise Exception(
-                "pointed node type is invalid for adding {}".format(mode)
+                "pointed node type is invalid for setting {}".format(mode)
                 )
 
         values = [
@@ -749,18 +745,69 @@ class RosterWidget:
             status, has_new_messages, mode='resource'
             )
 
+    def _get_contact_row_refs(self, bare_jid):
+
+        ret = []
+
+        groups = self._groups_list()
+
+        for i in groups:
+            group_iter = self._group_get_iter(i)
+            itera = self._level_contact_get_iter(group_iter, bare_jid)
+
+            if itera:
+                ret.append(Gtk.TreeRowReference.new(self._store, self._store.get_path(itera)))
+
+        for i in [
+            'ungrouped', 'none', 'hard', 'transport', 'to', 'from', 'ask',
+            'self'
+            ]:
+
+            it = self._division_get_iter(i)
+            if it:
+                itera = self._level_contact_get_iter(
+                    it,
+                    bare_jid
+                    )
+
+                if itera:
+                    ret.append(Gtk.TreeRowReference.new(self._store, self._store.get_path(itera)))
+
+        return ret
+
     def _sync_treeview_with_data_contacts_resources(self):
 
         for bare_jid in self._data.keys():
+
+            all_contact_row_refs = self._get_contact_row_refs(bare_jid)
+
             for resource in self._data[bare_jid]['full'].keys():
 
                 data = self._data[bare_jid]['full'][resource]
 
-                all_contact_iterators = self._get_contact_iterators(bare_jid)
+                for i in all_contact_row_refs:
+                    pat = i.get_path()
+                    if pat:
+                        it = self._store.get_iter(pat)
+                        if it:
+                            self._level_resource_add(
+                                it,
+                                resource
+                                )
+                    pat = i.get_path()
+                    if pat:
+                        it = self._store.get_iter(pat)
+                        if it:
+                            self._level_resource_set(
+                                it,
+                                resource,
+                                **data
+                                )
 
-                for i in all_contact_iterators:
-                    self._level_resource_add(i, resource)
-                    self._level_resource_set(i, resource, **data)
+                # TODO: is it a memory leak?
+                #                for i in all_contact_row_refs:
+                #                    if i.valid():
+                #                        i.free()
 
         return
 
@@ -776,9 +823,12 @@ class RosterWidget:
 
         for i in self._data.keys():
             for j in self._data[i]['bare']['groups']:
+
                 self._group_add(j)
+
                 g_iter = self._group_get_iter(j)
                 self._level_contact_add(g_iter, i)
+
                 g_iter = self._group_get_iter(j)
                 self._level_contact_set(
                     g_iter, i, **self._data[i]['bare']
@@ -896,34 +946,6 @@ class RosterWidget:
         self._sync_treeview_with_data_contacts()
         self._sync_treeview_with_data_contacts_resources()
 
-
-    def _get_contact_iterators(self, bare_jid):
-
-        ret = []
-
-        groups = self._groups_list()
-
-        for i in groups:
-            group_iter = self._group_get_iter(i)
-            itera = self._level_contact_get_iter(group_iter, bare_jid)
-
-            if itera:
-                ret.append(itera)
-
-        for i in [
-            'ungrouped', 'none', 'hard', 'transport', 'to', 'from', 'ask',
-            'self'
-            ]:
-
-            itera = self._level_contact_get_iter(
-                self._division_get_iter(i),
-                bare_jid
-                )
-
-            if itera:
-                ret.append(itera)
-
-        return ret
 
     def set_self(self, self_bare_jid):
         self._self_bare_jid = self_bare_jid
@@ -1058,6 +1080,7 @@ class RosterWidget:
     def forget(self, bare_jid):
 
         self._lock.acquire()
+
         if bare_jid in self._data:
             del self._data[bare_jid]
 
@@ -1075,52 +1098,57 @@ class RosterWidget:
             self._lock.acquire()
 
             sel = widget.get_selection()
-            if sel:
 
-                sel2 = sel.get_selected_rows()
+            selec = sel.get_selected_rows()
 
-                sel2 = sel2[1]
+            model = selec[0]
+            rows = selec[1]
 
-                if len(sel2) != 0:
-                    row = self._store[sel2[0]]
+            if len(rows) != 0:
 
-                    if row[ROW_CELL_CELL_TYPE] in ['contact', 'resource']:
+                pat = Gtk.TreeRowReference.new(model, rows[0])
 
-                        bare_jid = None
-                        resource = None
-                        jid = None
+                row = model[rows[0]]
+                row_t = row[ROW_CELL_CELL_TYPE]
+                bj = row[ROW_CELL_BARE_JID]
+                res = row[ROW_CELL_RESOURCE]
 
-                        if row[ROW_CELL_CELL_TYPE] == 'contact':
-                            bare_jid = row[ROW_CELL_BARE_JID]
-                            resource = ''
+                if row_t in ['contact', 'resource']:
 
-                            jid = org.wayround.xmpp.core.jid_from_str(bare_jid)
+                    if row_t == 'contact':
+                        bare_jid = bj
+                        resource = ''
 
-                            org.wayround.pyabber.contact_popup_menu.contact_popup_menu(
-                                self._main_window.controller,
-                                jid.bare()
-                                )
+                        jid = org.wayround.xmpp.core.jid_from_str(bare_jid)
+
+                        org.wayround.pyabber.contact_popup_menu.contact_popup_menu(
+                            self._main_window.controller,
+                            jid.bare()
+                            )
 
 
-                        if row[ROW_CELL_CELL_TYPE] == 'resource':
-                            resource = row[ROW_CELL_RESOURCE]
-                            path_iter = self._store.get_iter(sel2[0])
+                    if row_t == 'resource':
+                        resource = res
+                        itrap = pat.get_path()
+                        if itrap:
+                            path_iter = model.get_iter(itrap)
 
                             if path_iter != None:
-                                parent = self._store.iter_parent(
+                                parent = model.iter_parent(
                                     path_iter
                                     )
-                                parent_row = self._store[parent]
-                                bare_jid = parent_row[ROW_CELL_BARE_JID]
+                                if parent:
+                                    parent_row = model[parent]
+                                    bare_jid = parent_row[ROW_CELL_BARE_JID]
 
-                                jid = org.wayround.xmpp.core.jid_from_str(
-                                    bare_jid + '/' + resource
-                                    )
+                                    jid = org.wayround.xmpp.core.jid_from_str(
+                                        bare_jid + '/' + resource
+                                        )
 
-                                org.wayround.pyabber.contact_popup_menu.contact_popup_menu(
-                                    self._main_window.controller,
-                                    jid.full()
-                                    )
+                                    org.wayround.pyabber.contact_popup_menu.contact_popup_menu(
+                                        self._main_window.controller,
+                                        jid.full()
+                                        )
 
 
             self._lock.release()

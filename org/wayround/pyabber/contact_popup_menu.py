@@ -3,6 +3,7 @@ from gi.repository import Gtk
 from gi.repository import Gdk
 
 import org.wayround.xmpp.core
+import org.wayround.pyabber.contact_editor
 
 _contact_popup_menu = None
 
@@ -87,6 +88,7 @@ class ContactPopupMenu:
 
         remove_mi.connect('activate', self._remove_activate)
         forget_mi.connect('activate', self._forget_activate)
+        edit_mi.connect('activate', self._edit_activate)
 
         menu.connect('destroy', self._destroy)
 
@@ -133,6 +135,15 @@ class ContactPopupMenu:
 
     def _forget_activate(self, menuitem):
         self._controller.main_window.roster_widget.forget(self.jid.bare())
+
+    def _edit_activate(self, menuitem):
+        w = org.wayround.pyabber.contact_editor.ContactEditor(
+            self._controller,
+            jid=self.jid.bare(),
+            mode='edit'
+            )
+        w.show()
+
 
     def _destroy(self, *args):
         print("contact menu destroying")
