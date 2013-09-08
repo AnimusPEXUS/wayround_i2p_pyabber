@@ -4,6 +4,8 @@ from gi.repository import Gdk
 
 import org.wayround.xmpp.core
 import org.wayround.pyabber.contact_editor
+import org.wayround.pyabber.single_message_window
+import org.wayround.pyabber.chat_pager
 
 _contact_popup_menu = None
 
@@ -90,6 +92,9 @@ class ContactPopupMenu:
         forget_mi.connect('activate', self._forget_activate)
         edit_mi.connect('activate', self._edit_activate)
 
+        send_message_mi.connect('activate', self._send_message_activate)
+        start_chat_mi.connect('activate', self._start_chat_activate)
+
         menu.connect('destroy', self._destroy)
 
     def show(self, controller, bare_or_full_jid, attach=None):
@@ -143,6 +148,28 @@ class ContactPopupMenu:
             mode='edit'
             )
         w.show()
+
+    def _send_message_activate(self, menuitem):
+        org.wayround.pyabber.single_message_window.single_message(
+            controller=self._controller,
+            mode='new',
+            to_jid=str(self.jid),
+            from_jid=False,
+            subject='HI!',
+            body="How are You?"
+            )
+
+    def _start_chat_activate(self, menuitem):
+
+        page = org.wayround.pyabber.chat_pager.Chat(
+            self,
+            controller=self._controller,
+            contact_bare_jid=self.jid.bare(),
+            contact_resource=None,  # TODO: really?
+            thread_id=None
+            )
+
+        self._controller.main_window.chat_pager.add_page(page)
 
 
     def _destroy(self, *args):

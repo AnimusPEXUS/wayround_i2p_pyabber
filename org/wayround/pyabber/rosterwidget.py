@@ -46,7 +46,7 @@ ROW_CELL_SHOW = 10
 ROW_CELL_STATUS = 11
 ROW_CELL_HAS_NEW_MESSAGES = 12
 
-LEVEL_CONTACT_SET_FILL_LIST = [
+LEVEL_CONTACT_SET_FULL_LIST = [
     ROW_CELL_NAME_OR_TITLE,
     ROW_CELL_APPROVED,
     ROW_CELL_ASK,
@@ -59,6 +59,16 @@ LEVEL_CONTACT_SET_FILL_LIST = [
     ROW_CELL_HAS_NEW_MESSAGES
     ]
 
+CONTACTED_DIVISION_NAMES = [
+    'self',
+    'ungrouped',
+    'ask',
+    'to',
+    'from',
+    'none',
+    'transport',
+    'hard'
+    ]
 
 #for i in ROW_CELL_NAMES:
 #    exec("""\
@@ -347,17 +357,9 @@ def draw_resource_cell(
     main_box.pack_start(resource_l, False, False, 3)
     main_box.pack_start(status_l, False, False, 3)
 
-    # FIXME: crap! : Pango Attributes are not introspectable... :( need to do
-    # with this something
-
-#    attr_list = Pango.AttrList()
-##    attr_list.insert(Pango.Weight.BOLD)
-#    font_desc = Pango.FontDescription()
-#    font_desc.set_weight(Pango.Weight.BOLD)
-#
-#    attr_font_desc = Pango.AttrFontDesc()
-#    attr_font_desc.
-#    resource_l.set_attributes(attr_list)
+    font_desc = Pango.FontDescription()
+    font_desc.set_weight(Pango.Weight.BOLD)
+    resource_l.override_font(font_desc)
 
     ow.add(main_box)
     ow.show_all()
@@ -366,7 +368,7 @@ def draw_resource_cell(
 
 class RosterWidget:
 
-    def __init__(self, treeview, main_window):
+    def __init__(self, main_window):
 
         self._self_bare_jid = None
 
@@ -374,7 +376,18 @@ class RosterWidget:
 
         self._data = {}
 
-        self._treeview = treeview
+        self._treeview = Gtk.TreeView()
+
+        frame = Gtk.Frame()
+        scrolled = Gtk.ScrolledWindow(None, None)
+        frame.add(scrolled)
+
+        self._root_widget = frame
+
+        scrolled.add(self._treeview)
+
+        scrolled.set_size_request(200, -1)
+
         self._main_window = main_window
 
         self._treeview.connect('button-release-event', self._on_treeview_buttonpress)
@@ -397,6 +410,8 @@ class RosterWidget:
 
         self._treeview.set_model(self._store)
         self._treeview.set_headers_visible(False)
+        self._treeview.set_enable_tree_lines(True)
+#        self._treeview.set_rules_hint(True)
 
         self._division_add('Self', 'self')
         self._division_add('Grouped Contacts', 'groups')
@@ -696,7 +711,7 @@ class RosterWidget:
         else:
             values += [ROW_CELL_RESOURCE, value]
 
-        for i in LEVEL_CONTACT_SET_FILL_LIST:
+        for i in LEVEL_CONTACT_SET_FULL_LIST:
 
             er = eval(ROW_CELL_NAMES[i])
 
@@ -753,15 +768,13 @@ class RosterWidget:
 
         for i in groups:
             group_iter = self._group_get_iter(i)
-            itera = self._level_contact_get_iter(group_iter, bare_jid)
+            if group_iter:
+                itera = self._level_contact_get_iter(group_iter, bare_jid)
 
-            if itera:
-                ret.append(Gtk.TreeRowReference.new(self._store, self._store.get_path(itera)))
+                if itera:
+                    ret.append(Gtk.TreeRowReference.new(self._store, self._store.get_path(itera)))
 
-        for i in [
-            'ungrouped', 'none', 'hard', 'transport', 'to', 'from', 'ask',
-            'self'
-            ]:
+        for i in CONTACTED_DIVISION_NAMES:
 
             it = self._division_get_iter(i)
             if it:
@@ -820,9 +833,23 @@ class RosterWidget:
                 if not i in self._data[j]['bare']['groups'] or j == self._self_bare_jid:
                     g_iter = self._group_get_iter(i)
                     self._level_contact_remove(g_iter, j)
+                    g_iter = self._group_get_iter(i)
+                    if self._store.iter_n_children(g_iter) == 0:
+                        self._store.remove(g_iter)
 
         for i in self._data.keys():
             for j in self._data[i]['bare']['groups']:
+
+                data = copy.deepcopy(self._data[i]['bare'])
+
+                if 'is_transport' in data:
+                    del(data['is_transport'])
+
+                if 'not_in_roster' in data:
+                    del(data['not_in_roster'])
+
+                if 'groups' in data:
+                    del(data['groups'])
 
                 self._group_add(j)
 
@@ -831,13 +858,10 @@ class RosterWidget:
 
                 g_iter = self._group_get_iter(j)
                 self._level_contact_set(
-                    g_iter, i, **self._data[i]['bare']
+                    g_iter, i, **data
                     )
 
-        for i in [
-            'ungrouped', 'none', 'hard', 'transport', 'to', 'from', 'ask',
-            'self'
-            ]:
+        for i in CONTACTED_DIVISION_NAMES:
 
             div_iter = self._division_get_iter(i)
             lst = self._level_contacts_get_list(div_iter)
@@ -1152,3 +1176,6 @@ class RosterWidget:
 
 
             self._lock.release()
+
+    def get_widget(self):
+        return self._root_widget

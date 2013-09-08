@@ -119,6 +119,7 @@ class ContactEditor:
         c1.pack_start(cr1, False)
         c1.add_attribute(cr1, 'text', 0)
         available_groups_treeview.append_column(c1)
+        available_groups_treeview.set_headers_visible(False)
 
         available_groups_treeview.get_selection().set_mode(Gtk.SelectionMode.MULTIPLE)
 
@@ -153,6 +154,7 @@ class ContactEditor:
         c2.pack_start(cr2, False)
         c2.add_attribute(cr2, 'text', 0)
         current_groups_treeview.append_column(c2)
+        current_groups_treeview.set_headers_visible(False)
 
         current_groups_treeview.get_selection().set_mode(Gtk.SelectionMode.MULTIPLE)
 
@@ -164,7 +166,12 @@ class ContactEditor:
         groups_box.pack_start(available_g_box, True, True, 0)
         groups_box.pack_start(action_g_box, False, False, 0)
         groups_box.pack_start(current_g_box, True, True, 0)
-#        groups_box.set_homogeneous(True)
+
+        sg = Gtk.SizeGroup()
+        sg.set_mode(Gtk.SizeGroupMode.HORIZONTAL)
+        sg.add_widget(available_g_box)
+        sg.add_widget(current_g_box)
+
         groups_box.set_spacing(5)
 
         groups_frame.add(groups_box)

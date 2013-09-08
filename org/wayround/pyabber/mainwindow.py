@@ -23,6 +23,9 @@ import org.wayround.pyabber.presence_control_popup
 import org.wayround.pyabber.contact_popup_menu
 import org.wayround.pyabber.icondb
 import org.wayround.pyabber.contact_editor
+import org.wayround.pyabber.single_message_window
+import org.wayround.pyabber.chat_pager
+
 
 class Dumb: pass
 
@@ -468,25 +471,22 @@ class MainWindow:
         roster_box = Gtk.Box()
         roster_box.set_orientation(Gtk.Orientation.HORIZONTAL)
 
-        roster_tools_box = Gtk.Box()
+        roster_tools_box = Gtk.Toolbar()
         roster_tools_box.set_orientation(Gtk.Orientation.VERTICAL)
 
-        roster_treeview = Gtk.TreeView()
+        self.roster_widget = org.wayround.pyabber.rosterwidget.RosterWidget(
+            main_window=self
+            )
 
-        scrolled = Gtk.ScrolledWindow(None, None)
-        scrolled.add(roster_treeview)
-
-        scrolled.set_size_request(200, -1)
+        roster_treeview_widg = self.roster_widget.get_widget()
 
         roster_box.pack_start(roster_tools_box, False, False, 0)
-        roster_box.pack_start(scrolled, True, True, 0)
+        roster_box.pack_start(roster_treeview_widg, True, True, 0)
 
-        roster_toolbar_add_contact_button = Gtk.Button()
-        roster_toolbar_initial_presence_button = Gtk.Button()
-        roster_toolbar_bye_presence_button = Gtk.Button()
-        roster_toolbar_get_roster_button = Gtk.Button()
-        roster_toolbar_change_presence_button = Gtk.Button()
-        roster_prind_data_button = Gtk.Button()
+        roster_toolbar_add_contact_button = Gtk.ToolButton()
+        roster_toolbar_initial_presence_button = Gtk.ToolButton()
+        roster_toolbar_change_presence_button = Gtk.ToolButton()
+        roster_toolbar_get_roster_button = Gtk.ToolButton()
 
         self.presence_control_popup_window = (
             org.wayround.pyabber.presence_control_popup.PresenceControlPopup(
@@ -501,74 +501,53 @@ class MainWindow:
         initial_presence_image = Gtk.Image()
         initial_presence_image.set_from_pixbuf(org.wayround.pyabber.icondb.get('initial_presence'))
 
-        bye_presence_image = Gtk.Image()
-        bye_presence_image.set_from_pixbuf(org.wayround.pyabber.icondb.get('bye_presence'))
-
         get_roster_image = Gtk.Image()
         get_roster_image.set_from_pixbuf(org.wayround.pyabber.icondb.get('refresh_roster'))
 
         new_presence_image = Gtk.Image()
         new_presence_image.set_from_pixbuf(org.wayround.pyabber.icondb.get('new_presence_button'))
 
-        roster_toolbar_add_contact_button.set_image(add_contact_image)
+        roster_toolbar_add_contact_button.set_icon_widget(add_contact_image)
         roster_toolbar_add_contact_button.connect(
             'clicked', self._on_add_contact_button_clicked
             )
 
-        roster_toolbar_initial_presence_button.set_image(initial_presence_image)
+        roster_toolbar_initial_presence_button.set_icon_widget(initial_presence_image)
         roster_toolbar_initial_presence_button.connect(
             "clicked", self._on_initial_presence_button_clicked
             )
 
-        roster_toolbar_bye_presence_button.set_image(bye_presence_image)
-        roster_toolbar_bye_presence_button.connect(
-            "clicked", self._on_print_debug_data
-            )
 
-
-        roster_toolbar_get_roster_button.set_image(get_roster_image)
-        roster_toolbar_get_roster_button.connect(
-            "clicked", self._on_get_roster_button_clicked
-            )
-
-
-        roster_toolbar_change_presence_button.set_image(new_presence_image)
+        roster_toolbar_change_presence_button.set_icon_widget(new_presence_image)
         roster_toolbar_change_presence_button.connect(
             "clicked", self._on_change_presence_button_clicked
             )
 
-        roster_prind_data_button.connect(
-            "clicked", self._on_prind_data_button_clicked
+        roster_toolbar_get_roster_button.set_icon_widget(get_roster_image)
+        roster_toolbar_get_roster_button.connect(
+            "clicked", self._on_get_roster_button_clicked
             )
 
-        roster_tools_box.pack_start(roster_toolbar_add_contact_button, False, False, 0)
-        roster_tools_box.pack_start(roster_toolbar_initial_presence_button, False, False, 0)
-        roster_tools_box.pack_start(roster_toolbar_bye_presence_button, False, False, 0)
-        roster_tools_box.pack_start(roster_toolbar_get_roster_button, False, False, 0)
-        roster_tools_box.pack_start(roster_toolbar_change_presence_button, False, False, 0)
-        roster_tools_box.pack_start(roster_prind_data_button, False, False, 0)
+        roster_tools_box.insert(roster_toolbar_initial_presence_button, -1)
+        roster_tools_box.insert(roster_toolbar_get_roster_button, -1)
+        roster_tools_box.insert(Gtk.SeparatorToolItem(), -1)
+        roster_tools_box.insert(roster_toolbar_add_contact_button, -1)
+        roster_tools_box.insert(Gtk.SeparatorToolItem(), -1)
+        roster_tools_box.insert(roster_toolbar_change_presence_button, -1)
 
         main_paned = Gtk.Paned()
         main_paned.set_orientation(Gtk.Orientation.HORIZONTAL)
 
-        messaging_notebook = Gtk.Notebook()
 
-
-        main_paned.pack1(roster_box, False, True)
-        main_paned.pack2(messaging_notebook, True, False)
-
-        self.roster_widget = org.wayround.pyabber.rosterwidget.RosterWidget(
-            roster_treeview, main_window=self
+        self.chat_pager = org.wayround.pyabber.chat_pager.ChatPager(
+            self.controller
             )
 
+        chat_pager_widget = self.chat_pager.get_widget()
 
-#        print('333')
-#        print(
-#            "Result contacts:\n{}".format(
-#                pprint.pformat(self.roster_widget.get_contacts())
-#                )
-#            )
-#        print('444')
+        main_paned.pack1(roster_box, False, True)
+        main_paned.pack2(chat_pager_widget, True, False)
+
 
         b.pack_start(main_paned, True, True, 0)
 

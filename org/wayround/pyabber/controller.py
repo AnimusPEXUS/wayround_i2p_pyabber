@@ -11,6 +11,7 @@ import org.wayround.xmpp.client
 import org.wayround.gsasl.gsasl
 
 import org.wayround.pyabber.mainwindow
+import org.wayround.pyabber.single_message_window
 
 class MainController:
 
@@ -138,6 +139,11 @@ class MainController:
                 self.jid
                 )
 
+            self.message = org.wayround.xmpp.client.Message(
+                self.client,
+                self.jid
+                )
+
             logging.debug("client created")
 
             self.client.sock_streamer.connect_signal(
@@ -260,6 +266,10 @@ class MainController:
 
                     self.presence.connect_signal(['presence'],
                                                  self._on_presence
+                                                 )
+
+                    self.message.connect_signal(['message'],
+                                                 self._on_message
                                                  )
 
 
@@ -681,3 +691,42 @@ class MainController:
                         stanza.typ
                         )
                     )
+
+    def _on_message(self, event, message_obj, stanza):
+
+        if event == 'message':
+
+            if stanza.typ in [None, 'normal']:
+
+                subject = None
+                thread = None
+                body = None
+
+                subject_el = stanza.body.find('{jabber:client}subject')
+                # TODO: fix for multiple subjects
+                if subject_el != None:
+                    subject = subject_el.text
+
+                thread_el = stanza.body.find('{jabber:client}thread')
+                # TODO: fix for multiple threads
+                if thread_el != None:
+                    thread = thread_el.text
+
+                body_el = stanza.body.find('{jabber:client}body')
+                # TODO: fix for multiple bodies
+                if body_el != None:
+                    body = body_el.text
+
+                org.wayround.pyabber.single_message_window.single_message(
+                    self, mode='view',
+                    to_jid=stanza.jid_to,
+                    from_jid=stanza.jid_from,
+                    subject=subject,
+                    thread=thread,
+                    body=body
+                    )
+
+            else:
+                self.main_window.chat_pager.feed_stanza(stanza)
+
+
