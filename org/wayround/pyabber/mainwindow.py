@@ -25,6 +25,7 @@ import org.wayround.pyabber.icondb
 import org.wayround.pyabber.contact_editor
 import org.wayround.pyabber.single_message_window
 import org.wayround.pyabber.chat_pager
+import org.wayround.pyabber.disco
 
 
 class Dumb: pass
@@ -72,19 +73,15 @@ class MainWindow:
 #        self.window_elements.window.set_resizable(False)
 
         main_box = Gtk.Box()
-
-        main_notebook = Gtk.Notebook()
-
-        xmpp_core_box = Gtk.Box()
-
         main_box.set_orientation(Gtk.Orientation.VERTICAL)
 
-
+        main_notebook = Gtk.Notebook()
         main_notebook.set_property('tab-pos', Gtk.PositionType.TOP)
 
+        xmpp_core_box = Gtk.Box()
         xmpp_core_box.set_orientation(Gtk.Orientation.HORIZONTAL)
-
         xmpp_core_box.pack_start(Gtk.Label("Text"), True, True, 0)
+
 
 
         _l = Gtk.Label("Program")
@@ -92,40 +89,37 @@ class MainWindow:
         _b.connect('clicked', self.app_exit)
         _b.set_relief(Gtk.ReliefStyle.NONE)
         main_notebook.append_page(_b, _l)
-        main_notebook.child_set_property(_b, 'tab-expand', True)
+#        main_notebook.child_set_property(_b, 'tab-expand', True)
 
         _l = Gtk.Label("Profile")
         profile_tab = self._build_profile_tab()
         main_notebook.append_page(profile_tab, _l)
-        main_notebook.child_set_property(profile_tab, 'tab-expand', True)
+#        main_notebook.child_set_property(profile_tab, 'tab-expand', True)
 
         _l = Gtk.Label("Connection")
         connection_tab = self._build_connection_tab()
         main_notebook.append_page(connection_tab, _l)
-        main_notebook.child_set_property(connection_tab, 'tab-expand', True)
+#        main_notebook.child_set_property(connection_tab, 'tab-expand', True)
 
         _l = Gtk.Label("Stream Features")
         stream_features_tab = self._build_stream_features_tab()
+        stream_features_tab.set_sensitive(False)
         main_notebook.append_page(stream_features_tab, _l)
-        main_notebook.child_set_property(stream_features_tab, 'tab-expand', True)
+#        main_notebook.child_set_property(stream_features_tab, 'tab-expand', True)
 
         _l = Gtk.Label("Messaging and Presence")
         messaging_and_presence_tab = self._build_messaging_and_presence()
         main_notebook.append_page(messaging_and_presence_tab, _l)
-        main_notebook.child_set_property(messaging_and_presence_tab, 'tab-expand', True)
+#        main_notebook.child_set_property(messaging_and_presence_tab, 'tab-expand', True)
 
-        _l = Gtk.Label("PubSub")
-        main_notebook.append_page(Gtk.Label(""), _l)
-#        main_notebook.child_set_property(profile_tab, 'tab-expand', True)
-
-        _l = Gtk.Label("XMPP Explorer")
-        main_notebook.append_page(Gtk.Label(""), _l)
+#        _l = Gtk.Label("PubSub")
+#        main_notebook.append_page(Gtk.Label(""), _l)
 #        main_notebook.child_set_property(profile_tab, 'tab-expand', True)
 
         _l = Gtk.Label("Status")
         status_tab = self._build_status_tab()
         main_notebook.append_page(status_tab, _l)
-        main_notebook.child_set_property(status_tab, 'tab-expand', True)
+#        main_notebook.child_set_property(status_tab, 'tab-expand', True)
 
         main_box.pack_start(main_notebook, True, True, 0)
 
@@ -381,7 +375,9 @@ class MainWindow:
 
 
         conn_table_f = Gtk.Frame()
-        conn_table_f.add(conn_table)
+        sw = Gtk.ScrolledWindow()
+        sw.add(conn_table)
+        conn_table_f.add(sw)
         conn_table_f.set_label("Available Presets")
 
         conn_table.set_margin_left(5)
@@ -469,10 +465,10 @@ class MainWindow:
         b.set_orientation(Gtk.Orientation.VERTICAL)
 
         roster_box = Gtk.Box()
-        roster_box.set_orientation(Gtk.Orientation.HORIZONTAL)
+        roster_box.set_orientation(Gtk.Orientation.VERTICAL)
 
         roster_tools_box = Gtk.Toolbar()
-        roster_tools_box.set_orientation(Gtk.Orientation.VERTICAL)
+        roster_tools_box.set_orientation(Gtk.Orientation.HORIZONTAL)
 
         self.roster_widget = org.wayround.pyabber.rosterwidget.RosterWidget(
             main_window=self
@@ -487,6 +483,7 @@ class MainWindow:
         roster_toolbar_initial_presence_button = Gtk.ToolButton()
         roster_toolbar_change_presence_button = Gtk.ToolButton()
         roster_toolbar_get_roster_button = Gtk.ToolButton()
+        roster_toolbar_show_disco_button = Gtk.ToolButton()
 
         self.presence_control_popup_window = (
             org.wayround.pyabber.presence_control_popup.PresenceControlPopup(
@@ -501,6 +498,9 @@ class MainWindow:
         initial_presence_image = Gtk.Image()
         initial_presence_image.set_from_pixbuf(org.wayround.pyabber.icondb.get('initial_presence'))
 
+        show_disco_image = Gtk.Image()
+        show_disco_image.set_from_pixbuf(org.wayround.pyabber.icondb.get('disco'))
+
         get_roster_image = Gtk.Image()
         get_roster_image.set_from_pixbuf(org.wayround.pyabber.icondb.get('refresh_roster'))
 
@@ -510,6 +510,11 @@ class MainWindow:
         roster_toolbar_add_contact_button.set_icon_widget(add_contact_image)
         roster_toolbar_add_contact_button.connect(
             'clicked', self._on_add_contact_button_clicked
+            )
+
+        roster_toolbar_show_disco_button.set_icon_widget(show_disco_image)
+        roster_toolbar_show_disco_button.connect(
+            'clicked', self._on_show_disco_button
             )
 
         roster_toolbar_initial_presence_button.set_icon_widget(initial_presence_image)
@@ -534,6 +539,7 @@ class MainWindow:
         roster_tools_box.insert(roster_toolbar_add_contact_button, -1)
         roster_tools_box.insert(Gtk.SeparatorToolItem(), -1)
         roster_tools_box.insert(roster_toolbar_change_presence_button, -1)
+        roster_tools_box.insert(roster_toolbar_show_disco_button, -1)
 
         main_paned = Gtk.Paned()
         main_paned.set_orientation(Gtk.Orientation.HORIZONTAL)
@@ -1134,11 +1140,12 @@ class MainWindow:
     def _on_initial_presence_button_clicked(self, button):
         self.controller.presence.presence()
 
-    def _on_print_debug_data(self, button):
-        pass
-
     def _on_change_presence_button_clicked(self, button):
         self.presence_control_popup_window.show()
 
-    def _on_prind_data_button_clicked(self, button):
-        pprint.pprint(self.roster_widget.get_data())
+    def _on_show_disco_button(self, button):
+        org.wayround.pyabber.disco.disco(
+            self.controller,
+            self.controller.jid.bare(),
+            node=None
+            )

@@ -113,7 +113,11 @@ class ContactEditor:
         self.new_group_entry = new_group_entry
 
 
+        f1 = Gtk.Frame()
+        sw1 = Gtk.ScrolledWindow()
+        f1.add(sw1)
         available_groups_treeview = Gtk.TreeView()
+        sw1.add(available_groups_treeview)
         c1 = Gtk.TreeViewColumn()
         cr1 = Gtk.CellRendererText()
         c1.pack_start(cr1, False)
@@ -128,7 +132,7 @@ class ContactEditor:
             )
 
         available_g_box.pack_start(gr_entry_box, False, False, 0)
-        available_g_box.pack_start(available_groups_treeview, True, True, 0)
+        available_g_box.pack_start(f1, True, True, 0)
         available_g_box.set_spacing(5)
 
         action_g_box = Gtk.ButtonBox()
@@ -148,7 +152,12 @@ class ContactEditor:
         current_g_box = Gtk.Box()
         current_g_box.set_orientation(Gtk.Orientation.VERTICAL)
 
+
+        f2 = Gtk.Frame()
+        sw2 = Gtk.ScrolledWindow()
+        f2.add(sw2)
         current_groups_treeview = Gtk.TreeView()
+        sw2.add(current_groups_treeview)
         c2 = Gtk.TreeViewColumn()
         cr2 = Gtk.CellRendererText()
         c2.pack_start(cr2, False)
@@ -159,7 +168,7 @@ class ContactEditor:
         current_groups_treeview.get_selection().set_mode(Gtk.SelectionMode.MULTIPLE)
 
         current_g_box.pack_start(Gtk.Label("Current Groups"), False, False, 0)
-        current_g_box.pack_start(current_groups_treeview, True, True, 0)
+        current_g_box.pack_start(f2, True, True, 0)
         current_g_box.set_spacing(5)
 
 
