@@ -379,7 +379,7 @@ class RosterWidget:
         self._treeview = Gtk.TreeView()
 
         frame = Gtk.Frame()
-        scrolled = Gtk.ScrolledWindow(None, None)
+        scrolled = Gtk.ScrolledWindow()
         frame.add(scrolled)
 
         self._root_widget = frame
@@ -970,6 +970,10 @@ class RosterWidget:
         self._sync_treeview_with_data_contacts()
         self._sync_treeview_with_data_contacts_resources()
 
+        while Gtk.events_pending():
+            Gtk.main_iteration_do(False)
+
+        return
 
     def set_self(self, self_bare_jid):
         self._self_bare_jid = self_bare_jid
@@ -1157,7 +1161,7 @@ class RosterWidget:
                         if itrap:
                             path_iter = model.get_iter(itrap)
 
-                            if path_iter != None:
+                            if path_iter:
                                 parent = model.iter_parent(
                                     path_iter
                                     )

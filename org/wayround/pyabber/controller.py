@@ -122,6 +122,8 @@ class MainController:
                  )
                 )
 
+            self.sock.setsockopt(6, socket.SO_KEEPALIVE, 1)
+            logging.debug("Socket Options: {}".format(self.sock.getsockopt(6, socket.SO_KEEPALIVE)))
 
             logging.debug("creating client")
 
