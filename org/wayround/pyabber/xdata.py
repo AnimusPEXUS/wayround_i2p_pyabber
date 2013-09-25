@@ -215,7 +215,7 @@ class FieldBoolean:
 
         self._widget = widget
 
-    def get_value(self):
+    def get_values(self):
         return self._widget.get_active()
 
     def get_widget(self):
@@ -367,7 +367,7 @@ class FieldTextArea:
         if not self._is_jid_mode:
             ret = False
         else:
-            val = self.get_value()
+            val = self.get_values()
             for i in val:
                 res = None
                 err = False

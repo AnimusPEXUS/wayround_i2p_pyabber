@@ -359,7 +359,7 @@ class AD_HOC_Response_Window:
                     d.run()
                     d.destroy()
                 else:
-                    x_data['type'] = 'submit'
+                    x_data['form_type'] = 'submit'
 
                     element = org.wayround.xmpp.xdata.data_to_element(x_data)
 
@@ -374,13 +374,17 @@ class AD_HOC_Response_Window:
                     stanza.typ = 'set'
                     stanza.jid_to = self._stanza_response.jid_from
                     stanza.jid_from = self._controller.jid.full()
-                    stanza.body.append(command)
+                    stanza.body.append(command.body)
 
-                    res = self._controller.client.stanza_processor.send(stanza)
+                    res = self._controller.client.stanza_processor.send(stanza, wait=None)
 
                     process_command_stanza_result(res, self._controller)
 
+                    self._window.destroy()
+
         return
+
+
 
 
 def process_command_stanza_result(res, controller):
