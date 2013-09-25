@@ -118,17 +118,13 @@ class Disco:
         self._server_menu_button = server_menu_button
         server_menu_button.connect('clicked', self._on_server_menu_button_clicked)
 
-        send_space_button = Gtk.Button("Send Space")
-        send_space_button.connect('clicked', self._on_send_space_button_clicked)
-
         addr_control_grid.attach(Gtk.Label("JID"), 0, 0, 1, 1)
         addr_control_grid.attach(jid_entry, 1, 0, 2, 1)
         addr_control_grid.attach(Gtk.Label("Node"), 0, 1, 1, 1)
         addr_control_grid.attach(node_entry, 1, 1, 1, 1)
         addr_control_grid.attach(clear_node_button, 2, 1, 1, 1)
         addr_control_grid.attach(go_button, 3, 0, 1, 2)
-        addr_control_grid.attach(server_menu_button, 0, 3, 3, 1)
-        addr_control_grid.attach(send_space_button, 3, 3, 1, 1)
+        addr_control_grid.attach(server_menu_button, 0, 3, 4, 1)
         addr_control_grid.set_row_homogeneous(True)
         addr_control_grid.set_row_spacing(5)
         addr_control_grid.set_column_spacing(5)
@@ -142,16 +138,16 @@ class Disco:
         view_sw.add(view_tw)
         view_frame.add(view_sw)
 
-        self._progress_bar = Gtk.ProgressBar()
         self._spinner = Gtk.Spinner()
+        self._progress_bar = Gtk.ProgressBar()
         self._stat_bar = Gtk.Statusbar()
 
         p_box = Gtk.Box()
         p_box.set_orientation(Gtk.Orientation.HORIZONTAL)
         p_box.set_spacing(5)
 
-        p_box.pack_start(self._spinner, False, False, 0)
         p_box.pack_start(self._progress_bar, True, True, 0)
+        p_box.pack_start(self._spinner, False, False, 0)
 
         main_box.pack_start(addr_control_grid, False, False, 0)
         main_box.pack_start(view_frame, True, True, 0)
@@ -222,7 +218,6 @@ class Disco:
         try:
 
             self._stat_bar.push(0, "Clearing tree")
-            print("Clearing tree")
 
             itera = None
             if path != None:
@@ -239,7 +234,6 @@ class Disco:
                 ii += 1
 
             self._stat_bar.push(0, "Getting information from server")
-            print("Getting information from server")
 
             res = org.wayround.xmpp.disco.get(
                 jid_to=jid,
@@ -253,7 +247,6 @@ class Disco:
             else:
 
                 self._stat_bar.push(0, "Parsing identities")
-                print("Parsing identities")
 
 
                 identities = []
@@ -262,7 +255,6 @@ class Disco:
                     identities = q.findall('{http://jabber.org/protocol/disco#info}identity')
 
                 self._stat_bar.push(0, "Parsing features")
-                print("Parsing features")
 
 
                 features = []
@@ -271,7 +263,6 @@ class Disco:
                     features = q.findall('{http://jabber.org/protocol/disco#info}feature')
 
                 self._stat_bar.push(0, "Parsing items")
-                print("Parsing items")
 
                 items = []
                 q = res['items']
@@ -282,10 +273,8 @@ class Disco:
                 current_num = 0
 
                 self._stat_bar.push(0, "Adding result to tree ({} records to add)".format(total_num))
-                print("Adding result to tree ({} records to add)".format(total_num))
 
                 self._stat_bar.push(0, "Adding idents ({} records to add)".format(len(identities)))
-                print("Adding idents ({} records to add)".format(len(identities)))
 
 
                 for i in identities:
@@ -319,7 +308,6 @@ class Disco:
 
 
                 self._stat_bar.push(0, "Adding features ({} records to add)".format(len(features)))
-                print("Adding features ({} records to add)".format(len(features)))
 
                 for i in features:
 
@@ -349,7 +337,6 @@ class Disco:
                     self._progress_bar.set_fraction(1. / (float(total_num) / current_num))
 
                 self._stat_bar.push(0, "Adding items ({} records to add)".format(len(items)))
-                print("Adding items ({} records to add)".format(len(items)))
 
                 for i in items:
 
@@ -362,8 +349,8 @@ class Disco:
                     self._view_model.append(
                         itera,
                         [
-                         "[item] jid: {}, node: {}, name: {}".format(
-                            i.get('jid'), i.get('node'), i.get('name')
+                         "{}\n[item] jid: {}, node: {}".format(
+                            i.get('name'), i.get('jid'), i.get('node')
                             ),
                          None,
                          'items',
@@ -383,7 +370,6 @@ class Disco:
 
 
             self._stat_bar.push(0, "Job finished")
-            print()
 
         except:
             self._view_tw.set_sensitive(True)
@@ -409,14 +395,13 @@ class Disco:
             target=self._fill2,
             args=(path, jid),
             kwargs={
-                'node':None
+                'node':node
                 }
             )
         t.start()
 
         w = org.wayround.utils.gtk.Waiter(t.join, None, t.is_alive)
         w.wait()
-
 
         return
 
@@ -463,9 +448,6 @@ class Disco:
                 self._work_node
                 )
 
-    def _on_send_space_button_clicked(self, button):
-        self._controller.client.io_machine.send(' ')
-
 
 
     def _on_row_activated(self, view, path, column):
@@ -500,7 +482,7 @@ class Disco:
 #            self._view_tw.expand_row(ref.get_path(), False)
 #            self._view_tw.scroll_to_cell(ref.get_path(), None, True, 0.1, 0.0)
 
-        if values[3] == 'feature' and values[7] == 'http://jabber.org/protocol/commands':
+        elif values[3] == 'feature' and values[7] == 'http://jabber.org/protocol/commands':
 
             par = m.iter_parent(m.get_iter(ref.get_path()))
 
@@ -513,6 +495,9 @@ class Disco:
             self._fill(ref, jid, node='http://jabber.org/protocol/commands')
             self._view_tw.expand_row(ref.get_path(), False)
             self._view_tw.scroll_to_cell(ref.get_path(), None, True, 0.1, 0.0)
+
+        else:
+            pass
 
         return
 

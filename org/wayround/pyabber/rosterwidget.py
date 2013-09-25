@@ -1148,11 +1148,12 @@ class RosterWidget:
                         resource = ''
 
                         jid = org.wayround.xmpp.core.jid_from_str(bare_jid)
-
-                        org.wayround.pyabber.contact_popup_menu.contact_popup_menu(
-                            self._main_window.controller,
-                            jid.bare()
-                            )
+                        
+                        if jid: 
+                            org.wayround.pyabber.contact_popup_menu.contact_popup_menu(
+                                self._main_window.controller,
+                                jid.bare()
+                                )
 
 
                     if row_t == 'resource':

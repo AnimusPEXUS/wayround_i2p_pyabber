@@ -5,7 +5,7 @@ import org.wayround.xmpp.core
 
 class ContactEditor:
 
-    def __init__(self, controller, jid=None, mode='new'):
+    def __init__(self, controller, jid_mode=None, mode='new'):
 
         if not mode in ['new', 'edit']:
             raise Exception("DNA Error")
@@ -16,7 +16,7 @@ class ContactEditor:
         if mode == 'new':
             window.set_title("Edit Properties for New Roster Contact")
         else:
-            window.set_title("Edit Properties for `{}'".format(jid))
+            window.set_title("Edit Properties for `{}'".format(jid_mode))
 
         self.window = window
 
@@ -43,7 +43,7 @@ class ContactEditor:
 
         jid_frame.add(jid_entry)
         if mode == 'edit':
-            jid_entry.set_text(jid)
+            jid_entry.set_text(jid_mode)
 
 
         nick_box = Gtk.Box()
@@ -57,7 +57,7 @@ class ContactEditor:
         if mode == 'new':
             nick_frame.set_label("Nickname")
         else:
-            nick_frame.set_label("Nickname for {}".format(jid))
+            nick_frame.set_label("Nickname for {}".format(jid_mode))
 
 
         nick_box.set_orientation(Gtk.Orientation.VERTICAL)
@@ -84,7 +84,7 @@ class ContactEditor:
         if mode == 'new':
             groups_frame.set_label("Groups")
         else:
-            groups_frame.set_label("Groups for {}".format(jid))
+            groups_frame.set_label("Groups for {}".format(jid_mode))
 
         groups_box = Gtk.Box()
         groups_box.set_margin_top(5)
@@ -214,8 +214,8 @@ class ContactEditor:
         roster_data = controller.main_window.roster_widget.get_data()
         current_list = []
 
-        if mode == 'edit' and jid in roster_data:
-            current_list = list(roster_data[jid]['bare']['groups'])
+        if mode == 'edit' and jid_mode in roster_data:
+            current_list = list(roster_data[jid_mode]['bare']['groups'])
 
         for i in current_list:
             current_lst.append([i])

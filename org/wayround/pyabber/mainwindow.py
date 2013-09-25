@@ -30,8 +30,6 @@ import org.wayround.pyabber.disco
 
 class Dumb: pass
 
-# testing account at wayround.org: tests@wayround.org : frtsAJlPIfCLdVn7qdzbLA==
-
 class MainWindow:
 
     def __init__(self, pyabber_config='~/.config/pyabber'):
@@ -464,11 +462,14 @@ class MainWindow:
         b = Gtk.Box()
         b.set_orientation(Gtk.Orientation.VERTICAL)
 
+        b2 = Gtk.Box()
+        b2.set_orientation(Gtk.Orientation.HORIZONTAL)
+
         roster_box = Gtk.Box()
         roster_box.set_orientation(Gtk.Orientation.VERTICAL)
 
         roster_tools_box = Gtk.Toolbar()
-        roster_tools_box.set_orientation(Gtk.Orientation.HORIZONTAL)
+        roster_tools_box.set_orientation(Gtk.Orientation.VERTICAL)
 
         self.roster_widget = org.wayround.pyabber.rosterwidget.RosterWidget(
             main_window=self
@@ -476,7 +477,6 @@ class MainWindow:
 
         roster_treeview_widg = self.roster_widget.get_widget()
 
-        roster_box.pack_start(roster_tools_box, False, False, 0)
         roster_box.pack_start(roster_treeview_widg, True, True, 0)
 
         roster_toolbar_add_contact_button = Gtk.ToolButton()
@@ -484,6 +484,8 @@ class MainWindow:
         roster_toolbar_change_presence_button = Gtk.ToolButton()
         roster_toolbar_get_roster_button = Gtk.ToolButton()
         roster_toolbar_show_disco_button = Gtk.ToolButton()
+        roster_send_space_button = Gtk.ToolButton()
+
 
         self.presence_control_popup_window = (
             org.wayround.pyabber.presence_control_popup.PresenceControlPopup(
@@ -507,6 +509,9 @@ class MainWindow:
         new_presence_image = Gtk.Image()
         new_presence_image.set_from_pixbuf(org.wayround.pyabber.icondb.get('new_presence_button'))
 
+        send_space_image = Gtk.Image()
+        send_space_image.set_from_pixbuf(org.wayround.pyabber.icondb.get('send_keepalive_space'))
+
         roster_toolbar_add_contact_button.set_icon_widget(add_contact_image)
         roster_toolbar_add_contact_button.connect(
             'clicked', self._on_add_contact_button_clicked
@@ -519,18 +524,23 @@ class MainWindow:
 
         roster_toolbar_initial_presence_button.set_icon_widget(initial_presence_image)
         roster_toolbar_initial_presence_button.connect(
-            "clicked", self._on_initial_presence_button_clicked
+            'clicked', self._on_initial_presence_button_clicked
             )
 
 
         roster_toolbar_change_presence_button.set_icon_widget(new_presence_image)
         roster_toolbar_change_presence_button.connect(
-            "clicked", self._on_change_presence_button_clicked
+            'clicked', self._on_change_presence_button_clicked
             )
 
         roster_toolbar_get_roster_button.set_icon_widget(get_roster_image)
         roster_toolbar_get_roster_button.connect(
-            "clicked", self._on_get_roster_button_clicked
+            'clicked', self._on_get_roster_button_clicked
+            )
+
+        roster_toolbar_get_roster_button.set_icon_widget(send_space_image)
+        roster_send_space_button.connect(
+            'clicked', self._on_send_space_button_clicked
             )
 
         roster_tools_box.insert(roster_toolbar_initial_presence_button, -1)
@@ -554,8 +564,10 @@ class MainWindow:
         main_paned.pack1(roster_box, False, True)
         main_paned.pack2(chat_pager_widget, True, False)
 
+        b2.pack_start(roster_tools_box, False, False, 0)
+        b2.pack_start(main_paned, True, True, 0)
 
-        b.pack_start(main_paned, True, True, 0)
+        b.pack_start(b2, True, True, 0)
 
         return b
 
@@ -1149,3 +1161,7 @@ class MainWindow:
             self.controller.jid.bare(),
             node=None
             )
+
+    def _on_send_space_button_clicked(self, button):
+        self._controller.client.io_machine.send(' ')
+
