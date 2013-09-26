@@ -94,6 +94,7 @@ class Disco:
         self._controller = controller
 
         window = Gtk.Window()
+        window.set_default_size(500, 500)
 
         main_box = Gtk.Box()
         main_box.set_orientation(Gtk.Orientation.VERTICAL)
@@ -159,6 +160,7 @@ class Disco:
         self.window = window
         self.jid_entry = jid_entry
         self.node_entry = node_entry
+
 
         # markup, disco, tag, category, type, name, var, jid, node
         # disco in ['info', 'items']

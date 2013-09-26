@@ -400,9 +400,7 @@ class FieldText:
         self._widget = entry
         self._entry = entry
 
-        text = '\n'.join(value)
-
-        entry.set_text(text)
+        entry.set_text(value)
         entry.set_visibility(not private)
 
 

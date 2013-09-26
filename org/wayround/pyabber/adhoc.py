@@ -22,6 +22,7 @@ class AD_HOC_Window:
         self._commands = commands
 
         self._window = Gtk.Window()
+        self._window.set_default_size(500, 500)
 
         b = Gtk.Box()
         self._window.add(b)
@@ -50,7 +51,10 @@ class AD_HOC_Window:
 
         rbb.pack_start(none_rb, False, False, 0)
 
-        for i in commands.keys():
+        keys_sorted = list(commands.keys())
+        keys_sorted.sort()
+
+        for i in keys_sorted:
             rb = Gtk.RadioButton()
             rb.join_group(none_rb)
 
@@ -163,6 +167,8 @@ class AD_HOC_Response_Window:
         self._command_data = command_data
 
         self._window = Gtk.Window()
+        self._window.set_default_size(500, 500)
+
         self._form_controller = None
 
         b = Gtk.Box()
