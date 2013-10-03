@@ -316,7 +316,7 @@ class AD_HOC_Response_Window:
 
     def _add_x_form(self, xform_element):
 
-        data = org.wayround.xmpp.xdata.element_to_data(xform_element)
+        data = org.wayround.xmpp.xdata.XData.new_from_element(xform_element)
 
         res = org.wayround.pyabber.xdata.XDataFormWidgetController(data)
 
@@ -365,9 +365,9 @@ class AD_HOC_Response_Window:
                     d.run()
                     d.destroy()
                 else:
-                    x_data['form_type'] = 'submit'
+                    x_data.set_form_type('submit')
 
-                    element = org.wayround.xmpp.xdata.data_to_element(x_data)
+                    element = x_data.gen_element()
 
                     command = org.wayround.xmpp.adhoc.Command()
                     command.action = action
