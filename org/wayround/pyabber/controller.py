@@ -5,13 +5,19 @@ import threading
 
 import lxml.etree
 
+import org.wayround.gsasl.gsasl
+
+import org.wayround.utils.gtk
+
 import org.wayround.xmpp.core
 import org.wayround.xmpp.client
-
-import org.wayround.gsasl.gsasl
+import org.wayround.xmpp.muc
 
 import org.wayround.pyabber.mainwindow
 import org.wayround.pyabber.single_message_window
+import org.wayround.pyabber.muc
+
+from gi.repository import Gtk
 
 class MainController:
 
@@ -122,6 +128,8 @@ class MainController:
                  )
                 )
 
+            self.sock.settimeout(0)
+
             self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
             logging.debug(
                 "Socket Options: {}".format(
@@ -149,6 +157,11 @@ class MainController:
                 )
 
             self.message = org.wayround.xmpp.client.Message(
+                self.client,
+                self.jid
+                )
+
+            self.muc = org.wayround.xmpp.muc.Client(
                 self.client,
                 self.jid
                 )
@@ -280,6 +293,7 @@ class MainController:
                     self.message.connect_signal(['message'],
                                                  self._on_message
                                                  )
+
 
 
             self.waiting_for_stream_features = False
@@ -739,3 +753,28 @@ class MainController:
                 self.main_window.chat_pager.feed_stanza(stanza)
 
 
+def stanza_error_message(parent, stanza, message=None):
+
+    if not isinstance(stanza, org.wayround.xmpp.core.Stanza):
+        raise TypeError("`stanza' must be org.wayround.xmpp.core.Stanza")
+
+    if stanza.is_error():
+
+        message2 = ''
+        if message:
+            message2 = '{}\n\n'.format(message)
+
+        d = org.wayround.utils.gtk.MessageDialog(
+            parent,
+            0,
+            Gtk.MessageType.ERROR,
+            Gtk.ButtonsType.OK,
+            "{}{}".format(
+                message2,
+                org.wayround.xmpp.core.stanza_error_to_text(stanza.get_error())
+                )
+            )
+        d.run()
+        d.destroy()
+
+    return

@@ -4,19 +4,26 @@ import threading
 from gi.repository import Gtk
 from gi.repository import Gdk
 from gi.repository import GdkPixbuf
+from gi.repository import Pango
 
-import org.wayround.xmpp.disco
-import org.wayround.pyabber.adhoc
 import org.wayround.utils.gtk
 
-_disco_menu = None
+import org.wayround.xmpp.disco
+import org.wayround.xmpp.muc
+import org.wayround.xmpp.xdata
+
+import org.wayround.pyabber.adhoc
+import org.wayround.pyabber.muc
+
 
 class DiscoMenu:
 
-    def __init__(self):
+    def __init__(self, controller, jid, node=None):
 
-        self._jid = None
-        self._node = None
+        self._jid = jid
+        self._node = node
+
+        self.controller = controller
 
         self._menu = Gtk.Menu()
 
@@ -25,49 +32,73 @@ class DiscoMenu:
         commands_mi = Gtk.MenuItem("Commands")
         commands_mi.connect('activate', self._on_commands_mi_activated)
 
+        muc_mi = Gtk.MenuItem("MUC")
+
         self.addr_mi = addr_mi
-        self.commands_mi = commands_mi
 
         self._menu.append(addr_mi)
         self._menu.append(Gtk.SeparatorMenuItem())
         self._menu.append(commands_mi)
+        self._menu.append(muc_mi)
 
-    def show(self, controller, jid, node=None):
-
-        self._jid = jid
-        self._node = node
-
-        self.controller = controller
-
-        q = org.wayround.xmpp.disco.get_info(
+        q, stanza = org.wayround.xmpp.disco.get_info(
             jid_to=jid,
             jid_from=self.controller.jid.full(),
             node=node,
             stanza_processor=self.controller.client.stanza_processor
             )
 
-        t = jid
-        if node:
-            t += '\n{}'.format(node)
 
-        self.addr_mi.set_label(t)
+        commands_mi.set_sensitive(False)
+        muc_mi.set_sensitive(False)
 
-        if q != None:
-            r = q.find(
-                "{http://jabber.org/protocol/disco#info}feature[@var='http://jabber.org/protocol/commands']"
+        if stanza.is_error():
+            org.wayround.pyabber.controller.stanza_error_message(
+                None,
+                stanza,
+                message=None
                 )
+        else:
 
-            self.commands_mi.set_sensitive(r != None)
+            t = jid
+            if node:
+                t += '\{}'.format(node)
 
-            self._menu.show_all()
-            self._menu.popup(
-                None,
-                None,
-                None,
-                None,
-                0,
-                Gtk.get_current_event_time()
-                )
+            self.addr_mi.set_label(t)
+
+            if q != None:
+                r = q.find(
+    "{http://jabber.org/protocol/disco#info}feature[@var='http://jabber.org/protocol/commands']"
+                    )
+
+                commands_mi.set_sensitive(r != None)
+
+                r = q.find(
+    "{http://jabber.org/protocol/disco#info}feature[@var='http://jabber.org/protocol/muc']"
+                    )
+
+                muc_mi.set_sensitive(r != None)
+                muc_mi.set_submenu(
+                    org.wayround.pyabber.muc.MUCPopupMenu(
+                        controller,
+                        jid
+                        ).get_widget()
+                    )
+
+        self._menu.show_all()
+
+        return
+
+    def show(self):
+
+        self._menu.popup(
+            None,
+            None,
+            None,
+            None,
+            0,
+            Gtk.get_current_event_time()
+            )
 
         return
 
@@ -79,13 +110,11 @@ class DiscoMenu:
             jid_from=self.controller.jid.full()
             )
 
+
 def disco_menu(controller, jid, node=None):
-    global _disco_menu
+    disco_menu = DiscoMenu(controller, jid, node)
 
-    if _disco_menu == None:
-        _disco_menu = DiscoMenu()
-
-    _disco_menu.show(controller, jid, node)
+    disco_menu.show()
 
 class Disco:
 
@@ -95,6 +124,7 @@ class Disco:
 
         window = Gtk.Window()
         window.set_default_size(500, 500)
+        window.connect('destroy', self._on_destroy)
 
         main_box = Gtk.Box()
         main_box.set_orientation(Gtk.Orientation.VERTICAL)
@@ -134,7 +164,12 @@ class Disco:
         view_frame = Gtk.Frame()
         view_sw = Gtk.ScrolledWindow()
         view_tw = Gtk.TreeView()
+
+        view_tw.set_rules_hint(True)
+
+
         self._view_tw = view_tw
+
 
         view_sw.add(view_tw)
         view_frame.add(view_sw)
@@ -184,13 +219,22 @@ class Disco:
 
         self._view_model = view_model
 
+#        font_desc = Pango.FontDescription()
+#        font_desc.set_family('Fixed')
+#        font_desc.set_size(12)
+#        font_desc.set_weight(Pango.Weight.NORMAL)
+
         _c = Gtk.TreeViewColumn()
         _r = Gtk.CellRendererText()
+#        _r.set_property('font-desc', font_desc)
+        _r.set_property('family', 'Fixed')
         _c.pack_start(_r, False)
         _c.add_attribute(_r, 'text', 0)
         _c.set_title('Bla Bla Bla')
         view_tw.append_column(_c)
         view_tw.set_headers_visible(False)
+
+
 
         view_tw.connect('row-activated', self._on_row_activated)
         view_tw.connect('button-release-event', self._on_treeview_buttonpress)
@@ -244,131 +288,215 @@ class Disco:
                 stanza_processor=self._controller.client.stanza_processor
                 )
 
-            if res['info'] == None or res['items'] == None:
-                pass
-            else:
 
-                self._stat_bar.push(0, "Parsing identities")
+            x = res['info'][0].findall('{jabber:x:data}x')
 
+            for i in x:
 
-                identities = []
-                q = res['info']
-                if q != None:
-                    identities = q.findall('{http://jabber.org/protocol/disco#info}identity')
-
-                self._stat_bar.push(0, "Parsing features")
-
-
-                features = []
-                q = res['info']
-                if q != None:
-                    features = q.findall('{http://jabber.org/protocol/disco#info}feature')
-
-                self._stat_bar.push(0, "Parsing items")
-
-                items = []
-                q = res['items']
-                if q != None:
-                    items = q.findall('{http://jabber.org/protocol/disco#items}item')
-
-                total_num = len(identities) + len(features) + len(items)
-                current_num = 0
-
-                self._stat_bar.push(0, "Adding result to tree ({} records to add)".format(total_num))
-
-                self._stat_bar.push(0, "Adding idents ({} records to add)".format(len(identities)))
-
-
-                for i in identities:
-
-                    itera = None
-                    if path != None:
-                        itera = self._view_model.get_iter(
-                            path.get_path()
-                            )
-
-                    self._view_model.append(
-                        itera,
-                        [
-                         "[ident] category: {}, type: {}, name: {}".format(
-                            i.get('category'), i.get('type'), i.get('name')
-                            ),
-                         None,
-                         'info',
-                         'identity',
-                         i.get('category'),
-                         i.get('type'),
-                         i.get('name'),
-                         None,
-                         None,
-                         None
-                         ]
+                itera = None
+                if path != None:
+                    itera = self._view_model.get_iter(
+                        path.get_path()
                         )
 
-                    current_num += 1
-                    self._progress_bar.set_fraction(1. / (float(total_num) / current_num))
+                err_dict = res['info'][1].get_error()
+
+                self._view_model.append(
+                    itera,
+                    [
+                     "[jabber:x:data]\n{}".format(
+                        org.wayround.xmpp.xdata.XData.new_from_element(i).gen_info_text()
+                        ),
+                     None,
+                     None,
+                     None,
+                     None,
+                     None,
+                     None,
+                     None,
+                     None,
+                     None
+                     ]
+                    )
 
 
-                self._stat_bar.push(0, "Adding features ({} records to add)".format(len(features)))
+            identities = []
+            features = []
+            items = []
 
-                for i in features:
+            self._stat_bar.push(0, "Parsing identities")
+            q = res['info'][0]
+            if q != None:
+                identities = q.findall('{http://jabber.org/protocol/disco#info}identity')
 
-                    itera = None
-                    if path != None:
-                        itera = self._view_model.get_iter(
-                            path.get_path()
-                            )
+            self._stat_bar.push(0, "Parsing features")
+            q = res['info'][0]
+            if q != None:
+                features = q.findall('{http://jabber.org/protocol/disco#info}feature')
 
-                    self._view_model.append(
-                        itera,
-                        [
-                         "[feature] var: {}".format(i.get('var')),
-                         None,
-                         'info',
-                         'feature',
-                         None,
-                         None,
-                         None,
-                         i.get('var'),
-                         None,
-                         None
-                         ]
+            self._stat_bar.push(0, "Parsing items")
+            q = res['items'][0]
+            if q != None:
+                items = q.findall('{http://jabber.org/protocol/disco#items}item')
+
+            total_num = len(identities) + len(features) + len(items)
+
+            current_num = 0
+
+            self._stat_bar.push(0, "Adding result to tree ({} records to add)".format(total_num))
+
+            self._stat_bar.push(0, "Adding idents ({} records to add)".format(len(identities)))
+
+            if res['info'][1].is_error():
+                itera = None
+                if path != None:
+                    itera = self._view_model.get_iter(
+                        path.get_path()
                         )
 
-                    current_num += 1
-                    self._progress_bar.set_fraction(1. / (float(total_num) / current_num))
+                err_dict = res['info'][1].get_error()
 
-                self._stat_bar.push(0, "Adding items ({} records to add)".format(len(items)))
+                self._view_model.append(
+                    itera,
+                    [
+                     "[info error] error type: {}, condition: {}, code: {}, text: {}".format(
+                        err_dict.get('error_type'),
+                        err_dict.get('condition'),
+                        err_dict.get('code'),
+                        err_dict.get('text')
+                        ),
+                     None,
+                     None,
+                     None,
+                     None,
+                     None,
+                     None,
+                     None,
+                     None,
+                     None
+                     ]
+                    )
 
-                for i in items:
+            for i in identities:
 
-                    itera = None
-                    if path != None:
-                        itera = self._view_model.get_iter(
-                            path.get_path()
-                            )
-
-                    self._view_model.append(
-                        itera,
-                        [
-                         "{}\n[item] jid: {}, node: {}".format(
-                            i.get('name'), i.get('jid'), i.get('node')
-                            ),
-                         None,
-                         'items',
-                         'item',
-                         None,
-                         None,
-                         i.get('name'),
-                         None,
-                         i.get('jid'),
-                         i.get('node')
-                         ]
+                itera = None
+                if path != None:
+                    itera = self._view_model.get_iter(
+                        path.get_path()
                         )
 
+                self._view_model.append(
+                    itera,
+                    [
+                     "[ident] category: {}, type: {}, name: {}".format(
+                        i.get('category'), i.get('type'), i.get('name')
+                        ),
+                     None,
+                     'info',
+                     'identity',
+                     i.get('category'),
+                     i.get('type'),
+                     i.get('name'),
+                     None,
+                     None,
+                     None
+                     ]
+                    )
 
-                    current_num += 1
-                    self._progress_bar.set_fraction(1. / (float(total_num) / current_num))
+                current_num += 1
+                self._progress_bar.set_fraction(1. / (float(total_num) / current_num))
+
+
+            self._stat_bar.push(0, "Adding features ({} records to add)".format(len(features)))
+
+            for i in features:
+
+                itera = None
+                if path != None:
+                    itera = self._view_model.get_iter(
+                        path.get_path()
+                        )
+
+                self._view_model.append(
+                    itera,
+                    [
+                     "[feature] var: {}".format(i.get('var')),
+                     None,
+                     'info',
+                     'feature',
+                     None,
+                     None,
+                     None,
+                     i.get('var'),
+                     None,
+                     None
+                     ]
+                    )
+
+                current_num += 1
+                self._progress_bar.set_fraction(1. / (float(total_num) / current_num))
+
+            self._stat_bar.push(0, "Adding items ({} records to add)".format(len(items)))
+
+            if res['items'][1].is_error():
+                itera = None
+                if path != None:
+                    itera = self._view_model.get_iter(
+                        path.get_path()
+                        )
+
+                err_dict = res['items'][1].get_error()
+
+                self._view_model.append(
+                    itera,
+                    [
+                     "[items error] error type: {}, condition: {}, code: {}, text: {}".format(
+                        err_dict.get('error_type'),
+                        err_dict.get('condition'),
+                        err_dict.get('code'),
+                        err_dict.get('text')
+                        ),
+                     None,
+                     None,
+                     None,
+                     None,
+                     None,
+                     None,
+                     None,
+                     None,
+                     None
+                     ]
+                    )
+
+            for i in items:
+
+                itera = None
+                if path != None:
+                    itera = self._view_model.get_iter(
+                        path.get_path()
+                        )
+
+                self._view_model.append(
+                    itera,
+                    [
+                     "{}\n[item] jid: {}, node: {}".format(
+                        i.get('name'), i.get('jid'), i.get('node')
+                        ),
+                     None,
+                     'items',
+                     'item',
+                     None,
+                     None,
+                     i.get('name'),
+                     None,
+                     i.get('jid'),
+                     i.get('node')
+                     ]
+                    )
+
+
+                current_num += 1
+                self._progress_bar.set_fraction(1. / (float(total_num) / current_num))
 
 
             self._stat_bar.push(0, "Job finished")
@@ -531,6 +659,9 @@ class Disco:
                             )
 
         return
+
+    def _on_destroy(self, *args, **kwargs):
+        self.window.hide()
 
 def disco(controller, jid, node=None):
     a = Disco(controller)

@@ -487,12 +487,6 @@ class MainWindow:
         roster_send_space_button = Gtk.ToolButton()
 
 
-        self.presence_control_popup_window = (
-            org.wayround.pyabber.presence_control_popup.PresenceControlPopup(
-                self.window_elements.window,
-                self
-                )
-            )
 
         add_contact_image = Gtk.Image()
         add_contact_image.set_from_pixbuf(org.wayround.pyabber.icondb.get('plus'))
@@ -538,17 +532,18 @@ class MainWindow:
             'clicked', self._on_get_roster_button_clicked
             )
 
-        roster_toolbar_get_roster_button.set_icon_widget(send_space_image)
+        roster_send_space_button.set_icon_widget(send_space_image)
         roster_send_space_button.connect(
             'clicked', self._on_send_space_button_clicked
             )
 
         roster_tools_box.insert(roster_toolbar_initial_presence_button, -1)
         roster_tools_box.insert(roster_toolbar_get_roster_button, -1)
+        roster_tools_box.insert(roster_send_space_button, -1)
+        roster_tools_box.insert(roster_toolbar_change_presence_button, -1)
         roster_tools_box.insert(Gtk.SeparatorToolItem(), -1)
         roster_tools_box.insert(roster_toolbar_add_contact_button, -1)
         roster_tools_box.insert(Gtk.SeparatorToolItem(), -1)
-        roster_tools_box.insert(roster_toolbar_change_presence_button, -1)
         roster_tools_box.insert(roster_toolbar_show_disco_button, -1)
 
         main_paned = Gtk.Paned()
@@ -1153,7 +1148,14 @@ class MainWindow:
         self.controller.presence.presence()
 
     def _on_change_presence_button_clicked(self, button):
-        self.presence_control_popup_window.show()
+
+        presence_control_popup_window = (
+            org.wayround.pyabber.presence_control_popup.PresenceControlPopup(
+                self.window_elements.window,
+                self
+                )
+            )
+        presence_control_popup_window.show()
 
     def _on_show_disco_button(self, button):
         org.wayround.pyabber.disco.disco(
@@ -1163,5 +1165,5 @@ class MainWindow:
             )
 
     def _on_send_space_button_clicked(self, button):
-        self._controller.client.io_machine.send(' ')
+        self.controller.client.io_machine.send(' ')
 

@@ -19,8 +19,6 @@ class PresenceControlPopup:
         b.set_margin_left(5)
         b.set_margin_right(5)
 
-        win.connect('delete-event', self._hide)
-
         bb = Gtk.ButtonBox()
         bb.set_orientation(Gtk.Orientation.HORIZONTAL)
         bb.set_spacing(3)
@@ -81,8 +79,8 @@ class PresenceControlPopup:
 
         win.add(b)
         win.set_title("Send new presence status")
-        win.set_transient_for(parent_window)
-        win.set_keep_above(True)
+#        win.set_transient_for(parent_window)
+#        win.set_keep_above(True)
         win.set_default_size(300, 200)
 
 #        ok_button.set_can_default(True)
@@ -95,11 +93,6 @@ class PresenceControlPopup:
         self.window.set_position(Gtk.WindowPosition.CENTER)
         self.window.show_all()
 
-    def hide(self):
-        self.window.hide()
-
-    def _hide(self, widget, event):
-        return self.window.hide_on_delete()
 
     def _on_button_pressed(self, button, value):
 

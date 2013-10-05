@@ -181,6 +181,10 @@ class AD_HOC_Response_Window:
 
         info_box = Gtk.Grid()
         info_box.set_column_spacing(5)
+        info_box.set_margin_left(5)
+        info_box.set_margin_top(5)
+        info_box.set_margin_right(5)
+        info_box.set_margin_bottom(5)
 
         label = Gtk.Label("Node:")
         label.set_alignment(0.0, 0.5)

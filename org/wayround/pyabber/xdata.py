@@ -68,7 +68,7 @@ class XDataFormWidgetController:
         for i in fields:
             i_var = i.get_var()
             if i_var != None:
-                w = _field_widget(i)
+                w = field_widget(i)
                 self._fields[i_var] = w['controller']
 
                 widg = w['widget']
@@ -129,30 +129,14 @@ class XDataFormWidgetController:
 
         return ret
 
-def _field_widget(field_data):
+def field_widget(field_data):
 
     if not isinstance(field_data, org.wayround.xmpp.xdata.XDataField):
         raise TypeError(
             "`field_data' must be org.wayround.xmpp.xdata.XDataField"
             )
 
-    f = Gtk.Frame()
-
-    r = ' '
-    if field_data.get_required():
-        r = ' (*)'
-
-    f.set_label(
-        "{label} {{{typ}}}{req}".format(
-            label=field_data.get_label(),
-            typ=field_data.get_type(),
-            req=r
-            )
-        )
-
-
     b = Gtk.Box()
-    f.add(b)
     b.set_spacing(5)
     b.set_orientation(Gtk.Orientation.VERTICAL)
 
@@ -188,7 +172,7 @@ def _field_widget(field_data):
         specific_field_widget_controller = FieldText(field_data, True, False)
 
     elif ft == 'text-single':
-        specific_field_widget_controller = FieldText(field_data, False, False)
+        specific_field_widget_controller = FieldTextArea(field_data, False, False, True)
 
     elif ft == 'text-private':
         specific_field_widget_controller = FieldText(field_data, False, True)
@@ -197,8 +181,6 @@ def _field_widget(field_data):
         raise ValueError("invalid field type: {}".format(ft))
 
     widg = specific_field_widget_controller.get_widget()
-    widg.set_margin_top(5)
-    widg.set_margin_bottom(5)
     widg.set_margin_left(5)
     widg.set_margin_right(5)
     exp = False
@@ -206,7 +188,27 @@ def _field_widget(field_data):
         exp = True
     b.pack_start(widg, exp, exp, 0)
 
-    return {'controller':specific_field_widget_controller, 'widget':f}
+    ret_widg = b
+    if ft not in ['boolean']:
+        widg.set_margin_top(5)
+        widg.set_margin_bottom(5)
+        f = Gtk.Frame()
+
+        r = ''
+        if field_data.get_required():
+            r = ' (required)'
+
+        f.set_label(
+            "{label} {{{typ}}}{req}".format(
+                label=field_data.get_label(),
+                typ=field_data.get_type(),
+                req=r
+                )
+            )
+        f.add(b)
+        ret_widg = f
+
+    return {'controller':specific_field_widget_controller, 'widget':ret_widg}
 
 class FieldBoolean:
 
@@ -220,19 +222,25 @@ class FieldBoolean:
         value = False
         values = field_data.get_values()
         if len(values) != 0:
-            value = values[0]
+            value = values[0].get_value()
             value = value == 'true' or value == '1'
 
         text = field_data.get_label()
 
-        widget = Gtk.CheckBox()
+        widget = Gtk.CheckButton()
         widget.set_label(text)
         widget.set_active(value)
 
         self._widget = widget
 
     def get_values(self):
-        return self._widget.get_active()
+        val = self._widget.get_active()
+        ret = '0'
+        if val:
+            ret = '1'
+
+        ret = org.wayround.xmpp.xdata.XDataValue(ret)
+        return [ret]
 
     def get_widget(self):
         return self._widget
@@ -273,62 +281,79 @@ class FieldList:
                 "`field_data' must be org.wayround.xmpp.xdata.XDataField"
                 )
 
-        v = Gtk.TreeView()
-        self._view = v
-        f = Gtk.Frame()
-        sw = Gtk.ScrolledWindow()
-        sw.add(v)
-        f.add(sw)
-        self._widget = f
+        view = Gtk.TreeView()
+        self._view = view
+        frame = Gtk.Frame()
+        scrolledwindow = Gtk.ScrolledWindow()
+        scrolledwindow.add(view)
+        frame.add(scrolledwindow)
+        self._widget = frame
 
         c1 = Gtk.TreeViewColumn()
         cr1 = Gtk.CellRendererText()
         c1.pack_start(cr1, False)
         c1.add_attribute(cr1, 'text', 1)
-        v.append_column(c1)
-        v.set_headers_visible(False)
+        view.append_column(c1)
+        view.set_headers_visible(False)
 
-        s = v.get_selection()
+        selection = view.get_selection()
 
         if multi:
-            s.set_mode(Gtk.SelectionMode.MULTIPLE)
+            selection.set_mode(Gtk.SelectionMode.MULTIPLE)
+
+        # there may be no default value, so SINGLE mode is not acceptable
+        #        else:
+        #            selection.set_mode(Gtk.SelectionMode.SINGLE)
 
         model = Gtk.ListStore(str, str)
 
         options = field_data.get_options()
         if options:
             for i in options:
-                value = i.get_value()
+                value = i.get_value().get_value()
                 label = i.get_label()
                 l = value
                 if label != None:
-                    l = '{} ({})'.format(label, value)
+                    l = '{} (value: {})'.format(label, value)
 
                 model.append([value, l])
 
-        v.set_model(model)
+        view.set_model(model)
 
         values = field_data.get_values()
+        values2 = []
+        for i in values:
+            values2.append(i.get_value())
+
+        values = values2
+
         selected = False
+        scroll_to = None
         for i in range(len(model)):
-            val = model[i][1]
+
+            val = model[i][0]
+
             if val in values and (not multi and not selected):
-                s.select_path(Gtk.TreePath([i]))
+                path = Gtk.TreePath([i])
+                selection.select_path(path)
+                scroll_to = path
                 selected = True
             else:
-                s.unselect_path(Gtk.TreePath([i]))
+                selection.unselect_path(Gtk.TreePath([i]))
+
+        if scroll_to:
+            view.scroll_to_cell(scroll_to, None, True, 0.1, 0.0)
 
         return
 
     def get_values(self):
 
-        s = self._view.get_selection()
-        sele = s.get_selection()
+        sele = self._view.get_selection()
         model, rows = sele.get_selected_rows()
         ret = []
 
         for i in rows:
-            ne = model[i][1]
+            ne = model[i][0]
             ret.append(org.wayround.xmpp.xdata.XDataValue(ne))
 
         return ret
@@ -341,16 +366,15 @@ class FieldList:
 
 class FieldTextArea:
 
-    def __init__(self, field_data, jid_mode=False, fixed=False):
+    def __init__(self, field_data, jid_mode=False, fixed=False, single_mode=False):
 
         if not isinstance(field_data, org.wayround.xmpp.xdata.XDataField):
             raise TypeError(
                 "`field_data' must be org.wayround.xmpp.xdata.XDataField"
                 )
 
-        value = field_data.get_values()
-
         self._is_jid_mode = jid_mode
+        self._is_single_mode = single_mode
 
         view = Gtk.TextView()
         sw = Gtk.ScrolledWindow()
@@ -361,9 +385,13 @@ class FieldTextArea:
         self._widget = frame
         self._view = view
 
-        text = ''
-        for i in value:
-            text += '{}\n'.format(i.get_value())
+        values = []
+
+        for i in field_data.get_values():
+            for j in i.get_value().splitlines():
+                values.append(j)
+
+        text = '\n'.join(values)
 
         view.get_buffer().set_text(text)
 
@@ -395,6 +423,9 @@ class FieldTextArea:
                     lines2.append(i)
 
             lines = lines2
+
+        if self._is_single_mode:
+            lines = ['\n'.join(lines)]
 
         ret = []
         for i in lines:
