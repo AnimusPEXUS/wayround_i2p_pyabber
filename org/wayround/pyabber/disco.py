@@ -23,7 +23,7 @@ class DiscoMenu:
         self._jid = jid
         self._node = node
 
-        self.controller = controller
+        self._controller = controller
 
         self._menu = Gtk.Menu()
 
@@ -41,11 +41,24 @@ class DiscoMenu:
         self._menu.append(commands_mi)
         self._menu.append(muc_mi)
 
+
+        addr_submenu = Gtk.Menu()
+        addr_mi.set_submenu(addr_submenu)
+
+        addr_open_mi = Gtk.MenuItem("Open")
+        addr_copy_mi = Gtk.MenuItem("Copy to Clipboard")
+
+        addr_open_mi.connect('activate', self._on_addr_open_activated)
+
+        addr_submenu.append(addr_open_mi)
+        addr_submenu.append(Gtk.SeparatorMenuItem())
+        addr_submenu.append(addr_copy_mi)
+
         q, stanza = org.wayround.xmpp.disco.get_info(
             jid_to=jid,
-            jid_from=self.controller.jid.full(),
+            jid_from=self._controller.jid.full(),
             node=node,
-            stanza_processor=self.controller.client.stanza_processor
+            stanza_processor=self._controller.client.stanza_processor
             )
 
 
@@ -105,11 +118,14 @@ class DiscoMenu:
     def _on_commands_mi_activated(self, menuitem):
 
         org.wayround.pyabber.adhoc.adhoc_window_for_jid_and_node(
-            controller=self.controller,
+            controller=self._controller,
             jid_to=self._jid,
-            jid_from=self.controller.jid.full()
+            jid_from=self._controller.jid.full()
             )
 
+    def _on_addr_open_activated(self, menuitem):
+
+        disco(self._controller, self._jid, self._node)
 
 def disco_menu(controller, jid, node=None):
     disco_menu = DiscoMenu(controller, jid, node)
@@ -118,7 +134,10 @@ def disco_menu(controller, jid, node=None):
 
 class Disco:
 
-    def __init__(self, controller):
+    def __init__(self, controller, jid=None, node=None):
+
+        self._jid = jid
+        self._node = node
 
         self._controller = controller
 
@@ -160,6 +179,8 @@ class Disco:
         addr_control_grid.set_row_spacing(5)
         addr_control_grid.set_column_spacing(5)
 
+        jid_entry.connect('activate', self._on_jid_or_node_entry_activate)
+        node_entry.connect('activate', self._on_jid_or_node_entry_activate)
 
         view_frame = Gtk.Frame()
         view_sw = Gtk.ScrolledWindow()
@@ -244,7 +265,17 @@ class Disco:
 
         self._lock = threading.Lock()
 
+        if self._jid != None or (self._jid != None and self._node != None):
+            self.set_addr(jid, node)
+
         return
+
+    def __del__(self):
+        print(
+            "Window: {}, {}, {}, {} -- deletes".format(
+                self._jid, self._node, self._work_jid, self._work_node
+                )
+            )
 
     def show(self):
 
@@ -257,6 +288,7 @@ class Disco:
         self._lock.acquire()
 
         self._spinner.start()
+        self._progress_bar.set_fraction(0.0)
         self._go_button.set_sensitive(False)
         self._view_tw.set_sensitive(False)
 
@@ -304,8 +336,8 @@ class Disco:
                 self._view_model.append(
                     itera,
                     [
-                     "[jabber:x:data]\n{}".format(
-                        org.wayround.xmpp.xdata.XData.new_from_element(i).gen_info_text()
+                     "[jabber:x:data]\n    {}".format(
+                        '\n    '.join(org.wayround.xmpp.xdata.XData.new_from_element(i).gen_info_text().splitlines())
                         ),
                      None,
                      None,
@@ -537,6 +569,9 @@ class Disco:
 
     def set_addr(self, jid, node=None):
 
+        if jid == None:
+            jid = ''
+
         jid = jid.strip()
 
         if isinstance(node, str):
@@ -660,9 +695,13 @@ class Disco:
 
         return
 
+    def _on_jid_or_node_entry_activate(self, entry):
+
+        self._go_button.emit('clicked')
+
     def _on_destroy(self, *args, **kwargs):
         self.window.hide()
 
 def disco(controller, jid, node=None):
-    a = Disco(controller)
+    a = Disco(controller, jid, node)
     a.show()

@@ -20,10 +20,8 @@ import org.wayround.pyabber.connpresetwindow
 import org.wayround.pyabber.controller
 import org.wayround.pyabber.rosterwidget
 import org.wayround.pyabber.presence_control_popup
-import org.wayround.pyabber.contact_popup_menu
 import org.wayround.pyabber.icondb
 import org.wayround.pyabber.contact_editor
-import org.wayround.pyabber.single_message_window
 import org.wayround.pyabber.chat_pager
 import org.wayround.pyabber.disco
 

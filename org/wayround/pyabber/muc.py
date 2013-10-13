@@ -324,7 +324,7 @@ class MUCPopupMenu:
     def get_widget(self):
         return self._menu
 
-    def _on_new_muc_mi_activated(self):
+    def _on_new_muc_mi_activated(self, menuitem):
         pass
 
     def _on_configure_muc_mi_activated(self, menuitem):
@@ -350,3 +350,12 @@ class MUCPopupMenu:
             )
 
         w.show()
+
+class JoinWindow:
+
+    def __init__(self, controller):
+
+        self._controller = controller
+
+        self._window = Gtk.Window()
+

@@ -1,7 +1,7 @@
 
 import logging
 
-logging.basicConfig(level='DEBUG')
+logging.basicConfig(level='INFO')
 
 from gi.repository import Gtk
 
