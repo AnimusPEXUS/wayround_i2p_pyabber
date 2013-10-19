@@ -878,8 +878,6 @@ class MainWindow:
             new_preset = {}
             new_preset.update(r)
 
-#            print("preset: {}".format(new_preset))
-
             for i in range(len(self.profile_data['connection_presets']) - 1, -1, -1):
 
                 if self.profile_data['connection_presets'][i]['name'] == new_preset['name']:
@@ -1073,7 +1071,7 @@ class MainWindow:
 
     def _on_get_roster_button_clicked(self, button):
 
-        res = self.controller.roster.get(jid_from=self.controller.jid.full())
+        res = self.controller.roster.get(from_jid=self.controller.jid.full())
         logging.debug("Roster Get Result: {}".format(pprint.pformat(res)))
 
         if res == None:
@@ -1088,19 +1086,19 @@ class MainWindow:
             d.run()
             d.destroy()
         else:
-            if org.wayround.xmpp.core.is_stanza(res) and res.is_error():
+            if isinstance(res, org.wayround.xmpp.core.Stanza) and res.is_error():
                 d = org.wayround.utils.gtk.MessageDialog(
                     self.window_elements.window,
                     Gtk.DialogFlags.MODAL
                     | Gtk.DialogFlags.DESTROY_WITH_PARENT,
                     Gtk.MessageType.ERROR,
                     Gtk.ButtonsType.OK,
-                    "Error getting roster:\n{}".format(repr(res.get_error()))
+                    "Error getting roster:\n{}".format(repr(res.gen_error()))
                     )
                 d.run()
                 d.destroy()
 
-            elif org.wayround.xmpp.core.is_stanza(res) and not res.is_error():
+            elif isinstance(res, org.wayround.xmpp.core.Stanza) and not res.is_error():
 
                 d = org.wayround.utils.gtk.MessageDialog(
                     self.window_elements.window,
@@ -1118,12 +1116,12 @@ class MainWindow:
 
                 for i in res.keys():
                     self.roster_widget.set_contact(
-                        name_or_title=res[i]['name'],
+                        name_or_title=res[i].get_name(),
                         bare_jid=i,
-                        groups=res[i]['groups'],
-                        approved=res[i]['approved'],
-                        ask=res[i]['ask'],
-                        subscription=res[i]['subscription']
+                        groups=res[i].get_group(),
+                        approved=res[i].get_approved(),
+                        ask=res[i].get_ask(),
+                        subscription=res[i].get_subscription()
                         )
 
                 for i in conts:

@@ -55,8 +55,6 @@ class MainController:
         self.resource = 'default'
         self.bound_jid = None
 
-
-
     def input_data_consistency_check_is_ok(self):
 
         """
@@ -196,7 +194,6 @@ class MainController:
             self.client.wait('working')
             logging.debug("working")
 
-
             auto = self.preset_data['stream_features_handling'] == 'auto'
 
             if auto:
@@ -207,7 +204,7 @@ class MainController:
                 res = None
 
                 if self.preset_data['STARTTLS'] and ret == 0:
-                    print("Starting TLS")
+                    logging.debug("Starting TLS")
 
                     res = org.wayround.xmpp.client.drive_starttls(
                         self.client,
@@ -218,22 +215,24 @@ class MainController:
                         )
 
                     if not org.wayround.xmpp.core.is_features_element(res):
-                        print("Can't establish TLS encryption")
+                        logging.debug("Can't establish TLS encryption")
                         ret = 2
                     else:
-                        print("Encryption established")
+                        logging.debug("Encryption established")
 
                 if self.preset_data['register'] and ret == 0:
                     # TODO: registration need to be done
                     pass
 
                 if self.preset_data['login'] and ret == 0:
-                    print("Logging in")
+                    logging.debug("Logging in")
 
                     if not self._simple_gsasl:
-                        self._simple_gsasl = org.wayround.gsasl.gsasl.GSASLSimple(
-                            mechanism='DIGEST-MD5',
-                            callback=self._gsasl_cb
+                        self._simple_gsasl = (
+                            org.wayround.gsasl.gsasl.GSASLSimple(
+                                mechanism='DIGEST-MD5',
+                                callback=self._gsasl_cb
+                                )
                             )
 
                     res = org.wayround.xmpp.client.drive_sasl(
@@ -247,10 +246,10 @@ class MainController:
                     self._simple_gsasl = None
 
                     if not org.wayround.xmpp.core.is_features_element(res):
-                        print("Can't authenticate: {}".format(res))
+                        logging.debug("Can't authenticate: {}".format(res))
                         ret = 3
                     else:
-                        print("Authenticated")
+                        logging.debug("Authenticated")
 
                 if self.preset_data['bind'] and ret == 0:
                     res = org.wayround.xmpp.client.bind(
@@ -258,30 +257,34 @@ class MainController:
                         self.resource
                         )
                     if not isinstance(res, str):
-                        print("bind error {}".format(res.get_error()))
+                        logging.debug("bind error {}".format(res.gen_error()))
                         ret = 4
                     else:
-                        self.jid.update(org.wayround.xmpp.core.jid_from_str(res))
-                        print("Bound jid is: {}".format(self.jid.full()))
+                        self.jid.update(
+                            org.wayround.xmpp.core.JID.new_from_str(res)
+                            )
+                        logging.debug(
+                            "Bound jid is: {}".format(self.jid.full())
+                            )
                         self.main_window.roster_widget.set_contact(
                             bare_jid=self.jid.bare()
                             )
 
                 if self.preset_data['session'] and ret == 0:
 
-                    print("Starting session")
+                    logging.debug("Starting session")
 
                     res = org.wayround.xmpp.client.session(
                         self.client,
                         self.jid.domain
                         )
 
-                    if (not org.wayround.xmpp.core.is_stanza(res)
+                    if (not isinstance(res, org.wayround.xmpp.core.Stanza)
                         or res.is_error()):
-                        print("Session establishing error")
+                        logging.debug("Session establishing error")
                         ret = 5
                     else:
-                        print("Session established")
+                        logging.debug("Session established")
 
                 if ret == 0:
                     self.roster.connect_signal(['push'], self._on_roster_push)
@@ -294,19 +297,18 @@ class MainController:
                                                  self._on_message
                                                  )
 
-
-
             self.waiting_for_stream_features = False
 
         return ret
-
 
     def _inbound_stanzas(self, obj):
 
         if obj.tag == 'message' and obj.typ == 'chat':
 
             cmd_line = org.wayround.utils.shlex.split(
-                obj.body.find('{jabber:client}body').text.splitlines()[0]
+                obj.get_element().find(
+                    '{jabber:client}body'
+                    ).text.splitlines()[0]
                 )
 
             if len(cmd_line) == 0:
@@ -315,19 +317,9 @@ class MainController:
 
                 messages = []
 
-#                self.stanza_processor.send(
-#                    org.wayround.xmpp.core.Stanza(
-#                        tag='message',
-#                        typ='chat',
-#                        jid_from=self.jid.full(),
-#                        jid_to='animus@wayround.org',
-#                        body='<body>TaskTracker bot is now online</body><subject>WOW!</subject>'
-#                        )
-#                    )
-
                 ret_stanza = org.wayround.xmpp.core.Stanza(
-                    jid_from=self.jid.bare(),
-                    jid_to=obj.jid_from,
+                    from_jid=self.jid.bare(),
+                    to_jid=obj.from_jid,
                     tag='message',
                     typ='chat',
                     body=[
@@ -337,8 +329,8 @@ class MainController:
                         ]
                     )
 
-                asker_jid = org.wayround.xmpp.core.jid_from_string(
-                    obj.jid_from
+                asker_jid = org.wayround.xmpp.core.JID.new_from_str(
+                    obj.from_jid
                     ).bare()
 
                 res = org.wayround.utils.program.command_processor(
@@ -346,10 +338,10 @@ class MainController:
                     commands=self._commands,
                     opts_and_args_list=cmd_line,
                     additional_data={
-                        'asker_jid':asker_jid,
-                        'stanza':obj,
-                        'messages':messages,
-                        'ret_stanza':ret_stanza
+                        'asker_jid': asker_jid,
+                        'stanza': obj,
+                        'messages': messages,
+                        'ret_stanza': ret_stanza
                         }
                     )
 
@@ -387,37 +379,39 @@ class MainController:
 
         if not self._driven:
 
-            logging.debug("_on_connection_event `{}', `{}'".format(event, sock))
+            logging.debug(
+                "_on_connection_event `{}', `{}'".format(event, sock)
+                )
 
             if event == 'start':
-                print("Connection started")
+                logging.debug("Connection started")
 
                 self.connection = True
 
                 self.client.wait('working')
 
-                logging.debug("Ended waiting for connection. Opening output stream")
-
+                logging.debug(
+                    "Ended waiting for connection. Opening output stream"
+                    )
 
                 self.client.io_machine.send(
                     org.wayround.xmpp.core.start_stream_tpl(
-                        jid_from=self.jid.bare(),
-                        jid_to=self.connection_info.host
+                        from_jid=self.jid.bare(),
+                        to_jid=self.connection_info.host
                         )
                     )
 
                 logging.debug("Stream opening tag was started")
 
             elif event == 'stop':
-                print("Connection stopped")
+                logging.debug("Connection stopped")
                 self.connection = False
                 self.stop()
 
             elif event == 'error':
-                print("Connection error")
+                logging.debug("Connection error")
                 self.connection = False
                 self.stop()
-
 
     def _on_stream_io_event(self, event, io_machine, attrs=None):
 
@@ -447,7 +441,6 @@ class MainController:
                 self._stream_out = False
                 self.stop()
 
-
     def _on_stream_object(self, event, io_machine, obj):
 
         logging.debug(
@@ -459,7 +452,6 @@ class MainController:
         if org.wayround.xmpp.core.is_features_element(obj):
             self._handle_stream_features(obj)
 
-
     def _handle_stream_features(self, obj):
 
         ret = False
@@ -470,11 +462,9 @@ class MainController:
 
         return ret
 
-
-
     def _auto_starttls_controller(self, status, data):
 
-        print("_auto_starttls_controller {}, {}".format(status, data))
+        logging.debug("_auto_starttls_controller {}, {}".format(status, data))
 
         ret = None
 
@@ -482,24 +472,22 @@ class MainController:
 
         return ret
 
-
     def _manual_starttls_controller(self):
         pass
-
 
     def _auto_auth_controller(self, status, data):
 
         ret = ''
 
-        print("_auto_auth_controller {}, {}".format(status, data))
+        logging.debug("_auto_auth_controller {}, {}".format(status, data))
 
         if status == 'mechanism_name':
             ret = 'DIGEST-MD5'
 
-        elif status == 'bare_jid_from':
+        elif status == 'bare_from_jid':
             ret = self.jid.bare()
 
-        elif status == 'bare_jid_to':
+        elif status == 'bare_to_jid':
 #            TODO: fix self.connection_info.host
             ret = self.connection_info.host
 
@@ -648,18 +636,18 @@ class MainController:
 
         return
 
-    def _on_presence(self, event, presence_obj, jid_from, jid_to, stanza):
+    def _on_presence(self, event, presence_obj, from_jid, to_jid, stanza):
 
         if event == 'presence':
 
-            if not stanza.typ in [
+            if not stanza.get_typ() in [
                 'unsubscribe', 'subscribed', 'unsubscribed'
                 ]:
 
                 f_jid = None
 
-                if jid_from:
-                    f_jid = org.wayround.xmpp.core.jid_from_str(jid_from)
+                if from_jid:
+                    f_jid = org.wayround.xmpp.core.JID.new_from_str(from_jid)
                 else:
                     f_jid = self.jid.copy()
                     f_jid.user = None
@@ -667,32 +655,33 @@ class MainController:
                 show = None
                 status = None
 
-                show_elm = stanza.body.find('{jabber:client}show')
+                show_elm = stanza.get_element().find('{jabber:client}show')
                 if show_elm != None:
                     show = show_elm.text
                 else:
                     show = 'available'
-                    if stanza.typ == 'unavailable':
+                    if stanza.get_typ() == 'unavailable':
                         show = 'unavailable'
 
-                status_elm = stanza.body.find('{jabber:client}status')
+                status_elm = stanza.get_element().find('{jabber:client}status')
                 if status_elm != None:
                     status = status_elm.text
                 else:
                     status = ''
 
                 not_in_roster = None
-                if stanza.typ == 'remove':
+                if stanza.get_typ() == 'remove':
                     not_in_roster = True
 
-                if not f_jid.bare() in self.main_window.roster_widget.get_data():
+                if (not f_jid.bare() in
+                    self.main_window.roster_widget.get_data()):
                     not_in_roster = True
 
                 if f_jid.is_full():
                     self.main_window.roster_widget.set_contact_resource(
                         bare_jid=f_jid.bare(),
                         resource=f_jid.resource,
-                        available=stanza.typ != 'unavailable',
+                        available=stanza.get_typ() != 'unavailable',
                         show=show,
                         status=status,
                         not_in_roster=not_in_roster
@@ -700,7 +689,7 @@ class MainController:
                 elif f_jid.is_bare():
                     self.main_window.roster_widget.set_contact(
                         bare_jid=f_jid.bare(),
-                        available=stanza.typ != 'unavailable',
+                        available=stanza.get_typ() != 'unavailable',
                         show=show,
                         status=status,
                         not_in_roster=not_in_roster
@@ -711,7 +700,7 @@ class MainController:
             else:
                 logging.warning(
                     "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stanza.typ is {}".format(
-                        stanza.typ
+                        stanza.get_typ()
                         )
                     )
 
@@ -719,31 +708,32 @@ class MainController:
 
         if event == 'message':
 
-            if stanza.typ in [None, 'normal']:
+            if stanza.get_typ() in [None, 'normal']:
 
                 subject = None
                 thread = None
                 body = None
 
-                subject_el = stanza.body.find('{jabber:client}subject')
+                subject_el = stanza.get_element().find(
+                    '{jabber:client}subject'
+                    )
                 # TODO: fix for multiple subjects
                 if subject_el != None:
                     subject = subject_el.text
 
-                thread_el = stanza.body.find('{jabber:client}thread')
-                # TODO: fix for multiple threads
+                thread_el = stanza.get_element().find('{jabber:client}thread')
                 if thread_el != None:
                     thread = thread_el.text
 
-                body_el = stanza.body.find('{jabber:client}body')
+                body_el = stanza.get_element().find('{jabber:client}body')
                 # TODO: fix for multiple bodies
                 if body_el != None:
                     body = body_el.text
 
                 org.wayround.pyabber.single_message_window.single_message(
                     self, mode='view',
-                    to_jid=stanza.jid_to,
-                    from_jid=stanza.jid_from,
+                    to_jid=stanza.get_to_jid(),
+                    from_jid=stanza.get_from_jid(),
                     subject=subject,
                     thread=thread,
                     body=body
@@ -771,7 +761,7 @@ def stanza_error_message(parent, stanza, message=None):
             Gtk.ButtonsType.OK,
             "{}{}".format(
                 message2,
-                org.wayround.xmpp.core.stanza_error_to_text(stanza.get_error())
+                stanza.gen_error().to_text()
                 )
             )
         d.run()

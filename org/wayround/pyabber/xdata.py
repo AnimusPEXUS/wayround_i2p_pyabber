@@ -447,7 +447,7 @@ class FieldTextArea:
                 res = None
                 err = False
                 try:
-                    res = org.wayround.xmpp.core.jid_from_str(i.get_value())
+                    res = org.wayround.xmpp.core.JID.new_from_str(i.get_value())
                 except:
                     logging.exception("Can't convert string to JID")
                     err = True
@@ -505,7 +505,7 @@ class FieldText:
             res = None
             err = False
             try:
-                res = org.wayround.xmpp.core.jid_from_str(val.get_value())
+                res = org.wayround.xmpp.core.JID.new_from_str(val.get_value())
             except:
                 logging.exception("Can't convert string to JID")
                 err = True

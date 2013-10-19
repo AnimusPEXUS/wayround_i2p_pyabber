@@ -28,6 +28,7 @@ class DiscoMenu:
         self._menu = Gtk.Menu()
 
         addr_mi = Gtk.MenuItem("jid and node")
+        error_mi = Gtk.MenuItem("no errors")
 
         commands_mi = Gtk.MenuItem("Commands")
         commands_mi.connect('activate', self._on_commands_mi_activated)
@@ -37,6 +38,8 @@ class DiscoMenu:
         self.addr_mi = addr_mi
 
         self._menu.append(addr_mi)
+        self._menu.append(Gtk.SeparatorMenuItem())
+        self._menu.append(error_mi)
         self._menu.append(Gtk.SeparatorMenuItem())
         self._menu.append(commands_mi)
         self._menu.append(muc_mi)
@@ -55,48 +58,41 @@ class DiscoMenu:
         addr_submenu.append(addr_copy_mi)
 
         q, stanza = org.wayround.xmpp.disco.get_info(
-            jid_to=jid,
-            jid_from=self._controller.jid.full(),
+            to_jid=jid,
+            from_jid=self._controller.jid.full(),
             node=node,
             stanza_processor=self._controller.client.stanza_processor
             )
 
 
         commands_mi.set_sensitive(False)
+        error_mi.set_sensitive(False)
         muc_mi.set_sensitive(False)
 
         if stanza.is_error():
-            org.wayround.pyabber.controller.stanza_error_message(
-                None,
-                stanza,
-                message=None
+            error_mi.set_label(stanza.gen_error().gen_text().strip())
+
+        t = jid
+        if node:
+            t += '\{}'.format(node)
+
+        self.addr_mi.set_label(t)
+
+        if q != None:
+            commands_mi.set_sensitive(
+                q.has_feature('http://jabber.org/protocol/commands')
                 )
-        else:
 
-            t = jid
-            if node:
-                t += '\{}'.format(node)
+            muc_mi.set_sensitive(
+                q.has_feature('http://jabber.org/protocol/muc')
+                )
 
-            self.addr_mi.set_label(t)
-
-            if q != None:
-                r = q.find(
-    "{http://jabber.org/protocol/disco#info}feature[@var='http://jabber.org/protocol/commands']"
-                    )
-
-                commands_mi.set_sensitive(r != None)
-
-                r = q.find(
-    "{http://jabber.org/protocol/disco#info}feature[@var='http://jabber.org/protocol/muc']"
-                    )
-
-                muc_mi.set_sensitive(r != None)
-                muc_mi.set_submenu(
-                    org.wayround.pyabber.muc.MUCPopupMenu(
-                        controller,
-                        jid
-                        ).get_widget()
-                    )
+            muc_mi.set_submenu(
+                org.wayround.pyabber.muc.MUCPopupMenu(
+                    controller,
+                    jid
+                    ).get_widget()
+                )
 
         self._menu.show_all()
 
@@ -119,8 +115,8 @@ class DiscoMenu:
 
         org.wayround.pyabber.adhoc.adhoc_window_for_jid_and_node(
             controller=self._controller,
-            jid_to=self._jid,
-            jid_from=self._controller.jid.full()
+            to_jid=self._jid,
+            from_jid=self._controller.jid.full()
             )
 
     def _on_addr_open_activated(self, menuitem):
@@ -270,12 +266,6 @@ class Disco:
 
         return
 
-    def __del__(self):
-        print(
-            "Window: {}, {}, {}, {} -- deletes".format(
-                self._jid, self._node, self._work_jid, self._work_node
-                )
-            )
 
     def show(self):
 
@@ -314,14 +304,14 @@ class Disco:
             self._stat_bar.push(0, "Getting information from server")
 
             res = org.wayround.xmpp.disco.get(
-                jid_to=jid,
-                jid_from=self._controller.jid.full(),
+                to_jid=jid,
+                from_jid=self._controller.jid.full(),
                 node=node,
                 stanza_processor=self._controller.client.stanza_processor
                 )
 
 
-            x = res['info'][0].findall('{jabber:x:data}x')
+            x = res['info'][0].get_xdata()
 
             for i in x:
 
@@ -331,13 +321,11 @@ class Disco:
                         path.get_path()
                         )
 
-                err_dict = res['info'][1].get_error()
-
                 self._view_model.append(
                     itera,
                     [
                      "[jabber:x:data]\n    {}".format(
-                        '\n    '.join(org.wayround.xmpp.xdata.XData.new_from_element(i).gen_info_text().splitlines())
+                        '\n    '.join(i.gen_info_text().splitlines())
                         ),
                      None,
                      None,
@@ -359,17 +347,17 @@ class Disco:
             self._stat_bar.push(0, "Parsing identities")
             q = res['info'][0]
             if q != None:
-                identities = q.findall('{http://jabber.org/protocol/disco#info}identity')
+                identities = q.get_identity()
 
             self._stat_bar.push(0, "Parsing features")
             q = res['info'][0]
             if q != None:
-                features = q.findall('{http://jabber.org/protocol/disco#info}feature')
+                features = q.get_feature()
 
             self._stat_bar.push(0, "Parsing items")
             q = res['items'][0]
             if q != None:
-                items = q.findall('{http://jabber.org/protocol/disco#items}item')
+                items = q.get_item()
 
             total_num = len(identities) + len(features) + len(items)
 
@@ -386,16 +374,16 @@ class Disco:
                         path.get_path()
                         )
 
-                err_dict = res['info'][1].get_error()
+                err_dict = res['info'][1].gen_error()
 
                 self._view_model.append(
                     itera,
                     [
                      "[info error] error type: {}, condition: {}, code: {}, text: {}".format(
-                        err_dict.get('error_type'),
-                        err_dict.get('condition'),
-                        err_dict.get('code'),
-                        err_dict.get('text')
+                        err_dict.get_error_type(),
+                        err_dict.get_condition(),
+                        err_dict.get_code(),
+                        err_dict.get_text()
                         ),
                      None,
                      None,
@@ -421,14 +409,14 @@ class Disco:
                     itera,
                     [
                      "[ident] category: {}, type: {}, name: {}".format(
-                        i.get('category'), i.get('type'), i.get('name')
+                        i.get_category(), i.get_typ(), i.get_name()
                         ),
                      None,
                      'info',
                      'identity',
-                     i.get('category'),
-                     i.get('type'),
-                     i.get('name'),
+                     i.get_category(),
+                     i.get_typ(),
+                     i.get_name(),
                      None,
                      None,
                      None
@@ -452,14 +440,14 @@ class Disco:
                 self._view_model.append(
                     itera,
                     [
-                     "[feature] var: {}".format(i.get('var')),
+                     "[feature] var: {}".format(i),
                      None,
                      'info',
                      'feature',
                      None,
                      None,
                      None,
-                     i.get('var'),
+                     i,
                      None,
                      None
                      ]
@@ -477,16 +465,16 @@ class Disco:
                         path.get_path()
                         )
 
-                err_dict = res['items'][1].get_error()
+                err_dict = res['items'][1].gen_error()
 
                 self._view_model.append(
                     itera,
                     [
                      "[items error] error type: {}, condition: {}, code: {}, text: {}".format(
-                        err_dict.get('error_type'),
-                        err_dict.get('condition'),
-                        err_dict.get('code'),
-                        err_dict.get('text')
+                        err_dict.get_error_type(),
+                        err_dict.get_condition(),
+                        err_dict.get_code(),
+                        err_dict.get_text()
                         ),
                      None,
                      None,
@@ -512,17 +500,17 @@ class Disco:
                     itera,
                     [
                      "{}\n[item] jid: {}, node: {}".format(
-                        i.get('name'), i.get('jid'), i.get('node')
+                        i.get_name(), i.get_jid(), i.get_node()
                         ),
                      None,
                      'items',
                      'item',
                      None,
                      None,
-                     i.get('name'),
+                     i.get_name(),
                      None,
-                     i.get('jid'),
-                     i.get('node')
+                     i.get_jid(),
+                     i.get_node()
                      ]
                     )
 
@@ -589,6 +577,9 @@ class Disco:
             nt = self._work_node
 
         self.node_entry.set_text(nt)
+        self._server_menu_button.set_label(
+            "`{}/{}' menu".format(self._work_jid, nt)
+            )
 
         self._fill(
             None, self._work_jid, node=self._work_node

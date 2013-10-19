@@ -95,13 +95,11 @@ class ContactPopupMenu:
         send_message_mi.connect('activate', self._send_message_activate)
         start_chat_mi.connect('activate', self._start_chat_activate)
 
-        menu.connect('destroy', self._destroy)
-
     def show(self, controller, bare_or_full_jid, attach=None):
 
         self._controller = controller
 
-        jid = org.wayround.xmpp.core.jid_from_str(bare_or_full_jid)
+        jid = org.wayround.xmpp.core.JID.new_from_str(bare_or_full_jid)
         self.jid = jid
 
         self.subject_mi.set_label(str(jid))
@@ -134,7 +132,7 @@ class ContactPopupMenu:
     def _remove_activate(self, menuitem):
         self._controller.roster.set(
             subscription='remove',
-            jid_to=self._controller.jid.bare(),
+            to_jid=self._controller.jid.bare(),
             subject_jid=self.jid.bare()
             )
 
@@ -172,8 +170,6 @@ class ContactPopupMenu:
         self._controller.main_window.chat_pager.add_page(page)
 
 
-    def _destroy(self, *args):
-        print("contact menu destroying")
 
 def contact_popup_menu(controller, bare_or_full_jid, attach=None):
 

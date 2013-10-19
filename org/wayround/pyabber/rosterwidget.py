@@ -1116,9 +1116,6 @@ class RosterWidget:
 
         self._lock.release()
 
-#    def _on_treeview_keypress(self, widget, event):
-#        print("keypress")
-
     def _on_treeview_buttonpress(self, widget, event):
 
         if event.button == Gdk.BUTTON_SECONDARY:
@@ -1147,7 +1144,7 @@ class RosterWidget:
                         bare_jid = bj
                         resource = ''
 
-                        jid = org.wayround.xmpp.core.jid_from_str(bare_jid)
+                        jid = org.wayround.xmpp.core.JID.new_from_str(bare_jid)
                         
                         if jid: 
                             org.wayround.pyabber.contact_popup_menu.contact_popup_menu(
@@ -1170,7 +1167,7 @@ class RosterWidget:
                                     parent_row = model[parent]
                                     bare_jid = parent_row[ROW_CELL_BARE_JID]
 
-                                    jid = org.wayround.xmpp.core.jid_from_str(
+                                    jid = org.wayround.xmpp.core.JID.new_from_str(
                                         bare_jid + '/' + resource
                                         )
 

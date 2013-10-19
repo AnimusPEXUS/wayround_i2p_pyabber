@@ -225,14 +225,14 @@ class ChatPager:
             pass
         else:
 
-            jid = org.wayround.xmpp.core.jid_from_str(stanza.jid_from)
+            jid = org.wayround.xmpp.core.JID.new_from_str(stanza.from_jid)
             thread = None
-            thread_e = stanza.body.find('{jabber:client}thread')
+            thread_e = stanza.get_element().find('{jabber:client}thread')
             if thread_e != None:
                 thread = thread_e.text
 
             body = None
-            body_e = stanza.body.find('{jabber:client}body')
+            body_e = stanza.get_element().find('{jabber:client}body')
             if body_e != None:
                 body = body_e.text
 

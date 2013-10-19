@@ -27,7 +27,7 @@ class MUCConfigWindow:
 
         error_result = False
 
-        q = stanza.body.find('{http://jabber.org/protocol/muc#owner}query')
+        q = stanza.get_element().find('{http://jabber.org/protocol/muc#owner}query')
 
         if q == None:
             error_result = "Returned stanza has not query result"
@@ -35,11 +35,12 @@ class MUCConfigWindow:
             if stanza.is_error():
                 error_result += "\n\nBut instead it is an ERROR stanza:\n\n"
                 error_result += org.wayround.xmpp.core.stanza_error_to_text(
-                    stanza.get_error()
+                    stanza.gen_error()
                     )
 
         else:
-            x = q.find('{jabber:x:data}x')
+            query = org.wayround.xmpp.muc.Query.new_from_element(q)
+            x = query.get_xdata()
 
             if x == None:
                 error_result = "Returned stanza has not room configuration form"
@@ -47,12 +48,12 @@ class MUCConfigWindow:
                 if stanza.is_error():
                     error_result += "\n\nBut instead it is an ERROR stanza:\n\n"
                     error_result += org.wayround.xmpp.core.stanza_error_to_text(
-                        stanza.get_error()
+                        stanza.gen_error()
                         )
 
             else:
 
-                xdata = org.wayround.xmpp.xdata.XData.new_from_element(x)
+                xdata = x
 
         self._window = Gtk.Window()
         w = self._window
@@ -103,8 +104,8 @@ class MUCConfigWindow:
 
         w.set_title(
             "Configuring room `{room}' as `{who}'".format(
-                room=stanza.jid_from,
-                who=stanza.jid_to
+                room=stanza.from_jid,
+                who=stanza.to_jid
                 )
             )
 
@@ -142,13 +143,12 @@ class MUCConfigWindow:
                 d.destroy()
             else:
                 x_data.set_form_type('submit')
-                xform_element = x_data.gen_element()
 
                 org.wayround.xmpp.muc.submit_room_configuration(
-                    room_bare_jid=self._stanza.jid_from,
+                    room_bare_jid=self._stanza.from_jid,
                     from_full_jid=self._controller.jid.full(),
                     stanza_processor=self._controller.client.stanza_processor,
-                    form_element=xform_element
+                    x_data=x_data
                     )
 
                 self._window.destroy()
@@ -350,6 +350,8 @@ class MUCPopupMenu:
             )
 
         w.show()
+
+
 
 class JoinWindow:
 

@@ -1,6 +1,4 @@
 
-import pprint
-
 from gi.repository import Gtk
 
 import org.wayround.utils.gtk
@@ -11,12 +9,12 @@ import org.wayround.pyabber.xdata
 
 class AD_HOC_Window:
 
-    def __init__(self, controller, commands, jid_to):
+    def __init__(self, controller, commands, to_jid):
 
         if not isinstance(commands, dict):
             raise TypeError("`commands' must be dict")
 
-        self._jid_to = jid_to
+        self._to_jid = to_jid
         self._controller = controller
         self._selected_command = None
         self._commands = commands
@@ -101,10 +99,10 @@ class AD_HOC_Window:
 
             stanza = org.wayround.xmpp.core.Stanza(
                 tag='iq',
-                jid_from=self._controller.jid.full(),
-                jid_to=self._jid_to,
+                from_jid=self._controller.jid.full(),
+                to_jid=self._to_jid,
                 typ='set',
-                body=[com]
+                objects=[com]
                 )
 
             res = self._controller.client.stanza_processor.send(stanza, wait=None)
@@ -118,23 +116,23 @@ class AD_HOC_Window:
 
         self._selected_command = name
 
-def adhoc_window(controller, commands, jid_to):
+def adhoc_window(controller, commands, to_jid):
 
-    a = AD_HOC_Window(controller, commands, jid_to)
+    a = AD_HOC_Window(controller, commands, to_jid)
     a.show()
 
     return
 
 def adhoc_window_for_jid_and_node(
-    controller, jid_to, jid_from
+    controller, to_jid, from_jid
     ):
 
     commands = org.wayround.xmpp.adhoc.get_commands_list(
-        jid_to, jid_from, controller.client.stanza_processor
+        to_jid, from_jid, controller.client.stanza_processor
         )
 
     if commands:
-        adhoc_window(controller, commands, jid_to)
+        adhoc_window(controller, commands, to_jid)
     else:
         d = org.wayround.utils.gtk.MessageDialog(
             None,
@@ -150,21 +148,21 @@ def adhoc_window_for_jid_and_node(
 
 class AD_HOC_Response_Window:
 
-    def __init__(self, controller, stanza_response, command_data):
+    def __init__(self, controller, stanza_response, command_struct):
 
         if not isinstance(stanza_response, org.wayround.xmpp.core.Stanza):
             raise TypeError(
                 "`stanza_response' must be org.wayround.xmpp.core.Stanza"
                 )
 
-        if not isinstance(command_data, org.wayround.xmpp.adhoc.Command):
+        if not isinstance(command_struct, org.wayround.xmpp.adhoc.Command):
             raise TypeError(
-                "`command_data' must be org.wayround.xmpp.adhoc.Command"
+                "`command_struct' must be org.wayround.xmpp.adhoc.Command"
                 )
 
         self._controller = controller
         self._stanza_response = stanza_response
-        self._command_data = command_data
+        self._command_data = command_struct
 
         self._window = Gtk.Window()
         self._window.set_default_size(500, 500)
@@ -190,7 +188,7 @@ class AD_HOC_Response_Window:
         label.set_alignment(0.0, 0.5)
         info_box.attach(label, 0, 0, 1, 1)
 
-        label = Gtk.Label(command_data.node)
+        label = Gtk.Label(command_struct.get_node())
         label.set_alignment(0.0, 0.5)
         info_box.attach(label, 1, 0, 1, 1)
 
@@ -198,7 +196,7 @@ class AD_HOC_Response_Window:
         label.set_alignment(0.0, 0.5)
         info_box.attach(label, 0, 1, 1, 1)
 
-        label = Gtk.Label(command_data.status)
+        label = Gtk.Label(command_struct.get_status())
         label.set_alignment(0.0, 0.5)
         info_box.attach(label, 1, 1, 1, 1)
 
@@ -206,7 +204,7 @@ class AD_HOC_Response_Window:
         label.set_alignment(0.0, 0.5)
         info_box.attach(label, 0, 2, 1, 1)
 
-        label = Gtk.Label(command_data.sessionid)
+        label = Gtk.Label(command_struct.get_sessionid())
         label.set_alignment(0.0, 0.5)
         info_box.attach(label, 1, 2, 1, 1)
 
@@ -223,32 +221,31 @@ class AD_HOC_Response_Window:
         sw = Gtk.ScrolledWindow()
         sw.add(self._scrolled_box)
 
-        for i in command_data.body:
-            if i.tag == '{http://jabber.org/protocol/commands}note':
-                self._add_note(i.text, typ=i.get('type'))
+        for i in command_struct.get_note():
+            self._add_note(i)
 
-            elif i.tag == '{jabber:x:data}x':
-                if self._form_controller != None:
-                    d = org.wayround.utils.gtk.MessageDialog(
-                        None,
-                        0,
-                        Gtk.MessageType.ERROR,
-                        Gtk.ButtonsType.OK,
+        for i in command_struct.get_xdata():
+            if self._form_controller != None:
+                d = org.wayround.utils.gtk.MessageDialog(
+                    None,
+                    0,
+                    Gtk.MessageType.ERROR,
+                    Gtk.ButtonsType.OK,
 "This program doesn't support more then one {jabber:x:data}x for single command\n"
 "Please, make a bug report with title 'command with multiple data forms', if You see this message"
-                        )
-                    d.run()
-                    d.destroy()
-                else:
-                    self._add_x_form(i)
+                    )
+                d.run()
+                d.destroy()
+            else:
+                self._add_x_form(i)
 
         bb = Gtk.ButtonBox()
         bb.set_orientation(Gtk.Orientation.HORIZONTAL)
 
         buttons = {}
 
-        if command_data.actions:
-            for i in command_data.actions:
+        if command_struct.get_actions():
+            for i in command_struct.get_actions():
                 button = Gtk.Button(i)
                 button.connect('clicked', self._on_action_button_pressed, i)
                 button.set_can_default(True)
@@ -256,7 +253,7 @@ class AD_HOC_Response_Window:
 
                 buttons[i] = button
 
-        if command_data.status == 'executing':
+        if command_struct.get_status() == 'executing':
 
             for i in ['complete']:
 
@@ -268,8 +265,8 @@ class AD_HOC_Response_Window:
 
                     buttons[i] = button
 
-            if command_data.execute:
-                self._window.set_default(buttons[command_data.execute])
+            if command_struct.get_execute():
+                self._window.set_default(buttons[command_struct.get_execute()])
             else:
                 self._window.set_default(buttons['complete'])
 
@@ -286,19 +283,17 @@ class AD_HOC_Response_Window:
 
         self._window.show_all()
 
-    def _add_note(self, text, typ='info'):
+    def _add_note(self, note):
 
-        if not typ in ['info', 'warn', 'error']:
-            raise ValueError("Invalid `typ' value")
-
-        if not isinstance(text, str):
-            raise TypeError("text must be str")
+        if not isinstance(note, org.wayround.xmpp.adhoc.CommandNote):
+            raise TypeError("`note' must be org.wayround.xmpp.adhoc.CommandNote")
 
         b = Gtk.Box()
         b.set_spacing(5)
         b.set_orientation(Gtk.Orientation.HORIZONTAL)
 
         icon = Gtk.Image()
+        typ = note.get_typ()
         if typ == 'info':
             icon.set_from_stock(Gtk.STOCK_DIALOG_INFO, Gtk.IconSize.DIALOG)
 
@@ -308,7 +303,7 @@ class AD_HOC_Response_Window:
         elif typ == 'error':
             icon.set_from_stock(Gtk.STOCK_DIALOG_ERROR, Gtk.IconSize.DIALOG)
 
-        label = Gtk.Label(text)
+        label = Gtk.Label(note.get_text())
         label.set_alignment(0.0, 0.5)
 
         b.pack_start(icon, False, False, 0)
@@ -318,14 +313,14 @@ class AD_HOC_Response_Window:
 
         return
 
-    def _add_x_form(self, xform_element):
+    def _add_x_form(self, data):
 
-        data = org.wayround.xmpp.xdata.XData.new_from_element(xform_element)
+        if not isinstance(data, org.wayround.xmpp.xdata.XData):
+            raise TypeError("`data' must be org.wayround.xmpp.xdata.XData")
 
         res = org.wayround.pyabber.xdata.XDataFormWidgetController(data)
 
         self._form_controller = res
-
 
         self._scrolled_box.pack_start(res.get_widget(), True, True, 0)
 
@@ -345,7 +340,7 @@ class AD_HOC_Response_Window:
             d.destroy()
         else:
 
-            if self._command_data.status != 'executing':
+            if self._command_data.get_status() != 'executing':
                 d = org.wayround.utils.gtk.MessageDialog(
                     None,
                     0,
@@ -371,22 +366,23 @@ class AD_HOC_Response_Window:
                 else:
                     x_data.set_form_type('submit')
 
-                    element = x_data.gen_element()
-
                     command = org.wayround.xmpp.adhoc.Command()
-                    command.action = action
-                    command.sessionid = self._command_data.sessionid
-                    command.node = self._command_data.node
+                    command.set_action(action)
+                    command.set_sessionid(self._command_data.get_sessionid())
+                    command.set_node(self._command_data.get_node())
 
-                    command.body.append(element)
+                    command.get_objects().append(x_data)
 
-                    stanza = org.wayround.xmpp.core.Stanza('iq')
-                    stanza.typ = 'set'
-                    stanza.jid_to = self._stanza_response.jid_from
-                    stanza.jid_from = self._controller.jid.full()
-                    stanza.body.append(command.body)
+                    stanza = org.wayround.xmpp.core.Stanza(tag='iq')
+                    stanza.set_typ('set')
+                    stanza.set_to_jid(self._stanza_response.get_from_jid())
+                    stanza.set_from_jid(self._controller.jid.full())
+                    stanza.get_objects().append(command)
 
-                    res = self._controller.client.stanza_processor.send(stanza, wait=None)
+                    res = self._controller.client.stanza_processor.send(
+                        stanza,
+                        wait=None
+                        )
 
                     process_command_stanza_result(res, self._controller)
 
@@ -421,7 +417,7 @@ def process_command_stanza_result(res, controller):
             d.destroy()
         else:
             commands = org.wayround.xmpp.adhoc.extract_element_commands(
-                res.body
+                res.get_element()
                 )
 
             if len(commands) == 0:
@@ -441,7 +437,7 @@ def process_command_stanza_result(res, controller):
                     w = AD_HOC_Response_Window(
                         controller,
                         res,
-                        org.wayround.xmpp.adhoc.Command(body=i)
+                        i
                         )
                     w.show()
 

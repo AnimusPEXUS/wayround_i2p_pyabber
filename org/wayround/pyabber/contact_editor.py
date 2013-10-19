@@ -310,7 +310,7 @@ class ContactEditor:
         if name == '':
             name = None
 
-        jid = org.wayround.xmpp.core.jid_from_str(self.jid_entry.get_text())
+        jid = org.wayround.xmpp.core.JID.new_from_str(self.jid_entry.get_text())
 
         self.controller.roster.set(subject_jid=jid.bare(), groups=lst, name=name)
 
