@@ -364,7 +364,7 @@ class AD_HOC_Response_Window:
                     d.run()
                     d.destroy()
                 else:
-                    x_data.set_form_type('submit')
+                    x_data.set_typ('submit')
 
                     command = org.wayround.xmpp.adhoc.Command()
                     command.set_action(action)

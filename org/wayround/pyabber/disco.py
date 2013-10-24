@@ -44,7 +44,6 @@ class DiscoMenu:
         self._menu.append(commands_mi)
         self._menu.append(muc_mi)
 
-
         addr_submenu = Gtk.Menu()
         addr_mi.set_submenu(addr_submenu)
 
@@ -266,6 +265,12 @@ class Disco:
 
         return
 
+    def __del__(self):
+        print(
+            "Deleting Disco: {}, {}, {}, {}".format(
+                self._jid, self._node, self._work_jid, self._work_node
+                )
+            )
 
     def show(self):
 
@@ -408,7 +413,7 @@ class Disco:
                 self._view_model.append(
                     itera,
                     [
-                     "[ident] category: {}, type: {}, name: {}".format(
+                     "[identity] category: {}, type: {}, name: {}".format(
                         i.get_category(), i.get_typ(), i.get_name()
                         ),
                      None,
@@ -576,9 +581,20 @@ class Disco:
         if self._work_node != None:
             nt = self._work_node
 
+        t = jid
+        if node:
+            t += '\{}'.format(node)
+
         self.node_entry.set_text(nt)
         self._server_menu_button.set_label(
-            "`{}/{}' menu".format(self._work_jid, nt)
+            "`{}' menu".format(t)
+            )
+
+        self.window.set_title(
+            "Discovering `{}' as `{}'".format(
+                "{}".format(t),
+                self._controller.jid.full()
+                )
             )
 
         self._fill(

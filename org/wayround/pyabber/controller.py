@@ -128,15 +128,15 @@ class MainController:
 
             self.sock.settimeout(0)
 
-            self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
-            logging.debug(
-                "Socket Options: {}".format(
-                    self.sock.getsockopt(
-                        socket.SOL_SOCKET,
-                        socket.SO_KEEPALIVE
-                        )
-                    )
-                )
+#            self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+#            logging.debug(
+#                "Socket Options: {}".format(
+#                    self.sock.getsockopt(
+#                        socket.SOL_SOCKET,
+#                        socket.SO_KEEPALIVE
+#                        )
+#                    )
+#                )
 
             logging.debug("creating client")
 
@@ -300,80 +300,6 @@ class MainController:
             self.waiting_for_stream_features = False
 
         return ret
-
-    def _inbound_stanzas(self, obj):
-
-        if obj.tag == 'message' and obj.typ == 'chat':
-
-            cmd_line = org.wayround.utils.shlex.split(
-                obj.get_element().find(
-                    '{jabber:client}body'
-                    ).text.splitlines()[0]
-                )
-
-            if len(cmd_line) == 0:
-                pass
-            else:
-
-                messages = []
-
-                ret_stanza = org.wayround.xmpp.core.Stanza(
-                    from_jid=self.jid.bare(),
-                    to_jid=obj.from_jid,
-                    tag='message',
-                    typ='chat',
-                    body=[
-                        org.wayround.xmpp.stanza_elements.Body(
-                            text=''
-                            )
-                        ]
-                    )
-
-                asker_jid = org.wayround.xmpp.core.JID.new_from_str(
-                    obj.from_jid
-                    ).bare()
-
-                res = org.wayround.utils.program.command_processor(
-                    command_name=None,
-                    commands=self._commands,
-                    opts_and_args_list=cmd_line,
-                    additional_data={
-                        'asker_jid': asker_jid,
-                        'stanza': obj,
-                        'messages': messages,
-                        'ret_stanza': ret_stanza
-                        }
-                    )
-
-                messages_text = ''
-
-                for i in messages:
-
-                    typ = i['type']
-                    text = i['text']
-
-                    messages_text += '[{typ}]: {text}\n'.format(
-                        typ=typ,
-                        text=text
-                        )
-
-                for i in ret_stanza.body:
-
-                    if isinstance(i, org.wayround.xmpp.stanza_elements.Body):
-
-                        i.text = '\n{}\n{}\n'.format(
-                            messages_text,
-                            i.text
-                            )
-
-                        i.text += '{}\n'.format(res['message'])
-
-                        i.text += 'Exit Code: {}\n'.format(
-                            res['code']
-                            )
-                        break
-
-                self.client.stanza_processor.send(ret_stanza)
 
     def _on_connection_event(self, event, streamer, sock):
 
@@ -622,15 +548,15 @@ class MainController:
             jid = list(stanza_data.keys())[0]
             data = stanza_data[jid]
 
-            not_in_roster = data['subscription'] == 'remove'
+            not_in_roster = data.get_subscription() == 'remove'
 
             self.main_window.roster_widget.set_contact(
-                name_or_title=data['name'],
+                name_or_title=data.get_name(),
                 bare_jid=jid,
-                groups=data['groups'],
-                approved=data['approved'],
-                ask=data['ask'],
-                subscription=data['subscription'],
+                groups=data.get_groups(),
+                approved=data.get_approved(),
+                ask=data.get_ask(),
+                subscription=data.get_subscription(),
                 not_in_roster=not_in_roster
                 )
 
@@ -652,23 +578,6 @@ class MainController:
                     f_jid = self.jid.copy()
                     f_jid.user = None
 
-                show = None
-                status = None
-
-                show_elm = stanza.get_element().find('{jabber:client}show')
-                if show_elm != None:
-                    show = show_elm.text
-                else:
-                    show = 'available'
-                    if stanza.get_typ() == 'unavailable':
-                        show = 'unavailable'
-
-                status_elm = stanza.get_element().find('{jabber:client}status')
-                if status_elm != None:
-                    status = status_elm.text
-                else:
-                    status = ''
-
                 not_in_roster = None
                 if stanza.get_typ() == 'remove':
                     not_in_roster = True
@@ -676,6 +585,21 @@ class MainController:
                 if (not f_jid.bare() in
                     self.main_window.roster_widget.get_data()):
                     not_in_roster = True
+
+                status = None
+                s = stanza.get_status()
+                if len(s) != 0:
+                    status = s[0].get_text()
+                else:
+                    status = ''
+
+                show = stanza.get_show()
+                if show:
+                    show = show.get_text()
+                else:
+                    show = 'available'
+                    if stanza.get_typ() == 'unavailable':
+                        show = 'unavailable'
 
                 if f_jid.is_full():
                     self.main_window.roster_widget.set_contact_resource(
@@ -710,32 +634,24 @@ class MainController:
 
             if stanza.get_typ() in [None, 'normal']:
 
-                subject = None
-                thread = None
-                body = None
+                subject = stanza.get_subject()
+                if len(subject) == 0:
+                    subject = None
+                else:
+                    subject = subject[0].get_text()
 
-                subject_el = stanza.get_element().find(
-                    '{jabber:client}subject'
-                    )
-                # TODO: fix for multiple subjects
-                if subject_el != None:
-                    subject = subject_el.text
-
-                thread_el = stanza.get_element().find('{jabber:client}thread')
-                if thread_el != None:
-                    thread = thread_el.text
-
-                body_el = stanza.get_element().find('{jabber:client}body')
-                # TODO: fix for multiple bodies
-                if body_el != None:
-                    body = body_el.text
+                body = stanza.get_body()
+                if len(body) == 0:
+                    body = None
+                else:
+                    body = body[0].get_text()
 
                 org.wayround.pyabber.single_message_window.single_message(
                     self, mode='view',
                     to_jid=stanza.get_to_jid(),
                     from_jid=stanza.get_from_jid(),
                     subject=subject,
-                    thread=thread,
+                    thread=stanza.get_thread(),
                     body=body
                     )
 
