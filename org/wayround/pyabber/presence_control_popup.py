@@ -2,6 +2,7 @@
 from gi.repository import Gtk
 from gi.repository import Gdk
 
+
 class PresenceControlPopup:
 
     def __init__(self, parent_window, mainwindow):
@@ -10,7 +11,6 @@ class PresenceControlPopup:
         self.mainwindow = mainwindow
         self.window = Gtk.Window()
         win = self.window
-
 
         b = Gtk.Box()
         b.set_orientation(Gtk.Orientation.VERTICAL)
@@ -30,8 +30,12 @@ class PresenceControlPopup:
         chat_button = Gtk.Button("Chat")
         dnd_button = Gtk.Button("DND")
 
-        available_button.connect('clicked', self._on_button_pressed, 'available')
-        unavailable_button.connect('clicked', self._on_button_pressed, 'unavailable')
+        available_button.connect(
+            'clicked', self._on_button_pressed, 'available'
+            )
+        unavailable_button.connect(
+            'clicked', self._on_button_pressed, 'unavailable'
+            )
         xa_button.connect('clicked', self._on_button_pressed, 'xa')
         away_button.connect('clicked', self._on_button_pressed, 'away')
         chat_button.connect('clicked', self._on_button_pressed, 'chat')
@@ -92,7 +96,6 @@ class PresenceControlPopup:
     def show(self):
         self.window.set_position(Gtk.WindowPosition.CENTER)
         self.window.show_all()
-
 
     def _on_button_pressed(self, button, value):
 

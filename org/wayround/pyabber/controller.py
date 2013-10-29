@@ -12,12 +12,14 @@ import org.wayround.utils.gtk
 import org.wayround.xmpp.core
 import org.wayround.xmpp.client
 import org.wayround.xmpp.muc
+import org.wayround.xmpp.privacy
 
 import org.wayround.pyabber.mainwindow
 import org.wayround.pyabber.single_message_window
 import org.wayround.pyabber.muc
 
 from gi.repository import Gtk
+
 
 class MainController:
 
@@ -160,6 +162,11 @@ class MainController:
                 )
 
             self.muc = org.wayround.xmpp.muc.Client(
+                self.client,
+                self.jid
+                )
+
+            self.privacy = org.wayround.xmpp.privacy.PrivacyClient(
                 self.client,
                 self.jid
                 )
@@ -666,21 +673,31 @@ def stanza_error_message(parent, stanza, message=None):
 
     if stanza.is_error():
 
-        message2 = ''
-        if message:
-            message2 = '{}\n\n'.format(message)
+        stanza_error_error_message(parent, stanza.gen_error(), message)
 
-        d = org.wayround.utils.gtk.MessageDialog(
-            parent,
-            0,
-            Gtk.MessageType.ERROR,
-            Gtk.ButtonsType.OK,
-            "{}{}".format(
-                message2,
-                stanza.gen_error().to_text()
-                )
+    return
+
+
+def stanza_error_error_message(parent, stanza_error, message=None):
+
+    if not isinstance(stanza_error, org.wayround.xmpp.core.StanzaError):
+        raise TypeError("`stanza' must be org.wayround.xmpp.core.StanzaError")
+
+    message2 = ''
+    if message:
+        message2 = '{}\n\n'.format(message)
+
+    d = org.wayround.utils.gtk.MessageDialog(
+        parent,
+        0,
+        Gtk.MessageType.ERROR,
+        Gtk.ButtonsType.OK,
+        "{}{}".format(
+            message2,
+            stanza_error.to_text()
             )
-        d.run()
-        d.destroy()
+        )
+    d.run()
+    d.destroy()
 
     return

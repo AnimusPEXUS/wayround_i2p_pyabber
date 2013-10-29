@@ -3,6 +3,7 @@ from gi.repository import Gtk
 
 import org.wayround.xmpp.core
 
+
 class ContactEditor:
 
     def __init__(self, controller, jid=None, mode='new'):
@@ -45,7 +46,6 @@ class ContactEditor:
         if mode == 'edit':
             jid_entry.set_text(jid)
 
-
         nick_box = Gtk.Box()
         nick_box.set_margin_top(5)
         nick_box.set_margin_bottom(5)
@@ -59,13 +59,11 @@ class ContactEditor:
         else:
             nick_frame.set_label("Nickname for {}".format(jid))
 
-
         nick_box.set_orientation(Gtk.Orientation.VERTICAL)
         nick_box.set_margin_top(5)
         nick_box.set_margin_bottom(5)
         nick_box.set_margin_left(5)
         nick_box.set_margin_right(5)
-
 
         nick_edit = Gtk.Entry()
         self.nick_edit = nick_edit
@@ -99,7 +97,6 @@ class ContactEditor:
         gr_entry_box = Gtk.Box()
         gr_entry_box.set_orientation(Gtk.Orientation.HORIZONTAL)
 
-
         new_group_entry = Gtk.Entry()
 
         gr_entry_box.pack_start(
@@ -111,7 +108,6 @@ class ContactEditor:
         gr_entry_box.set_spacing(5)
 
         self.new_group_entry = new_group_entry
-
 
         f1 = Gtk.Frame()
         sw1 = Gtk.ScrolledWindow()
@@ -125,7 +121,9 @@ class ContactEditor:
         available_groups_treeview.append_column(c1)
         available_groups_treeview.set_headers_visible(False)
 
-        available_groups_treeview.get_selection().set_mode(Gtk.SelectionMode.MULTIPLE)
+        available_groups_treeview.get_selection().set_mode(
+            Gtk.SelectionMode.MULTIPLE
+            )
 
         available_g_box.pack_start(
             Gtk.Label("Available Groups"), False, False, 0
@@ -148,10 +146,8 @@ class ContactEditor:
         action_g_box.pack_start(add_button, False, False, 0)
         action_g_box.pack_start(remove_button, False, False, 0)
 
-
         current_g_box = Gtk.Box()
         current_g_box.set_orientation(Gtk.Orientation.VERTICAL)
-
 
         f2 = Gtk.Frame()
         sw2 = Gtk.ScrolledWindow()
@@ -165,12 +161,13 @@ class ContactEditor:
         current_groups_treeview.append_column(c2)
         current_groups_treeview.set_headers_visible(False)
 
-        current_groups_treeview.get_selection().set_mode(Gtk.SelectionMode.MULTIPLE)
+        current_groups_treeview.get_selection().set_mode(
+            Gtk.SelectionMode.MULTIPLE
+            )
 
         current_g_box.pack_start(Gtk.Label("Current Groups"), False, False, 0)
         current_g_box.pack_start(f2, True, True, 0)
         current_g_box.set_spacing(5)
-
 
         groups_box.pack_start(available_g_box, True, True, 0)
         groups_box.pack_start(action_g_box, False, False, 0)
@@ -279,7 +276,6 @@ class ContactEditor:
         for i in rows:
             rows2.append(Gtk.TreeRowReference.new(am, i))
 
-
         for i in rows2:
 
             am.remove(am.get_iter(i.get_path()))
@@ -291,7 +287,6 @@ class ContactEditor:
         self.current_groups_treeview.set_model(am)
 
         return
-
 
     def _on_save_clicked(self, button):
 
@@ -316,10 +311,6 @@ class ContactEditor:
 
         self.window.destroy()
 
-
-
-
     def show(self):
         self.window.set_position(Gtk.WindowPosition.CENTER)
         self.window.show_all()
-

@@ -8,7 +8,9 @@ from gi.repository import Pango
 
 import org.wayround.utils.gtk
 
-class Dumb: pass
+
+class Dumb:
+    pass
 
 
 class ConnectionPresetWindow:
@@ -26,7 +28,6 @@ class ConnectionPresetWindow:
 
             if not isinstance(preset_data, dict):
                 raise ValueError("in ['edit'] mode `preset_data' must be dict")
-
 
         self.window_elements = Dumb()
 
@@ -49,7 +50,6 @@ class ConnectionPresetWindow:
         b.set_margin_bottom(5)
         b.set_margin_left(5)
         b.set_margin_right(5)
-
 
         preset_name_ff = Gtk.Frame()
         preset_name_ff.set_label("Preset Name")
@@ -97,7 +97,6 @@ class ConnectionPresetWindow:
 
         resource_switch_combobox.set_valign(Gtk.Align.CENTER)
 
-
         password_entry = Gtk.Entry()
         password_entry2 = Gtk.Entry()
         password_entry.set_hexpand(True)
@@ -124,7 +123,6 @@ class ConnectionPresetWindow:
         pwd_grid.set_margin_left(5)
         pwd_grid.set_margin_right(5)
 
-
         resource_switch_combobox_model = Gtk.ListStore(int, str)
         resource_switch_combobox_model.append([0, "Manual"])
         resource_switch_combobox_model.append([1, "Generate Locally"])
@@ -136,7 +134,6 @@ class ConnectionPresetWindow:
         renderer_text = Gtk.CellRendererText()
         resource_switch_combobox.pack_start(renderer_text, True)
         resource_switch_combobox.add_attribute(renderer_text, "text", 1)
-
 
         manual_server_ff = Gtk.Frame()
         b.pack_start(manual_server_ff, True, True, 0)
@@ -204,7 +201,8 @@ class ConnectionPresetWindow:
         bind_cb = Gtk.CheckButton.new_with_label("Bind Resource")
 
         session_cb = Gtk.CheckButton.new_with_label(
-            "Acquire Session if proposed\n(deprecated but required by some modern servers)"
+            "Acquire Session if proposed\n"
+            "(deprecated but required by some modern servers)"
             )
 
         tls_routines_ff = Gtk.Frame()
@@ -219,22 +217,25 @@ class ConnectionPresetWindow:
         tls_routines_box.set_margin_left(5)
         tls_routines_box.set_margin_right(5)
 
-
         starttls_necessarity_mode_combobox = Gtk.ComboBox()
         starttls_necessarity_mode_combobox.set_valign(Gtk.Align.CENTER)
 
         starttls_necessarity_mode_combobox_model = Gtk.ListStore(int, str)
         starttls_necessarity_mode_combobox_model.append([0, "Necessary"])
-        starttls_necessarity_mode_combobox_model.append([1, "Can continue without TLS"])
+        starttls_necessarity_mode_combobox_model.append(
+            [1, "Can continue without TLS"]
+            )
 
-        starttls_necessarity_mode_combobox.set_model(starttls_necessarity_mode_combobox_model)
+        starttls_necessarity_mode_combobox.set_model(
+            starttls_necessarity_mode_combobox_model
+            )
         starttls_necessarity_mode_combobox.set_id_column(0)
 
         renderer_text = Gtk.CellRendererText()
         starttls_necessarity_mode_combobox.pack_start(renderer_text, True)
-        starttls_necessarity_mode_combobox.add_attribute(renderer_text, "text", 1)
-
-
+        starttls_necessarity_mode_combobox.add_attribute(
+            renderer_text, "text", 1
+            )
 
         cert_verification_mode_combobox = Gtk.ComboBox()
         cert_verification_mode_combobox.set_valign(Gtk.Align.CENTER)
@@ -242,19 +243,26 @@ class ConnectionPresetWindow:
         cert_verification_mode_combobox_model = Gtk.ListStore(int, str)
         cert_verification_mode_combobox_model.append([0, "Must be Trusted"])
         cert_verification_mode_combobox_model.append([1, "Can be Self-Signed"])
-        cert_verification_mode_combobox_model.append([2, "Can be Self-Signed or Untrusted"])
+        cert_verification_mode_combobox_model.append(
+            [2, "Can be Self-Signed or Untrusted"]
+            )
         cert_verification_mode_combobox_model.append([3, "No verification"])
 
-        cert_verification_mode_combobox.set_model(cert_verification_mode_combobox_model)
+        cert_verification_mode_combobox.set_model(
+            cert_verification_mode_combobox_model
+            )
         cert_verification_mode_combobox.set_id_column(0)
 
         renderer_text = Gtk.CellRendererText()
         cert_verification_mode_combobox.pack_start(renderer_text, True)
         cert_verification_mode_combobox.add_attribute(renderer_text, "text", 1)
 
-
-        tls_routines_box.pack_start(starttls_necessarity_mode_combobox, False, True, 0)
-        tls_routines_box.pack_start(cert_verification_mode_combobox, False, True, 0)
+        tls_routines_box.pack_start(
+            starttls_necessarity_mode_combobox, False, True, 0
+            )
+        tls_routines_box.pack_start(
+            cert_verification_mode_combobox, False, True, 0
+            )
 
         auto_routines_grid_or_box.attach(tls_routines_ff, 0, 0, 1, 1)
         auto_routines_grid_or_box.attach(register_cb, 0, 1, 1, 1)
@@ -270,9 +278,6 @@ class ConnectionPresetWindow:
         auto_routines_grid_or_box.set_margin_bottom(5)
         auto_routines_grid_or_box.set_margin_left(5)
         auto_routines_grid_or_box.set_margin_right(5)
-
-
-
 
         manual_routines_ff = Gtk.Frame()
         manual_routines_label = Gtk.Label(
@@ -321,19 +326,21 @@ class ConnectionPresetWindow:
         ok_button.connect('clicked', self._ok)
         cancel_button.connect('clicked', self._cancel)
 
-        resource_switch_combobox.connect('changed', self._resource_mode_changed)
+        resource_switch_combobox.connect(
+            'changed', self._resource_mode_changed
+            )
         manual_server_cb.connect('toggled', self._manual_server_toggled)
         auto_routines_rb.connect('toggled', self._auto_routines_rb_toggled)
         manual_routines_rb.connect('toggled', self._manual_routines_rb_toggled)
 
         win.connect('destroy', self._window_destroy)
 
-
         self.window_elements.win = win
         self.window_elements.preset_name_entry = preset_name_entry
         self.window_elements.username_entry = username_entry
         self.window_elements.server_entry = server_entry
-        self.window_elements.resource_switch_combobox = resource_switch_combobox
+        self.window_elements.resource_switch_combobox = \
+            resource_switch_combobox
         self.window_elements.resource_entry = resource_entry
         self.window_elements.password_entry = password_entry
         self.window_elements.password_entry2 = password_entry2
@@ -343,15 +350,18 @@ class ConnectionPresetWindow:
         self.window_elements.auto_routines_rb = auto_routines_rb
         self.window_elements.manual_routines_rb = manual_routines_rb
         self.window_elements.use_starttls_cb = use_starttls_cb
-        self.window_elements.starttls_necessarity_mode_combobox = starttls_necessarity_mode_combobox
-        self.window_elements.cert_verification_mode_combobox = cert_verification_mode_combobox
+        self.window_elements.starttls_necessarity_mode_combobox = \
+            starttls_necessarity_mode_combobox
+        self.window_elements.cert_verification_mode_combobox = \
+            cert_verification_mode_combobox
         self.window_elements.register_cb = register_cb
         self.window_elements.login_cb = login_cb
         self.window_elements.bind_cb = bind_cb
         self.window_elements.session_cb = session_cb
 
         self.window_elements.host_port_grid = host_port_grid
-        self.window_elements.auto_routines_grid_or_box = auto_routines_grid_or_box
+        self.window_elements.auto_routines_grid_or_box = \
+            auto_routines_grid_or_box
         self.window_elements.manual_routines_label = manual_routines_label
         self.window_elements.cancel_button = cancel_button
 
@@ -404,7 +414,6 @@ class ConnectionPresetWindow:
 
         resource_switch_combobox.set_active(active_cb_value)
 
-
         active_cb_value = 0
 
         if self.result['starttls_necessarity_mode'] == 'necessary':
@@ -412,26 +421,31 @@ class ConnectionPresetWindow:
         elif self.result['starttls_necessarity_mode'] == 'unnecessary':
             active_cb_value = 1
         else:
-            raise ValueError("Invalid result['starttls_necessarity_mode'] value")
+            raise ValueError(
+                "Invalid result['starttls_necessarity_mode'] value"
+                )
 
         starttls_necessarity_mode_combobox.set_active(active_cb_value)
-
 
         active_cb_value = 0
 
         if self.result['cert_verification_mode'] == 'trusted':
             active_cb_value = 0
+
         elif self.result['cert_verification_mode'] == 'can_selfsigned':
             active_cb_value = 1
-        elif self.result['cert_verification_mode'] == 'can_selfsigned_can_untrusted':
+
+        elif self.result['cert_verification_mode'] == \
+            'can_selfsigned_can_untrusted':
             active_cb_value = 2
+
         elif self.result['cert_verification_mode'] == 'no_verification':
             active_cb_value = 3
+
         else:
             raise ValueError("Invalid result['cert_verification_mode'] value")
 
         cert_verification_mode_combobox.set_active(active_cb_value)
-
 
         manual_server_cb.set_active(self.result['manual_host_and_port'])
         self._manual_server_toggled(manual_server_cb)
@@ -451,7 +465,6 @@ class ConnectionPresetWindow:
         session_cb.set_active(self.result['session'])
 
         return
-
 
     def run(self):
 
@@ -508,17 +521,33 @@ class ConnectionPresetWindow:
 
                     self.result['button'] = 'ok'
 
+                    self.result['name'] = \
+                        self.window_elements.preset_name_entry.get_text()
 
-                    self.result['name'] = self.window_elements.preset_name_entry.get_text()
-                    self.result['username'] = self.window_elements.username_entry.get_text()
-                    self.result['server'] = self.window_elements.server_entry.get_text()
-                    self.result['resource'] = self.window_elements.resource_entry.get_text()
-                    self.result['password'] = self.window_elements.password_entry.get_text()
-                    self.result['password2'] = self.window_elements.password_entry2.get_text()
-                    self.result['host'] = self.window_elements.host_entry.get_text()
-                    self.result['port'] = int(self.window_elements.port_entry.get_text())
+                    self.result['username'] = \
+                        self.window_elements.username_entry.get_text()
 
-                    active_cb_value = self.window_elements.resource_switch_combobox.get_active()
+                    self.result['server'] = \
+                        self.window_elements.server_entry.get_text()
+
+                    self.result['resource'] = \
+                        self.window_elements.resource_entry.get_text()
+
+                    self.result['password'] = \
+                        self.window_elements.password_entry.get_text()
+
+                    self.result['password2'] = \
+                        self.window_elements.password_entry2.get_text()
+
+                    self.result['host'] = \
+                        self.window_elements.host_entry.get_text()
+
+                    self.result['port'] = \
+                        int(self.window_elements.port_entry.get_text())
+
+                    active_cb_value = \
+                        self.window_elements.\
+                        resource_switch_combobox.get_active()
 
                     if active_cb_value == 0:
                         self.result['resource_mode'] = 'manual'
@@ -527,50 +556,71 @@ class ConnectionPresetWindow:
                     elif active_cb_value == 2:
                         self.result['resource_mode'] = 'server'
                     else:
-                        raise ValueError("Invalid result['resource_switch_combobox'] value")
+                        raise ValueError(
+                            "Invalid result['resource_switch_combobox'] value"
+                            )
 
-
-                    active_cb_value = self.window_elements.starttls_necessarity_mode_combobox.get_active()
+                    active_cb_value = \
+                        self.window_elements.\
+                            starttls_necessarity_mode_combobox.get_active()
 
                     if active_cb_value == 0:
                         self.result['starttls_necessarity_mode'] = 'necessary'
                     elif active_cb_value == 1:
-                        self.result['starttls_necessarity_mode'] = 'unnecessary'
+                        self.result['starttls_necessarity_mode'] = \
+                            'unnecessary'
                     else:
-                        raise ValueError("Invalid result['starttls_necessarity_mode'] value")
+                        raise ValueError(
+                            "Invalid result['starttls_necessarity_mode'] value"
+                            )
 
-
-
-
-                    active_cb_value = self.window_elements.cert_verification_mode_combobox.get_active()
+                    active_cb_value = \
+                        self.window_elements.\
+                            cert_verification_mode_combobox.get_active()
 
                     if active_cb_value == 0:
-                        self.result['cert_verification_mode'] = 'trusted'
+                        self.result['cert_verification_mode'] = \
+                            'trusted'
+
                     elif active_cb_value == 1:
-                        self.result['cert_verification_mode'] = 'can_selfsigned'
+                        self.result['cert_verification_mode'] = \
+                            'can_selfsigned'
+
                     elif active_cb_value == 2:
-                        self.result['cert_verification_mode'] = 'can_selfsigned_can_untrusted'
+                        self.result['cert_verification_mode'] = \
+                            'can_selfsigned_can_untrusted'
+
                     elif active_cb_value == 3:
-                        self.result['cert_verification_mode'] = 'no_verification'
+                        self.result['cert_verification_mode'] = \
+                            'no_verification'
                     else:
-                        raise ValueError("Invalid result['cert_verification_mode'] value")
+                        raise ValueError(
+                            "Invalid result['cert_verification_mode'] value"
+                            )
 
+                    self.result['manual_host_and_port'] = \
+                        self.window_elements.manual_server_cb.get_active()
 
-
-                    self.result['manual_host_and_port'] = self.window_elements.manual_server_cb.get_active()
-
-                    if self.window_elements.auto_routines_rb.get_active() == True:
+                    if (self.window_elements.auto_routines_rb.get_active()
+                        == True):
                         self.result['stream_features_handling'] = 'auto'
                     else:
                         self.result['stream_features_handling'] = 'manual'
 
+                    self.result['STARTTLS'] = \
+                        self.window_elements.use_starttls_cb.get_active()
 
-                    self.result['STARTTLS'] = self.window_elements.use_starttls_cb.get_active()
-                    self.result['register'] = self.window_elements.register_cb.get_active()
-                    self.result['login'] = self.window_elements.login_cb.get_active()
-                    self.result['bind'] = self.window_elements.bind_cb.get_active()
-                    self.result['session'] = self.window_elements.session_cb.get_active()
+                    self.result['register'] = \
+                        self.window_elements.register_cb.get_active()
 
+                    self.result['login'] = \
+                        self.window_elements.login_cb.get_active()
+
+                    self.result['bind'] = \
+                        self.window_elements.bind_cb.get_active()
+
+                    self.result['session'] = \
+                        self.window_elements.session_cb.get_active()
 
                     self.window_elements.win.destroy()
 
@@ -593,11 +643,15 @@ class ConnectionPresetWindow:
 
     def _auto_routines_rb_toggled(self, cb):
 
-        self.window_elements.auto_routines_grid_or_box.set_sensitive(cb.get_active())
+        self.window_elements.auto_routines_grid_or_box.set_sensitive(
+            cb.get_active()
+            )
 
     def _manual_routines_rb_toggled(self, cb):
 
-        self.window_elements.manual_routines_label.set_sensitive(cb.get_active())
+        self.window_elements.manual_routines_label.set_sensitive(
+            cb.get_active()
+            )
 
     def _window_destroy(self, window):
 

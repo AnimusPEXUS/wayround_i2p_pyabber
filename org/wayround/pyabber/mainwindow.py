@@ -26,7 +26,9 @@ import org.wayround.pyabber.chat_pager
 import org.wayround.pyabber.disco
 
 
-class Dumb: pass
+class Dumb:
+    pass
+
 
 class MainWindow:
 
@@ -47,7 +49,6 @@ class MainWindow:
         if not os.path.isdir(self.profiles_path):
             os.makedirs(self.profiles_path)
 
-
         self.window_elements = Dumb()
 
         org.wayround.pyabber.icondb.set_dir(
@@ -65,8 +66,6 @@ class MainWindow:
         window.set_title("Pyabber :P")
         window.maximize()
         window.set_hide_titlebar_when_maximized(True)
-#        self.window_elements.window.set_decorated(False)
-#        self.window_elements.window.set_resizable(False)
 
         main_box = Gtk.Box()
         main_box.set_orientation(Gtk.Orientation.VERTICAL)
@@ -78,44 +77,32 @@ class MainWindow:
         xmpp_core_box.set_orientation(Gtk.Orientation.HORIZONTAL)
         xmpp_core_box.pack_start(Gtk.Label("Text"), True, True, 0)
 
-
-
         _l = Gtk.Label("Program")
         _b = Gtk.Button("Exit")
         _b.connect('clicked', self.app_exit)
         _b.set_relief(Gtk.ReliefStyle.NONE)
         main_notebook.append_page(_b, _l)
-#        main_notebook.child_set_property(_b, 'tab-expand', True)
 
         _l = Gtk.Label("Profile")
         profile_tab = self._build_profile_tab()
         main_notebook.append_page(profile_tab, _l)
-#        main_notebook.child_set_property(profile_tab, 'tab-expand', True)
 
         _l = Gtk.Label("Connection")
         connection_tab = self._build_connection_tab()
         main_notebook.append_page(connection_tab, _l)
-#        main_notebook.child_set_property(connection_tab, 'tab-expand', True)
 
         _l = Gtk.Label("Stream Features")
         stream_features_tab = self._build_stream_features_tab()
         stream_features_tab.set_sensitive(False)
         main_notebook.append_page(stream_features_tab, _l)
-#        main_notebook.child_set_property(stream_features_tab, 'tab-expand', True)
 
         _l = Gtk.Label("Messaging and Presence")
         messaging_and_presence_tab = self._build_messaging_and_presence()
         main_notebook.append_page(messaging_and_presence_tab, _l)
-#        main_notebook.child_set_property(messaging_and_presence_tab, 'tab-expand', True)
-
-#        _l = Gtk.Label("PubSub")
-#        main_notebook.append_page(Gtk.Label(""), _l)
-#        main_notebook.child_set_property(profile_tab, 'tab-expand', True)
 
         _l = Gtk.Label("Status")
         status_tab = self._build_status_tab()
         main_notebook.append_page(status_tab, _l)
-#        main_notebook.child_set_property(status_tab, 'tab-expand', True)
 
         main_box.pack_start(main_notebook, True, True, 0)
 
@@ -130,7 +117,6 @@ class MainWindow:
         self.preset_data = None
 
         self.client_working = False
-
 
         self.window_elements.window = window
         self.window_elements.profile_tab = profile_tab
@@ -239,8 +225,9 @@ class MainWindow:
         self.window_elements.profile_icon_view = icon_view
         self.window_elements.profile_info_label = profile_info_label
 
-        icon_view.connect('item-activated', self.profile_tab_iconview_item_activated)
-#        b.set_sensitive(False)
+        icon_view.connect(
+            'item-activated', self.profile_tab_iconview_item_activated
+            )
 
         return b
 
@@ -256,6 +243,8 @@ class MainWindow:
         b.set_orientation(Gtk.Orientation.VERTICAL)
 
         conn_table = Gtk.TreeView()
+
+        # FIXME: column additions looks too scary!
 
         _c = Gtk.TreeViewColumn()
         _r = Gtk.CellRendererText()
@@ -369,7 +358,6 @@ class MainWindow:
         _c.set_title('Sess')
         conn_table.append_column(_c)
 
-
         conn_table_f = Gtk.Frame()
         sw = Gtk.ScrolledWindow()
         sw.add(conn_table)
@@ -387,6 +375,7 @@ class MainWindow:
         bb01.set_margin_right(5)
         bb01.set_margin_top(5)
         bb01.set_margin_bottom(5)
+        bb01.set_spacing(5)
 
         bb01_ff = Gtk.Frame()
         bb01_ff.add(bb01)
@@ -412,7 +401,6 @@ class MainWindow:
         but4.connect('clicked', self.connections_tab_edit_clicked)
         but5.connect('clicked', self.connections_tab_delete_clicked)
 
-
         b.pack_start(bb01_ff, False, True, 0)
         b.pack_start(conn_table_f, True, True, 0)
 
@@ -435,7 +423,6 @@ class MainWindow:
         featuress_grid.set_margin_bottom(5)
         featuress_grid.set_margin_left(5)
         featuress_grid.set_margin_right(5)
-
 
         bb = Gtk.ButtonBox()
         bb.set_orientation(Gtk.Orientation.HORIZONTAL)
@@ -484,25 +471,35 @@ class MainWindow:
         roster_toolbar_show_disco_button = Gtk.ToolButton()
         roster_send_space_button = Gtk.ToolButton()
 
-
-
         add_contact_image = Gtk.Image()
-        add_contact_image.set_from_pixbuf(org.wayround.pyabber.icondb.get('plus'))
+        add_contact_image.set_from_pixbuf(
+            org.wayround.pyabber.icondb.get('plus')
+            )
 
         initial_presence_image = Gtk.Image()
-        initial_presence_image.set_from_pixbuf(org.wayround.pyabber.icondb.get('initial_presence'))
+        initial_presence_image.set_from_pixbuf(
+            org.wayround.pyabber.icondb.get('initial_presence')
+            )
 
         show_disco_image = Gtk.Image()
-        show_disco_image.set_from_pixbuf(org.wayround.pyabber.icondb.get('disco'))
+        show_disco_image.set_from_pixbuf(
+            org.wayround.pyabber.icondb.get('disco')
+            )
 
         get_roster_image = Gtk.Image()
-        get_roster_image.set_from_pixbuf(org.wayround.pyabber.icondb.get('refresh_roster'))
+        get_roster_image.set_from_pixbuf(
+            org.wayround.pyabber.icondb.get('refresh_roster')
+            )
 
         new_presence_image = Gtk.Image()
-        new_presence_image.set_from_pixbuf(org.wayround.pyabber.icondb.get('new_presence_button'))
+        new_presence_image.set_from_pixbuf(
+            org.wayround.pyabber.icondb.get('new_presence_button')
+            )
 
         send_space_image = Gtk.Image()
-        send_space_image.set_from_pixbuf(org.wayround.pyabber.icondb.get('send_keepalive_space'))
+        send_space_image.set_from_pixbuf(
+            org.wayround.pyabber.icondb.get('send_keepalive_space')
+            )
 
         roster_toolbar_add_contact_button.set_icon_widget(add_contact_image)
         roster_toolbar_add_contact_button.connect(
@@ -514,13 +511,16 @@ class MainWindow:
             'clicked', self._on_show_disco_button
             )
 
-        roster_toolbar_initial_presence_button.set_icon_widget(initial_presence_image)
+        roster_toolbar_initial_presence_button.set_icon_widget(
+            initial_presence_image
+            )
         roster_toolbar_initial_presence_button.connect(
             'clicked', self._on_initial_presence_button_clicked
             )
 
-
-        roster_toolbar_change_presence_button.set_icon_widget(new_presence_image)
+        roster_toolbar_change_presence_button.set_icon_widget(
+            new_presence_image
+            )
         roster_toolbar_change_presence_button.connect(
             'clicked', self._on_change_presence_button_clicked
             )
@@ -546,7 +546,6 @@ class MainWindow:
 
         main_paned = Gtk.Paned()
         main_paned.set_orientation(Gtk.Orientation.HORIZONTAL)
-
 
         self.chat_pager = org.wayround.pyabber.chat_pager.ChatPager(
             self.controller
@@ -587,10 +586,6 @@ class MainWindow:
                 )
             self.connections_tab_reload_list()
 
-    def new_stream_features(self, obj, attract_attention=False, disable_controls=True):
-        # TODO: here must be a stream features tab constructor
-        pass
-
     def connect(self, name, data):
 
         if not self.client_working:
@@ -630,7 +625,6 @@ class MainWindow:
                 self.controller.stop()
 
             self.controller = None
-
 
     def profile_tab_new_clicked(self, button):
 
@@ -677,14 +671,15 @@ class MainWindow:
             by = org.wayround.utils.crypto.encrypt_data(data, password)
 
             f = open(
-                org.wayround.utils.path.join(self.profiles_path, name + '.pfl'),
+                org.wayround.utils.path.join(
+                    self.profiles_path, name + '.pfl'
+                    ),
                 'w'
                 )
 
             f.write(by)
 
             f.close()
-
 
     def profile_tab_delete_clicked(self, button):
 
@@ -706,7 +701,8 @@ class MainWindow:
 
         else:
 
-            name = self.window_elements.profile_icon_view.get_model()[items[0]][0][:-4]
+            name = self.window_elements.\
+                profile_icon_view.get_model()[items[0]][0][:-4]
 
             d = org.wayround.utils.gtk.MessageDialog(
                 self.window_elements.window,
@@ -746,7 +742,6 @@ class MainWindow:
 
             self.profile_tab_refresh_list()
 
-
     def profile_tab_deactivate_clicked(self, button):
         self.profile_name = None
         self.profile_data = None
@@ -773,7 +768,8 @@ class MainWindow:
 
         else:
 
-            name = self.window_elements.profile_icon_view.get_model()[items[0]][0][:-4]
+            name = self.window_elements.\
+                profile_icon_view.get_model()[items[0]][0][:-4]
 
             w = org.wayround.pyabber.profilewindow.ProfileWindow(
                 self.window_elements.window, typ='open', profile=name
@@ -810,8 +806,6 @@ class MainWindow:
         self.display_open_profile_info()
 
         return
-
-
 
     def profile_tab_refresh_list_clicked(self, button):
 
@@ -855,8 +849,12 @@ class MainWindow:
 
     def display_open_profile_info(self):
 
-        if not hasattr(self, 'profile_name') or not isinstance(self.profile_data, dict):
-            self.window_elements.profile_info_label.set_text("Profile not activated")
+        if (not hasattr(self, 'profile_name')
+            or not isinstance(self.profile_data, dict)):
+
+            self.window_elements.profile_info_label.set_text(
+                "Profile not activated"
+                )
 
         else:
             self.window_elements.profile_info_label.set_text(
@@ -878,9 +876,12 @@ class MainWindow:
             new_preset = {}
             new_preset.update(r)
 
-            for i in range(len(self.profile_data['connection_presets']) - 1, -1, -1):
+            for i in range(
+                len(self.profile_data['connection_presets']) - 1, -1, -1
+                ):
 
-                if self.profile_data['connection_presets'][i]['name'] == new_preset['name']:
+                if (self.profile_data['connection_presets'][i]['name']
+                    == new_preset['name']):
                     del self.profile_data['connection_presets'][i]
 
             self.profile_data['connection_presets'].append(new_preset)
@@ -889,7 +890,9 @@ class MainWindow:
 
     def connections_tab_get_selection_name_and_data(self):
 
-        items = self.window_elements.conn_table.get_selection().get_selected_rows()[1]
+        items = \
+            self.window_elements.conn_table.\
+            get_selection().get_selected_rows()[1]
 
         i_len = len(items)
 
@@ -937,7 +940,6 @@ class MainWindow:
 
         return name, data
 
-
     def connections_tab_edit_clicked(self, button):
 
         name, data = self.connections_tab_get_selection_name_and_data()
@@ -965,10 +967,12 @@ class MainWindow:
                     len(self.profile_data['connection_presets']) - 1, -1, -1
                     ):
 
-                    if self.profile_data['connection_presets'][i]['name'] == new_preset['name']:
+                    if (self.profile_data['connection_presets'][i]['name']
+                        == new_preset['name']):
                         del self.profile_data['connection_presets'][i]
 
-                    elif self.profile_data['connection_presets'][i]['name'] == name:
+                    elif (self.profile_data['connection_presets'][i]['name']
+                          == name):
                         del self.profile_data['connection_presets'][i]
 
                 self.profile_data['connection_presets'].append(new_preset)
@@ -999,7 +1003,8 @@ class MainWindow:
                     len(self.profile_data['connection_presets']) - 1, -1, -1
                     ):
 
-                    if self.profile_data['connection_presets'][i]['name'] == name:
+                    if (self.profile_data['connection_presets'][i]['name']
+                        == name):
                         del self.profile_data['connection_presets'][i]
 
                 self.profile_tab_save_active()
@@ -1013,7 +1018,6 @@ class MainWindow:
 
     def connections_tab_disconnect_clicked(self):
         self.disconnect()
-
 
     def connections_tab_reload_list(self):
 
@@ -1065,7 +1069,6 @@ class MainWindow:
 
         self.window_elements.conn_table.set_model(storage)
 
-
     def connections_tab_refresh_clicked(self, button):
         self.connections_tab_reload_list()
 
@@ -1086,7 +1089,8 @@ class MainWindow:
             d.run()
             d.destroy()
         else:
-            if isinstance(res, org.wayround.xmpp.core.Stanza) and res.is_error():
+            if (isinstance(res, org.wayround.xmpp.core.Stanza)
+                and res.is_error()):
                 d = org.wayround.utils.gtk.MessageDialog(
                     self.window_elements.window,
                     Gtk.DialogFlags.MODAL
@@ -1098,7 +1102,8 @@ class MainWindow:
                 d.run()
                 d.destroy()
 
-            elif isinstance(res, org.wayround.xmpp.core.Stanza) and not res.is_error():
+            elif (isinstance(res, org.wayround.xmpp.core.Stanza)
+                  and not res.is_error()):
 
                 d = org.wayround.utils.gtk.MessageDialog(
                     self.window_elements.window,
@@ -1162,4 +1167,3 @@ class MainWindow:
 
     def _on_send_space_button_clicked(self, button):
         self.controller.client.io_machine.send(' ')
-

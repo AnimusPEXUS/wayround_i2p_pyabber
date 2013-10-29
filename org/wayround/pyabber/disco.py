@@ -14,6 +14,7 @@ import org.wayround.xmpp.xdata
 
 import org.wayround.pyabber.adhoc
 import org.wayround.pyabber.muc
+import org.wayround.pyabber.privacy
 
 
 class DiscoMenu:
@@ -35,6 +36,9 @@ class DiscoMenu:
 
         muc_mi = Gtk.MenuItem("MUC")
 
+        privacy_mi = Gtk.MenuItem("Privacy..")
+        privacy_mi.connect('activate', self._on_privacy_mi_activated)
+
         self.addr_mi = addr_mi
 
         self._menu.append(addr_mi)
@@ -43,6 +47,7 @@ class DiscoMenu:
         self._menu.append(Gtk.SeparatorMenuItem())
         self._menu.append(commands_mi)
         self._menu.append(muc_mi)
+        self._menu.append(privacy_mi)
 
         addr_submenu = Gtk.Menu()
         addr_mi.set_submenu(addr_submenu)
@@ -63,10 +68,10 @@ class DiscoMenu:
             stanza_processor=self._controller.client.stanza_processor
             )
 
-
         commands_mi.set_sensitive(False)
         error_mi.set_sensitive(False)
         muc_mi.set_sensitive(False)
+#        privacy_mi.set_sensitive(False)
 
         if stanza.is_error():
             error_mi.set_label(stanza.gen_error().gen_text().strip())
@@ -85,6 +90,10 @@ class DiscoMenu:
             muc_mi.set_sensitive(
                 q.has_feature('http://jabber.org/protocol/muc')
                 )
+
+#            privacy_mi.set_sensitive(
+#                q.has_feature('jabber:iq:privacy')
+#                )
 
             muc_mi.set_submenu(
                 org.wayround.pyabber.muc.MUCPopupMenu(
@@ -122,10 +131,24 @@ class DiscoMenu:
 
         disco(self._controller, self._jid, self._node)
 
+    def _on_privacy_mi_activated(self, menuitem):
+
+        w = org.wayround.pyabber.privacy.PrivacyEditor(
+            to_jid=self._jid,
+            from_jid=self._controller.jid.full(),
+            stanza_processor=self._controller.client.stanza_processor
+            )
+
+        w.show()
+
+        return
+
+
 def disco_menu(controller, jid, node=None):
     disco_menu = DiscoMenu(controller, jid, node)
 
     disco_menu.show()
+
 
 class Disco:
 
@@ -161,7 +184,9 @@ class Disco:
         clear_node_button = Gtk.Button("Clear")
         server_menu_button = Gtk.Button("This Entity Menu")
         self._server_menu_button = server_menu_button
-        server_menu_button.connect('clicked', self._on_server_menu_button_clicked)
+        server_menu_button.connect(
+            'clicked', self._on_server_menu_button_clicked
+            )
 
         addr_control_grid.attach(Gtk.Label("JID"), 0, 0, 1, 1)
         addr_control_grid.attach(jid_entry, 1, 0, 2, 1)
@@ -183,9 +208,7 @@ class Disco:
 
         view_tw.set_rules_hint(True)
 
-
         self._view_tw = view_tw
-
 
         view_sw.add(view_tw)
         view_frame.add(view_sw)
@@ -211,7 +234,6 @@ class Disco:
         self.window = window
         self.jid_entry = jid_entry
         self.node_entry = node_entry
-
 
         # markup, disco, tag, category, type, name, var, jid, node
         # disco in ['info', 'items']
@@ -250,8 +272,6 @@ class Disco:
         view_tw.append_column(_c)
         view_tw.set_headers_visible(False)
 
-
-
         view_tw.connect('row-activated', self._on_row_activated)
         view_tw.connect('button-release-event', self._on_treeview_buttonpress)
 
@@ -287,7 +307,6 @@ class Disco:
         self._go_button.set_sensitive(False)
         self._view_tw.set_sensitive(False)
 
-
         try:
 
             self._stat_bar.push(0, "Clearing tree")
@@ -314,7 +333,6 @@ class Disco:
                 node=node,
                 stanza_processor=self._controller.client.stanza_processor
                 )
-
 
             x = res['info'][0].get_xdata()
 
@@ -344,7 +362,6 @@ class Disco:
                      ]
                     )
 
-
             identities = []
             features = []
             items = []
@@ -368,9 +385,14 @@ class Disco:
 
             current_num = 0
 
-            self._stat_bar.push(0, "Adding result to tree ({} records to add)".format(total_num))
+            self._stat_bar.push(
+                0,
+                "Adding result to tree ({} records to add)".format(total_num)
+                )
 
-            self._stat_bar.push(0, "Adding idents ({} records to add)".format(len(identities)))
+            self._stat_bar.push(
+                0, "Adding idents ({} records to add)".format(len(identities))
+                )
 
             if res['info'][1].is_error():
                 itera = None
@@ -429,10 +451,13 @@ class Disco:
                     )
 
                 current_num += 1
-                self._progress_bar.set_fraction(1. / (float(total_num) / current_num))
+                self._progress_bar.set_fraction(
+                    1. / (float(total_num) / current_num)
+                    )
 
-
-            self._stat_bar.push(0, "Adding features ({} records to add)".format(len(features)))
+            self._stat_bar.push(
+                0, "Adding features ({} records to add)".format(len(features))
+                )
 
             for i in features:
 
@@ -459,9 +484,13 @@ class Disco:
                     )
 
                 current_num += 1
-                self._progress_bar.set_fraction(1. / (float(total_num) / current_num))
+                self._progress_bar.set_fraction(
+                    1. / (float(total_num) / current_num)
+                    )
 
-            self._stat_bar.push(0, "Adding items ({} records to add)".format(len(items)))
+            self._stat_bar.push(
+                0, "Adding items ({} records to add)".format(len(items))
+                )
 
             if res['items'][1].is_error():
                 itera = None
@@ -519,10 +548,10 @@ class Disco:
                      ]
                     )
 
-
                 current_num += 1
-                self._progress_bar.set_fraction(1. / (float(total_num) / current_num))
-
+                self._progress_bar.set_fraction(
+                    1. / (float(total_num) / current_num)
+                    )
 
             self._stat_bar.push(0, "Job finished")
 
@@ -542,7 +571,6 @@ class Disco:
         self._lock.release()
 
         return
-
 
     def _fill(self, path, jid, node=None):
 
@@ -620,8 +648,6 @@ class Disco:
                 self._work_node
                 )
 
-
-
     def _on_row_activated(self, view, path, column):
 
         m = view.get_model()
@@ -633,7 +659,6 @@ class Disco:
             node = None
             if values[9] != None:
                 node = values[9]
-
 
             self._fill(ref, values[8], node=node)
 
@@ -654,7 +679,8 @@ class Disco:
 #            self._view_tw.expand_row(ref.get_path(), False)
 #            self._view_tw.scroll_to_cell(ref.get_path(), None, True, 0.1, 0.0)
 
-        elif values[3] == 'feature' and values[7] == 'http://jabber.org/protocol/commands':
+        elif (values[3] == 'feature'
+              and values[7] == 'http://jabber.org/protocol/commands'):
 
             par = m.iter_parent(m.get_iter(ref.get_path()))
 
@@ -682,7 +708,7 @@ class Disco:
                 res = widget.get_path_at_pos(event.x, event.y)
 
                 if res != None:
-                    path, column, cell_x, cell_y = res
+                    path = res[0]
 
                     m = widget.get_model()
                     ref = Gtk.TreeRowReference.new(m, path)
@@ -708,6 +734,7 @@ class Disco:
 
     def _on_destroy(self, *args, **kwargs):
         self.window.hide()
+
 
 def disco(controller, jid, node=None):
     a = Disco(controller, jid, node)
