@@ -1,6 +1,4 @@
 
-import threading
-
 from gi.repository import Gtk
 from gi.repository import Gdk
 from gi.repository import GLib
@@ -8,7 +6,428 @@ from gi.repository import Pango
 
 import org.wayround.utils.gtk
 
+import org.wayround.pyabber.main
+import org.wayround.pyabber.ccc
 
+
+class ConnectionMgrWindow:
+
+    def __init__(self, main, profile):
+
+        if not isinstance(main, org.wayround.pyabber.main.Main):
+            raise ValueError("`main' must be org.wayround.pyabber.main.Main")
+
+        if not isinstance(
+            profile, org.wayround.pyabber.main.ProfileSession
+            ):
+            raise ValueError(
+        "`profile' must be org.wayround.pyabber.main.ProfileSession"
+                )
+
+        b = Gtk.Box()
+        b.set_margin_top(5)
+        b.set_margin_bottom(5)
+        b.set_margin_left(5)
+        b.set_margin_right(5)
+        b.set_spacing(5)
+
+        b.set_orientation(Gtk.Orientation.VERTICAL)
+
+        conn_table = Gtk.TreeView()
+
+        # FIXME: column additions looks too scary!
+
+        _c = Gtk.TreeViewColumn()
+        _r = Gtk.CellRendererText()
+        _c.pack_start(_r, False)
+        _c.add_attribute(_r, 'text', 0)
+        _c.set_title('Pst Nm')
+        conn_table.append_column(_c)
+
+        _c = Gtk.TreeViewColumn()
+        _r = Gtk.CellRendererText()
+        _c.pack_start(_r, False)
+        _c.add_attribute(_r, 'text', 1)
+        _c.set_title('Usr Nm')
+        conn_table.append_column(_c)
+
+        _c = Gtk.TreeViewColumn()
+        _r = Gtk.CellRendererText()
+        _c.pack_start(_r, False)
+        _c.add_attribute(_r, 'text', 2)
+        _c.set_title('Server')
+        conn_table.append_column(_c)
+
+        _c = Gtk.TreeViewColumn()
+        _r = Gtk.CellRendererText()
+        _c.pack_start(_r, False)
+        _c.add_attribute(_r, 'text', 3)
+        _c.set_title('Res Md')
+        conn_table.append_column(_c)
+
+        _c = Gtk.TreeViewColumn()
+        _r = Gtk.CellRendererText()
+        _c.pack_start(_r, False)
+        _c.add_attribute(_r, 'text', 4)
+        _c.set_title('Resours')
+        conn_table.append_column(_c)
+
+        _c = Gtk.TreeViewColumn()
+        _r = Gtk.CellRendererText()
+        _c.pack_start(_r, False)
+        _c.add_attribute(_r, 'text', 5)
+        _c.set_title('Mnl H/P?')
+        conn_table.append_column(_c)
+
+        _c = Gtk.TreeViewColumn()
+        _r = Gtk.CellRendererText()
+        _c.pack_start(_r, False)
+        _c.add_attribute(_r, 'text', 6)
+        _c.set_title('Host')
+        conn_table.append_column(_c)
+
+        _c = Gtk.TreeViewColumn()
+        _r = Gtk.CellRendererText()
+        _c.pack_start(_r, False)
+        _c.add_attribute(_r, 'text', 7)
+        _c.set_title('Port')
+        conn_table.append_column(_c)
+
+        _c = Gtk.TreeViewColumn()
+        _r = Gtk.CellRendererText()
+        _c.pack_start(_r, False)
+        _c.add_attribute(_r, 'text', 8)
+        _c.set_title('A SF?')
+        conn_table.append_column(_c)
+
+        _c = Gtk.TreeViewColumn()
+        _r = Gtk.CellRendererText()
+        _c.pack_start(_r, False)
+        _c.add_attribute(_r, 'text', 9)
+        _c.set_title('S.TLS')
+        conn_table.append_column(_c)
+
+        _c = Gtk.TreeViewColumn()
+        _r = Gtk.CellRendererText()
+        _c.pack_start(_r, False)
+        _c.add_attribute(_r, 'text', 10)
+        _c.set_title('Necess')
+        conn_table.append_column(_c)
+
+        _c = Gtk.TreeViewColumn()
+        _r = Gtk.CellRendererText()
+        _c.pack_start(_r, False)
+        _c.add_attribute(_r, 'text', 11)
+        _c.set_title('Verify')
+        conn_table.append_column(_c)
+
+        _c = Gtk.TreeViewColumn()
+        _r = Gtk.CellRendererText()
+        _c.pack_start(_r, False)
+        _c.add_attribute(_r, 'text', 12)
+        _c.set_title('Reg')
+        conn_table.append_column(_c)
+
+        _c = Gtk.TreeViewColumn()
+        _r = Gtk.CellRendererText()
+        _c.pack_start(_r, False)
+        _c.add_attribute(_r, 'text', 13)
+        _c.set_title('Log')
+        conn_table.append_column(_c)
+
+        _c = Gtk.TreeViewColumn()
+        _r = Gtk.CellRendererText()
+        _c.pack_start(_r, False)
+        _c.add_attribute(_r, 'text', 14)
+        _c.set_title('Bind')
+        conn_table.append_column(_c)
+
+        _c = Gtk.TreeViewColumn()
+        _r = Gtk.CellRendererText()
+        _c.pack_start(_r, False)
+        _c.add_attribute(_r, 'text', 15)
+        _c.set_title('Sess')
+        conn_table.append_column(_c)
+
+        conn_table_f = Gtk.Frame()
+        sw = Gtk.ScrolledWindow()
+        sw.add(conn_table)
+        conn_table_f.add(sw)
+        conn_table_f.set_label("Available Presets")
+
+        conn_table.set_margin_left(5)
+        conn_table.set_margin_right(5)
+        conn_table.set_margin_top(5)
+        conn_table.set_margin_bottom(5)
+
+        bb01 = Gtk.ButtonBox()
+        bb01.set_orientation(Gtk.Orientation.HORIZONTAL)
+        bb01.set_margin_left(5)
+        bb01.set_margin_right(5)
+        bb01.set_margin_top(5)
+        bb01.set_margin_bottom(5)
+        bb01.set_spacing(5)
+
+        bb01_ff = Gtk.Frame()
+        bb01_ff.add(bb01)
+        bb01_ff.set_label("Actions")
+
+        but6 = Gtk.Button('Refresh')
+        but1 = Gtk.Button('Open')
+        but3 = Gtk.Button('New...')
+        but4 = Gtk.Button('Edit...')
+        but5 = Gtk.Button('Delete')
+
+        bb01.pack_start(but6, False, True, 0)
+        bb01.pack_start(but1, False, True, 0)
+        bb01.pack_start(but3, False, True, 0)
+        bb01.pack_start(but4, False, True, 0)
+        bb01.pack_start(but5, False, True, 0)
+
+        but1.connect('clicked', self._on_connect_clicked)
+        but3.connect('clicked', self._on_new_clicked)
+        but6.connect('clicked', self._on_refresh_clicked)
+        but4.connect('clicked', self._on_edit_clicked)
+        but5.connect('clicked', self._on_delete_clicked)
+
+        b.pack_start(bb01_ff, False, True, 0)
+        b.pack_start(conn_table_f, True, True, 0)
+
+        self._conn_table = conn_table
+
+        window = Gtk.Window()
+
+        window.add(b)
+
+        self._iterated_loop = org.wayround.utils.gtk.GtkIteratedLoop()
+        self._main = main
+        self._profile = profile
+        self._window = window
+
+        return
+
+    def run(self):
+        self.show()
+        self._iterated_loop.wait()
+        return
+
+    def show(self):
+        self._window.show_all()
+
+    def destroy(self):
+        self._iterated_loop.stop()
+        self._window.destroy()
+
+    def _on_new_clicked(self, button):
+
+        w = org.wayround.pyabber.connection_window.ConnectionPresetWindow(
+            self.window_elements.window, typ='new'
+            )
+        r = w.run()
+
+        result_code = r['button']
+
+        del r['button']
+
+        if result_code == 'ok':
+            new_preset = {}
+            new_preset.update(r)
+
+            for i in range(
+                len(self._profile.data['connection_presets']) - 1, -1, -1
+                ):
+
+                if (self._profile.data['connection_presets'][i]['name']
+                    == new_preset['name']):
+                    del self._profile._data['connection_presets'][i]
+
+            self._profile.data['connection_presets'].append(new_preset)
+            self._reload_list()
+            self._profile.save()
+
+    def _get_selection_name(self):
+
+        items = self._conn_table.get_selection().get_selected_rows()[1]
+
+        i_len = len(items)
+
+        name = None
+
+        if i_len == 0:
+            d = org.wayround.utils.gtk.MessageDialog(
+                self.window_elements.window,
+                Gtk.DialogFlags.MODAL
+                | Gtk.DialogFlags.DESTROY_WITH_PARENT,
+                Gtk.MessageType.ERROR,
+                Gtk.ButtonsType.OK,
+                "Preset not selected"
+                )
+            d.run()
+            d.destroy()
+
+        else:
+
+            name = self._conn_table.get_model()[items[0][0]][0]
+
+        return name
+
+    def _on_edit_clicked(self, button):
+
+        name = self._get_selection_name()
+
+        # FIXME: insanity here
+
+        if name:
+
+            w = org.wayround.pyabber.connection_window.ConnectionPresetWindow(
+                self.window_elements.window,
+                typ='edit',
+                preset_name=name,
+                preset_data=data
+                )
+
+            r = w.run()
+
+            result_code = r['button']
+
+            del r['button']
+
+            if result_code == 'ok':
+                new_preset = {}
+                new_preset.update(r)
+
+                for i in range(
+                    len(self._profile.data['connection_presets']) - 1,
+                    - 1,
+                    - 1
+                    ):
+
+                    if (
+                self._profile.data['connection_presets'][i]['name']
+                == new_preset['name']
+                        ):
+                        del self._profile.data['connection_presets'][i]
+
+                    elif (
+                self._profile.data['connection_presets'][i]['name']
+                == name
+                        ):
+                        del self._profile.data['connection_presets'][i]
+
+                self._profile.data['connection_presets'].append(
+                    new_preset
+                    )
+
+                self._profile.save()
+
+        self._reload_list()
+
+    def _on_delete_clicked(self, button):
+
+        name = self._get_selection_name()
+
+        if name:
+
+            d = org.wayround.utils.gtk.MessageDialog(
+                self.window_elements.window,
+                Gtk.DialogFlags.MODAL
+                | Gtk.DialogFlags.DESTROY_WITH_PARENT,
+                Gtk.MessageType.QUESTION,
+                Gtk.ButtonsType.YES_NO,
+                "Do You really wish to delete profile `{}'".format(name)
+                )
+            r = d.run()
+            d.destroy()
+
+            if r == Gtk.ResponseType.YES:
+
+                for i in range(
+                    len(self._profile.data['connection_presets']) - 1,
+                    - 1,
+                    - 1
+                    ):
+
+                    if (
+                self._profile.data['connection_presets'][i]['name']
+                == name
+                        ):
+                        del self._profile.data['connection_presets'][i]
+
+                self._main.profile.save()
+
+        self._reload_list()
+
+    def _on_connect_clicked(self, button):
+        name = self._get_selection_name()
+
+        already_exists = False
+        for i in self._profile.connection_controllers:
+            if i.preset_name == name:
+                already_exists = True
+
+        if not already_exists:
+            org.wayround.pyabber.ccc.ClientConnetionController(
+                self._main, self._profile, name
+                )
+
+    def _on_disconnect_clicked(self):
+        self.disconnect()
+
+    def _reload_list(self):
+
+        storage = Gtk.ListStore(
+            str,  # 0. name
+            str,  # 1. username
+            str,  # 2. server
+            str,  # 3. resource mode
+            str,  # 4. resource
+            bool,  # 5. manual host, port
+            str,  # 6. host
+            int,  # 7. port
+            str,  # 8. stream features handling mode
+            bool,  # 9. starttls
+            str,  # 10. starttls necessarity
+            str,  # 11. starttls truest
+            bool,  # 12. register
+            bool,  # 13 .login
+            bool,  # 14. bind
+            bool  # 15. session
+            )
+
+        if (self._profile.data
+            and 'connection_presets' in self._profile.data
+            and isinstance(self._profile.data['connection_presets'], list)
+            ):
+
+            for i in self._profile.data['connection_presets']:
+                storage.append(
+                    [
+                    i['name'],
+                    i['username'],
+                    i['server'],
+                    i['resource_mode'],
+                    i['resource'],
+                    i['manual_host_and_port'],
+                    i['host'],
+                    i['port'],
+                    i['stream_features_handling'],
+                    i['STARTTLS'],
+                    i['starttls_necessarity_mode'],
+                    i['cert_verification_mode'],
+                    i['register'],
+                    i['login'],
+                    i['bind'],
+                    i['session']
+                    ]
+                    )
+
+        self._conn_table.set_model(storage)
+
+    def _on_refresh_clicked(self, button):
+        self._reload_list()
+
+
+# TODO: remove this
 class Dumb:
     pass
 

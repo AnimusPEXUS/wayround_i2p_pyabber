@@ -1,13 +1,14 @@
 
 import threading
 
-from gi.repository import Gtk
 from gi.repository import Gdk
 from gi.repository import GdkPixbuf
+from gi.repository import Gtk
 from gi.repository import Pango
 
 import org.wayround.utils.gtk
 
+import org.wayround.xmpp.core
 import org.wayround.xmpp.disco
 import org.wayround.xmpp.muc
 import org.wayround.xmpp.xdata
@@ -19,16 +20,39 @@ import org.wayround.pyabber.privacy
 
 class DiscoMenu:
 
-    def __init__(self, controller, jid, node=None):
+    def __init__(
+        self,
+        target_jid_str, node=None, own_jid_obj=None, client=None
+        ):
 
-        self._jid = jid
+        if not isinstance(target_jid_str, str):
+            raise ValueError(
+                "`target_jid_str' must be str"
+                )
+
+        if node is not None and not isinstance(node, str):
+            raise ValueError(
+                "`node' must be None or str"
+                )
+
+        if not isinstance(own_jid_obj, org.wayround.xmpp.core.JID):
+            raise ValueError(
+                "`own_jid_obj' must be org.wayround.xmpp.core.JID"
+                )
+
+        if not isinstance(client, org.wayround.xmpp.client.XMPPC2SClient):
+            raise ValueError(
+                "`client' must be org.wayround.xmpp.client.XMPPC2SClient"
+                )
+
+        self._target_jid_str = target_jid_str
+        self._own_jid = own_jid_obj
         self._node = node
-
-        self._controller = controller
+        self._client = client
 
         self._menu = Gtk.Menu()
 
-        addr_mi = Gtk.MenuItem("jid and node")
+        addr_mi = Gtk.MenuItem("target_jid and node")
         error_mi = Gtk.MenuItem("no errors")
 
         commands_mi = Gtk.MenuItem("Commands")
@@ -62,10 +86,10 @@ class DiscoMenu:
         addr_submenu.append(addr_copy_mi)
 
         q, stanza = org.wayround.xmpp.disco.get_info(
-            to_jid=jid,
-            from_jid=self._controller.jid.full(),
+            to_jid=self._target_jid_str,
+            from_jid=self._own_jid.full(),
             node=node,
-            stanza_processor=self._controller.client.stanza_processor
+            stanza_processor=self._client.stanza_processor
             )
 
         commands_mi.set_sensitive(False)
@@ -76,7 +100,7 @@ class DiscoMenu:
         if stanza.is_error():
             error_mi.set_label(stanza.gen_error().gen_text().strip())
 
-        t = jid
+        t = self._target_jid_str
         if node:
             t += '\{}'.format(node)
 
@@ -97,8 +121,9 @@ class DiscoMenu:
 
             muc_mi.set_submenu(
                 org.wayround.pyabber.muc.MUCPopupMenu(
-                    controller,
-                    jid
+                    muc_jid=self._target_jid_str,
+                    own_jid=self._own_jid,
+                    client=self._client
                     ).get_widget()
                 )
 
@@ -122,21 +147,25 @@ class DiscoMenu:
     def _on_commands_mi_activated(self, menuitem):
 
         org.wayround.pyabber.adhoc.adhoc_window_for_jid_and_node(
-            controller=self._controller,
-            to_jid=self._jid,
-            from_jid=self._controller.jid.full()
+            to_jid=self._target_jid_str,
+            own_jid=self._own_jid,
+            client=self._client
             )
 
     def _on_addr_open_activated(self, menuitem):
-
-        disco(self._controller, self._jid, self._node)
+        disco(
+            self._target_jid_str,
+            self._node,
+            self._own_jid,
+            self._client
+            )
 
     def _on_privacy_mi_activated(self, menuitem):
 
         w = org.wayround.pyabber.privacy.PrivacyEditor(
-            to_jid=self._jid,
-            from_jid=self._controller.jid.full(),
-            stanza_processor=self._controller.client.stanza_processor
+            to_jid=self._target_jid_str,
+            from_jid=self._own_jid,
+            stanza_processor=self._client.stanza_processor
             )
 
         w.show()
@@ -144,20 +173,45 @@ class DiscoMenu:
         return
 
 
-def disco_menu(controller, jid, node=None):
-    disco_menu = DiscoMenu(controller, jid, node)
+def disco_menu(target_jid_str, node, own_jid_obj, client):
 
+    disco_menu = DiscoMenu(target_jid_str, node, own_jid_obj, client)
     disco_menu.show()
+
+    return
 
 
 class Disco:
 
-    def __init__(self, controller, jid=None, node=None):
+    def __init__(
+            self,
+            target_jid_str, node=None, own_jid_obj=None, client=None
+            ):
 
-        self._jid = jid
+        if not isinstance(target_jid_str, str):
+            raise ValueError(
+                "`target_jid_str' must be str"
+                )
+
+        if node is not None and not isinstance(node, str):
+            raise ValueError(
+                "`node' must be None or str"
+                )
+
+        if not isinstance(own_jid_obj, org.wayround.xmpp.core.JID):
+            raise ValueError(
+                "`own_jid_obj' must be org.wayround.xmpp.core.JID"
+                )
+
+        if not isinstance(client, org.wayround.xmpp.client.XMPPC2SClient):
+            raise ValueError(
+                "`client' must be org.wayround.xmpp.client.XMPPC2SClient"
+                )
+
+        self._client = client
         self._node = node
-
-        self._controller = controller
+        self._own_jid = own_jid_obj
+        self._target_jid_str = target_jid_str
 
         window = Gtk.Window()
         window.set_default_size(500, 500)
@@ -280,15 +334,20 @@ class Disco:
 
         self._lock = threading.Lock()
 
-        if self._jid != None or (self._jid != None and self._node != None):
-            self.set_addr(jid, node)
+        if (self._target_jid_str != None
+            or (self._target_jid_str != None and self._node != None)):
+
+            self.set_addr(target_jid_str, node)
 
         return
 
     def __del__(self):
         print(
             "Deleting Disco: {}, {}, {}, {}".format(
-                self._jid, self._node, self._work_jid, self._work_node
+                self._target_jid_str,
+                self._node,
+                self._work_jid,
+                self._work_node
                 )
             )
 
@@ -329,9 +388,9 @@ class Disco:
 
             res = org.wayround.xmpp.disco.get(
                 to_jid=jid,
-                from_jid=self._controller.jid.full(),
+                from_jid=self._own_jid.full(),
                 node=node,
-                stanza_processor=self._controller.client.stanza_processor
+                stanza_processor=self._client.stanza_processor
                 )
 
             x = res['info'][0].get_xdata()
@@ -406,7 +465,8 @@ class Disco:
                 self._view_model.append(
                     itera,
                     [
-                     "[info error] error type: {}, condition: {}, code: {}, text: {}".format(
+                     "[info error] error type: {},"
+                     " condition: {}, code: {}, text: {}".format(
                         err_dict.get_error_type(),
                         err_dict.get_condition(),
                         err_dict.get_code(),
@@ -504,7 +564,8 @@ class Disco:
                 self._view_model.append(
                     itera,
                     [
-                     "[items error] error type: {}, condition: {}, code: {}, text: {}".format(
+                     "[items error] error type: {}, condition:"
+                     " {}, code: {}, text: {}".format(
                         err_dict.get_error_type(),
                         err_dict.get_condition(),
                         err_dict.get_code(),
@@ -578,7 +639,7 @@ class Disco:
             target=self._fill2,
             args=(path, jid),
             kwargs={
-                'node':node
+                'node': node
                 }
             )
         t.start()
@@ -621,7 +682,7 @@ class Disco:
         self.window.set_title(
             "Discovering `{}' as `{}'".format(
                 "{}".format(t),
-                self._controller.jid.full()
+                self._own_jid.full()
                 )
             )
 
@@ -643,9 +704,10 @@ class Disco:
 
         if self._work_jid:
             disco_menu(
-                self._controller,
-                self._work_jid,
-                self._work_node
+                target_jid_str=self._work_jid,
+                node=self._work_node,
+                own_jid_obj=self._own_jid,
+                client=self._client
                 )
 
     def _on_row_activated(self, view, path, column):
@@ -721,9 +783,10 @@ class Disco:
                             node = values[9]
 
                         disco_menu(
-                            self._controller,
-                            values[8],
-                            node
+                            target_jid_str=values[8],
+                            node=node,
+                            own_jid_obj=self._own_jid,
+                            client=self._client
                             )
 
         return
@@ -736,6 +799,6 @@ class Disco:
         self.window.hide()
 
 
-def disco(controller, jid, node=None):
-    a = Disco(controller, jid, node)
+def disco(target_jid_str, node, own_jid_obj, client):
+    a = Disco(target_jid_str, node, own_jid_obj, client)
     a.show()

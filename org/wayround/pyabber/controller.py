@@ -1,4 +1,7 @@
 
+raise Exception("Deprecated. migrating to ccc.py")
+
+import os.path
 import logging
 import socket
 import threading
@@ -374,39 +377,6 @@ class MainController:
                 self._stream_out = False
                 self.stop()
 
-    def _on_stream_object(self, event, io_machine, obj):
-
-        logging.debug(
-            "_on_stream_object (first 255 bytes):`{}'".format(
-                repr(lxml.etree.tostring(obj)[:255])
-                )
-            )
-
-        if org.wayround.xmpp.core.is_features_element(obj):
-            self._handle_stream_features(obj)
-
-    def _handle_stream_features(self, obj):
-
-        ret = False
-
-        if self.waiting_for_stream_features:
-            self.last_features = obj
-            self.stream_featires_arrived.set()
-
-        return ret
-
-    def _auto_starttls_controller(self, status, data):
-
-        logging.debug("_auto_starttls_controller {}, {}".format(status, data))
-
-        ret = None
-
-        raise ValueError("status `{}' not supported".format(status))
-
-        return ret
-
-    def _manual_starttls_controller(self):
-        pass
 
     def _auto_auth_controller(self, status, data):
 
@@ -666,38 +636,3 @@ class MainController:
                 self.main_window.chat_pager.feed_stanza(stanza)
 
 
-def stanza_error_message(parent, stanza, message=None):
-
-    if not isinstance(stanza, org.wayround.xmpp.core.Stanza):
-        raise TypeError("`stanza' must be org.wayround.xmpp.core.Stanza")
-
-    if stanza.is_error():
-
-        stanza_error_error_message(parent, stanza.gen_error(), message)
-
-    return
-
-
-def stanza_error_error_message(parent, stanza_error, message=None):
-
-    if not isinstance(stanza_error, org.wayround.xmpp.core.StanzaError):
-        raise TypeError("`stanza' must be org.wayround.xmpp.core.StanzaError")
-
-    message2 = ''
-    if message:
-        message2 = '{}\n\n'.format(message)
-
-    d = org.wayround.utils.gtk.MessageDialog(
-        parent,
-        0,
-        Gtk.MessageType.ERROR,
-        Gtk.ButtonsType.OK,
-        "{}{}".format(
-            message2,
-            stanza_error.to_text()
-            )
-        )
-    d.run()
-    d.destroy()
-
-    return

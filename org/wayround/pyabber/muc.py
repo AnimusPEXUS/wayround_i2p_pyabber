@@ -8,14 +8,23 @@ import lxml.etree
 
 import org.wayround.utils.error
 import org.wayround.utils.gtk
+
 import org.wayround.xmpp.muc
 import org.wayround.xmpp.xdata
+
 import org.wayround.pyabber.xdata
+import org.wayround.pyabber.misc
 
 
-class MUCJIDSpecification:
+class MUCJIDEntryDialog:
 
-    def __init__(self, controller, jid, title):
+    def __init__(self, jid, title):
+
+        if not isinstance(jid, str):
+            raise ValueError("`jid' must be str")
+
+        if not isinstance(title, str):
+            raise ValueError("`title' must be str")
 
         window = Gtk.Window()
 
@@ -82,18 +91,29 @@ class MUCJIDSpecification:
 
 class MUCConfigWindow:
 
-    def __init__(self, controller, stanza):
+    def __init__(self, client, own_jid, stanza):
         """
         :param org.wayround.xmpp.core.Stanza stanza:
         """
+
+        if not isinstance(own_jid, org.wayround.xmpp.core.JID):
+            raise ValueError(
+                "`own_jid' must be org.wayround.xmpp.core.JID"
+                )
+
+        if not isinstance(client, org.wayround.xmpp.client.XMPPC2SClient):
+            raise ValueError(
+                "`client' must be org.wayround.xmpp.client.XMPPC2SClient"
+                )
 
         if not isinstance(stanza, org.wayround.xmpp.core.Stanza):
             raise ValueError(
                 "`xdata' must be org.wayround.xmpp.core.Stanza inst"
                 )
 
-        self._controller = controller
         self._stanza = stanza
+        self._own_jid = own_jid
+        self._client = client
 
         xdata = None
 
@@ -219,8 +239,8 @@ class MUCConfigWindow:
 
                 org.wayround.xmpp.muc.submit_room_configuration(
                     room_bare_jid=self._stanza.get_from_jid(),
-                    from_full_jid=self._controller.jid.full(),
-                    stanza_processor=self._controller.client.stanza_processor,
+                    from_full_jid=self._own_jid.full(),
+                    stanza_processor=self._client.stanza_processor,
                     x_data=x_data
                     )
 
@@ -323,7 +343,7 @@ class MUCDestructionDialog:
             )
 
         if res.is_error():
-            org.wayround.pyabber.controller.stanza_error_message(
+            org.wayround.pyabber.misc.stanza_error_message(
                 self._window, res, message=None
                 )
         else:
@@ -345,10 +365,24 @@ class MUCDestructionDialog:
 
 class MUCPopupMenu:
 
-    def __init__(self, controller, muc_jid):
+    def __init__(self, muc_jid, own_jid, client):
 
-        self._controller = controller
+        if not isinstance(own_jid, org.wayround.xmpp.core.JID):
+            raise ValueError(
+                "`own_jid' must be org.wayround.xmpp.core.JID"
+                )
+
+        if not isinstance(client, org.wayround.xmpp.client.XMPPC2SClient):
+            raise ValueError(
+                "`client' must be org.wayround.xmpp.client.XMPPC2SClient"
+                )
+
+        if not isinstance(muc_jid, str):
+            raise ValueError("`muc_jid' must be str")
+
         self._muc_jid = muc_jid
+        self._own_jid = own_jid
+        self._client = client
 
         jid = org.wayround.xmpp.core.JID.new_from_string(muc_jid)
 
@@ -452,12 +486,11 @@ class MUCPopupMenu:
 
     def _on_new_muc_inst_mi_activated(self, menuitem):
 
-        w = MUCJIDSpecification(
-            self._controller,
+        w = MUCJIDEntryDialog(
             '@{}'.format(self._muc_jid),
             "Instantly Creating New Room on `{}' as `{}'".format(
                 self._muc_jid,
-                self._controller.jid.full()
+                self._own_jid.full()
                 )
             )
         jid = w.run()
@@ -466,12 +499,12 @@ class MUCPopupMenu:
 
             res = org.wayround.xmpp.muc.create_room_instantly(
                 room_bare_jid=jid,
-                from_full_jid=self._controller.jid.full(),
-                stanza_processor=self._controller.client.stanza_processor
+                from_full_jid=self._own_jid.full(),
+                stanza_processor=self._client.stanza_processor
                 )
 
             if res.is_error():
-                org.wayround.pyabber.controller.stanza_error_message(
+                org.wayround.pyabber.misc.stanza_error_message(
                     parent=None,
                     stanza=res,
                     message="Can't create room `{}' instantly".format(jid)
@@ -480,12 +513,11 @@ class MUCPopupMenu:
         return
 
     def _on_new_muc_conf_mi_activated(self, menuitem):
-        w = MUCJIDSpecification(
-            self._controller,
+        w = MUCJIDEntryDialog(
             '@{}'.format(self._muc_jid),
             "Configuring New Room on `{}' as `{}'".format(
                 self._muc_jid,
-                self._controller.jid.full()
+                self._own_jid.full()
                 )
             )
         jid = w.run()
@@ -494,12 +526,13 @@ class MUCPopupMenu:
 
             res = org.wayround.xmpp.muc.request_room_configuration(
                 room_bare_jid=jid,
-                from_full_jid=self._controller.jid.full(),
-                stanza_processor=self._controller.client.stanza_processor
+                from_full_jid=self._own_jid.full(),
+                stanza_processor=self._client.stanza_processor
                 )
 
             w = org.wayround.pyabber.muc.MUCConfigWindow(
-                self._controller,
+                self._client,
+                self._own_jid,
                 res
                 )
             w.show()
@@ -510,12 +543,11 @@ class MUCPopupMenu:
 
         jid = self._muc_jid
         if self._jid_service:
-            w = MUCJIDSpecification(
-                self._controller,
+            w = MUCJIDEntryDialog(
                 '@{}'.format(self._muc_jid),
                 "Input JID to configure on `{}' as `{}'".format(
                     self._muc_jid,
-                    self._controller.jid.full()
+                    self._own_jid.full()
                     )
                 )
             jid = w.run()
@@ -524,12 +556,13 @@ class MUCPopupMenu:
 
             res = org.wayround.xmpp.muc.request_room_configuration(
                 room_bare_jid=jid,
-                from_full_jid=self._controller.jid.full(),
-                stanza_processor=self._controller.client.stanza_processor
+                from_full_jid=self._own_jid.full(),
+                stanza_processor=self._client.stanza_processor
                 )
 
             w = org.wayround.pyabber.muc.MUCConfigWindow(
-                self._controller,
+                self._client,
+                self._own_jid,
                 res
                 )
             w.show()
@@ -540,12 +573,11 @@ class MUCPopupMenu:
 
         jid = self._muc_jid
         if self._jid_service:
-            w = MUCJIDSpecification(
-                self._controller,
+            w = MUCJIDEntryDialog(
                 '@{}'.format(self._muc_jid),
                 "Input room JID to discover own jid on `{}' as `{}'".format(
                     self._muc_jid,
-                    self._controller.jid.full()
+                    self._own_jid.full()
                     )
                 )
             jid = w.run()
@@ -554,12 +586,12 @@ class MUCPopupMenu:
 
             res = org.wayround.xmpp.muc.discover_room_nickname(
                 room_bare_jid=jid,
-                from_full_jid=self._controller.jid.full(),
-                stanza_processor=self._controller.client.stanza_processor
+                from_full_jid=self._own_jid.full(),
+                stanza_processor=self._stanza_processor
                 )
 
             if res.is_error():
-                org.wayround.pyabber.controller.stanza_error_message(
+                org.wayround.pyabber.misc.stanza_error_message(
                     parent=None,
                     stanza=res,
                     message="Can't get Your registered Nickname"
@@ -611,12 +643,11 @@ class MUCPopupMenu:
 
         jid = self._muc_jid
         if self._jid_service:
-            w = MUCJIDSpecification(
-                self._controller,
+            w = MUCJIDEntryDialog(
                 '@{}'.format(self._muc_jid),
                 "Input JID to delete on `{}' as `{}'".format(
                     self._muc_jid,
-                    self._controller.jid.full()
+                    self._own_jid.full()
                     )
                 )
             jid = w.run()
@@ -624,9 +655,9 @@ class MUCPopupMenu:
         if jid != None:
 
             w = MUCDestructionDialog(
-                own_jid=self._controller.jid.full(),
+                own_jid=self._own_jid.full(),
                 room_jid=jid,
-                stanza_processor=self._controller.client.stanza_processor
+                stanza_processor=self._client.stanza_processor
                 )
 
             w.show()
@@ -644,13 +675,12 @@ class MUCPopupMenu:
 
         jid = self._muc_jid
         if self._jid_service:
-            w = MUCJIDSpecification(
-                self._controller,
+            w = MUCJIDEntryDialog(
                 '@{}'.format(self._muc_jid),
                 "Input JID of room on `{}' to edit `{}' list as `{}'".format(
                     self._muc_jid,
                     mode,
-                    self._controller.jid.full()
+                    self._own_jid.full()
                     )
                 )
             jid = w.run()
@@ -658,8 +688,8 @@ class MUCPopupMenu:
         if jid != None:
 
             w = MUCIdentityEditorWindow(
-                self._controller.client.stanza_processor,
-                self._controller.jid.full(),
+                self._client.stanza_processor,
+                self._own_jid.full(),
                 target_jid=jid,
                 mode=mode
                 )
@@ -963,7 +993,7 @@ List of dictionaries. Add to dictionaties only changes (delta)
 
                     res = self._stanza_processor.send(stanza, wait=None)
                     if res.is_error():
-                        org.wayround.pyabber.controller.stanza_error_message(
+                        org.wayround.pyabber.misc.stanza_error_message(
                             self._window,
                             res,
                             "Server Returned Error"
@@ -1135,7 +1165,7 @@ List of dictionaries. Add to dictionaties only changes (delta)
 
                     res = self._stanza_processor.send(stanza, wait=None)
                     if res.is_error():
-                        org.wayround.pyabber.controller.stanza_error_message(
+                        org.wayround.pyabber.misc.stanza_error_message(
                             self._window,
                             res,
                             "Server Returned Error"
@@ -1152,14 +1182,3 @@ List of dictionaries. Add to dictionaties only changes (delta)
                         d.destroy()
 
         return
-
-
-class JoinWindow:
-
-    # TODO: to do
-
-    def __init__(self, controller):
-
-        self._controller = controller
-
-        self._window = Gtk.Window()

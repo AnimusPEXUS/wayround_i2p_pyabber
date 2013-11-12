@@ -2,13 +2,19 @@
 from gi.repository import Gtk
 from gi.repository import Gdk
 
+import org.wayround.xmpp.client
+
 
 class PresenceControlPopup:
 
-    def __init__(self, parent_window, mainwindow):
+    def __init__(self, presence_client):
 
-        self.parent_window = parent_window
-        self.mainwindow = mainwindow
+        if not isinstance(presence_client, org.wayround.xmpp.client.Presence):
+            raise ValueError(
+                "`presence_client' must be org.wayround.xmpp.client.Presence"
+                )
+
+        self.presence_client = presence_client
         self.window = Gtk.Window()
         win = self.window
 
@@ -125,7 +131,7 @@ class PresenceControlPopup:
                     False
                     )
 
-            self.mainwindow.controller.presence.presence(
+            self.presence_client.presence(
                 show=show,
                 to_full_or_bare_jid=to,
                 status=status,

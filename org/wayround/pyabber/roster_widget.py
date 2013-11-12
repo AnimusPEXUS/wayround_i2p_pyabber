@@ -77,6 +77,7 @@ CONTACTED_DIVISION_NAMES = [
 #
 #del(i)
 
+
 class RosterCellRenderer(Gtk.CellRenderer):
 
     cell_type = GObject.property(type=str, default='contact')
@@ -191,7 +192,6 @@ class RosterCellRenderer(Gtk.CellRenderer):
                 )
             cr.set_matrix(initial_ctm)
 
-
         elif cell_type == 'resource':
 
             cr.translate(
@@ -215,6 +215,7 @@ class RosterCellRenderer(Gtk.CellRenderer):
 
         return
 
+
 def draw_division_cell(cr, width, height, title):
     ow = Gtk.OffscreenWindow()
     ow.set_default_size(width, height)
@@ -225,6 +226,7 @@ def draw_division_cell(cr, width, height, title):
     l.draw(cr)
     ow.destroy()
 
+
 def draw_group_cell(cr, width, height, title):
     ow = Gtk.OffscreenWindow()
     ow.set_default_size(width, height)
@@ -234,6 +236,7 @@ def draw_group_cell(cr, width, height, title):
     ow.show_all()
     l.draw(cr)
     ow.destroy()
+
 
 def draw_contact_cell(
     cr, width, height,
@@ -269,15 +272,22 @@ def draw_contact_cell(
 
     available_i = Gtk.Image()
     if available:
-        available_i.set_from_pixbuf(org.wayround.pyabber.icondb.get('contact_available'))
+        available_i.set_from_pixbuf(
+            org.wayround.pyabber.icondb.get('contact_available')
+            )
     else:
-        available_i.set_from_pixbuf(org.wayround.pyabber.icondb.get('contact_unavailable'))
+        available_i.set_from_pixbuf(
+            org.wayround.pyabber.icondb.get('contact_unavailable')
+            )
 
     show_i = Gtk.Image()
 
     if not show in ['available', 'unavailable', 'dnd', 'away', 'xa', 'chat']:
         show = 'unknown'
-    show_i.set_from_pixbuf(org.wayround.pyabber.icondb.get('show_{}'.format(show)))
+
+    show_i.set_from_pixbuf(
+        org.wayround.pyabber.icondb.get('show_{}'.format(show))
+        )
 
     status_box.pack_start(available_i, False, False, 0)
     status_box.pack_start(show_i, False, False, 0)
@@ -315,7 +325,6 @@ def draw_contact_cell(
     text_info_box.pack_start(status_text_label, True, True, 0)
     text_info_box.pack_start(status_box, False, False, 0)
 
-
     main_horizontal_box.pack_start(img, False, False, 0)
     main_horizontal_box.pack_start(text_info_box, True, True, 0)
 
@@ -325,6 +334,7 @@ def draw_contact_cell(
     ow.show_all()
     main_box.draw(cr)
     ow.destroy()
+
 
 def draw_resource_cell(
     cr, width, height,
@@ -340,15 +350,22 @@ def draw_resource_cell(
     resource_l = Gtk.Label(str(resource))
     available_i = Gtk.Image()
     if available:
-        available_i.set_from_pixbuf(org.wayround.pyabber.icondb.get('contact_available'))
+        available_i.set_from_pixbuf(
+            org.wayround.pyabber.icondb.get('contact_available')
+            )
     else:
-        available_i.set_from_pixbuf(org.wayround.pyabber.icondb.get('contact_unavailable'))
+        available_i.set_from_pixbuf(
+            org.wayround.pyabber.icondb.get('contact_unavailable')
+            )
 
     show_i = Gtk.Image()
 
     if not show in ['available', 'unavailable', 'dnd', 'away', 'xa', 'chat']:
         show = 'unknown'
-    show_i.set_from_pixbuf(org.wayround.pyabber.icondb.get('show_{}'.format(show)))
+
+    show_i.set_from_pixbuf(
+        org.wayround.pyabber.icondb.get('show_{}'.format(show))
+        )
 
     status_l = Gtk.Label(str(status))
 
@@ -366,9 +383,10 @@ def draw_resource_cell(
     main_box.draw(cr)
     ow.destroy()
 
+
 class RosterWidget:
 
-    def __init__(self, main_window):
+    def __init__(self):
 
         self._self_bare_jid = None
 
@@ -388,9 +406,10 @@ class RosterWidget:
 
         scrolled.set_size_request(200, -1)
 
-        self._main_window = main_window
-
-        self._treeview.connect('button-release-event', self._on_treeview_buttonpress)
+        self._treeview.connect(
+            'button-release-event',
+            self._on_treeview_buttonpress
+            )
 #        self._treeview.connect('key-press-event', self._on_treeview_keypress)
 
         _c = Gtk.TreeViewColumn()
@@ -422,6 +441,9 @@ class RosterWidget:
         self._division_add('None', 'none')
         self._division_add('Transports', 'transport')
         self._division_add('Not in roster', 'hard')
+
+    def destroy(self):
+        self._root_widget.destroy()
 
     def _division_add(self, title, nick):
         values = [None] * ROW_CELL_NAMES_COUNT
@@ -491,7 +513,6 @@ class RosterWidget:
 
         return ret
 
-
     def _groups_list(self):
 
         """
@@ -550,7 +571,6 @@ class RosterWidget:
 
         return
 
-
     def _level_resource_add(self, itera, resource):
         return self._level_contact_add(itera, value=resource, mode='resource')
 
@@ -586,7 +606,9 @@ class RosterWidget:
         return ret
 
     def _level_resource_get_iter(self, itera, resource):
-        return self._level_contact_get_iter(itera, bare_jid=resource, mode='resource')
+        return self._level_contact_get_iter(
+            itera, bare_jid=resource, mode='resource'
+            )
 
     def _level_contact_remove(self, itera, bare_jid, mode='contact'):
 
@@ -604,7 +626,9 @@ class RosterWidget:
         return
 
     def _level_resource_remove(self, itera, resource):
-        return self._level_contact_remove(itera, bare_jid=resource, mode='resource')
+        return self._level_contact_remove(
+            itera, bare_jid=resource, mode='resource'
+            )
 
     def _level_contact_get(self, itera, bare_jid, mode='contact'):
 
@@ -639,7 +663,9 @@ class RosterWidget:
         return ret
 
     def _level_resource_get(self, itera, resource):
-        return self._level_contact_get(itera, bare_jid=resource, mode='resource')
+        return self._level_contact_get(
+            itera, bare_jid=resource, mode='resource'
+            )
 
     def _level_contacts_get_list(self, itera, mode='contact'):
 
@@ -669,8 +695,6 @@ class RosterWidget:
 
     def _level_resources_get_list(self, itera):
         return self._level_contacts_get_list(itera, mode='resource')
-
-
 
     def _level_contact_set(
         self,
@@ -772,7 +796,11 @@ class RosterWidget:
                 itera = self._level_contact_get_iter(group_iter, bare_jid)
 
                 if itera:
-                    ret.append(Gtk.TreeRowReference.new(self._store, self._store.get_path(itera)))
+                    ret.append(
+                        Gtk.TreeRowReference.new(
+                            self._store, self._store.get_path(itera)
+                            )
+                        )
 
         for i in CONTACTED_DIVISION_NAMES:
 
@@ -784,7 +812,11 @@ class RosterWidget:
                     )
 
                 if itera:
-                    ret.append(Gtk.TreeRowReference.new(self._store, self._store.get_path(itera)))
+                    ret.append(
+                        Gtk.TreeRowReference.new(
+                            self._store, self._store.get_path(itera)
+                            )
+                        )
 
         return ret
 
@@ -830,7 +862,9 @@ class RosterWidget:
 
         for i in group_names:
             for j in self._data.keys():
-                if not i in self._data[j]['bare']['groups'] or j == self._self_bare_jid:
+                if (not i in self._data[j]['bare']['groups']
+                    or j == self._self_bare_jid):
+
                     g_iter = self._group_get_iter(i)
                     self._level_contact_remove(g_iter, j)
                     g_iter = self._group_get_iter(i)
@@ -965,7 +999,6 @@ class RosterWidget:
 
         return
 
-
     def _sync_treeview_with_data(self):
         self._sync_treeview_with_data_contacts()
         self._sync_treeview_with_data_contacts_resources()
@@ -1033,8 +1066,8 @@ class RosterWidget:
         """
         Change indication parameters
 
-        For all parameters (except bare_jid off course) None value means - do no
-        change current indication.
+        For all parameters (except bare_jid off course) None value means - do
+        no change current indication.
 
         threadsafe using Lock()
         """
@@ -1043,8 +1076,8 @@ class RosterWidget:
 
         if not bare_jid in self._data:
             self._data[bare_jid] = {
-                'bare':{},
-                'full':{}
+                'bare': {},
+                'full': {}
                 }
 
         for i in [
@@ -1145,13 +1178,12 @@ class RosterWidget:
                         resource = ''
 
                         jid = org.wayround.xmpp.core.JID.new_from_str(bare_jid)
-                        
-                        if jid: 
+
+                        if jid:
                             org.wayround.pyabber.contact_popup_menu.contact_popup_menu(
                                 self._main_window.controller,
                                 jid.bare()
                                 )
-
 
                     if row_t == 'resource':
                         resource = res
@@ -1175,7 +1207,6 @@ class RosterWidget:
                                         self._main_window.controller,
                                         jid.full()
                                         )
-
 
             self._lock.release()
 

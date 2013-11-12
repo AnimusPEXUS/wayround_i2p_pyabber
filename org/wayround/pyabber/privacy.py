@@ -8,14 +8,27 @@ from gi.repository import Gtk
 import org.wayround.utils.gtk
 import org.wayround.utils.types
 
+import org.wayround.xmpp.core
 import org.wayround.xmpp.privacy
-
-import org.wayround.pyabber.controller
 
 
 class PrivacyEditor:
 
     def __init__(self, to_jid, from_jid, stanza_processor):
+
+        if not isinstance(to_jid, str):
+            raise ValueError("`to_jid' must be str")
+
+        if not isinstance(from_jid, org.wayround.xmpp.core.JID):
+            raise ValueError("`from_jid' must be org.wayround.xmpp.core.JID")
+
+        if not isinstance(
+            stanza_processor,
+            org.wayround.xmpp.core.StanzaProcessor
+            ):
+            raise ValueError(
+        "`stanza_processor' must be org.wayround.xmpp.core.StanzaProcessor"
+                )
 
         self._to_jid = to_jid
         self._from_jid = from_jid
@@ -256,12 +269,12 @@ class PrivacyEditor:
 
             res = org.wayround.xmpp.privacy.get_privacy_lists(
                 to_jid=jid,
-                from_jid=self._from_jid,
+                from_jid=str(self._from_jid),
                 stanza_processor=self._stanza_processor
                 )
 
             if isinstance(res, org.wayround.xmpp.core.StanzaError):
-                org.wayround.pyabber.controller.stanza_error_error_message(
+                org.wayround.pyabber.misc.stanza_error_error_message(
                     self._window,
                     res,
                     "Can't get privacy lists from server"
@@ -350,11 +363,11 @@ class PrivacyEditor:
             value = model[index][0]
 
         res = org.wayround.xmpp.privacy.set_active_list(
-            value, self._to_jid, self._from_jid, self._stanza_processor
+            value, self._to_jid, str(self._from_jid), self._stanza_processor
             )
 
         if isinstance(res, org.wayround.xmpp.core.StanzaError):
-            org.wayround.pyabber.controller.stanza_error_error_message(
+            org.wayround.pyabber.misc.stanza_error_error_message(
                 self._window,
                 res,
                 "Can't set active list"
@@ -375,11 +388,11 @@ class PrivacyEditor:
             value = model[index][0]
 
         res = org.wayround.xmpp.privacy.set_default_list(
-            value, self._to_jid, self._from_jid, self._stanza_processor
+            value, self._to_jid, str(self._from_jid), self._stanza_processor
             )
 
         if isinstance(res, org.wayround.xmpp.core.StanzaError):
-            org.wayround.pyabber.controller.stanza_error_error_message(
+            org.wayround.pyabber.misc.stanza_error_error_message(
                 self._window,
                 res,
                 "Can't set default list"
@@ -494,12 +507,12 @@ class PrivacyEditor:
 
                     res = org.wayround.xmpp.privacy.set_list(
                         name,
-                        items, self._to_jid, self._from_jid,
+                        items, self._to_jid, str(self._from_jid),
                         self._stanza_processor
                         )
 
                     if isinstance(res, org.wayround.xmpp.core.StanzaError):
-                        org.wayround.pyabber.controller.\
+                        org.wayround.pyabber.misc.\
                             stanza_error_error_message(
                                 self._window,
                                 res,
@@ -511,11 +524,11 @@ class PrivacyEditor:
     def _open_edit_list(self, name):
 
         res = org.wayround.xmpp.privacy.get_list(
-            name, self._to_jid, self._from_jid, self._stanza_processor
+            name, self._to_jid, str(self._from_jid), self._stanza_processor
             )
 
         if isinstance(res, org.wayround.xmpp.core.StanzaError):
-            org.wayround.pyabber.controller.stanza_error_error_message(
+            org.wayround.pyabber.misc.stanza_error_error_message(
                 self._window,
                 res,
                 "Can't get list `{}'".format(name)
@@ -642,11 +655,11 @@ class PrivacyEditor:
             name = model[iter][0]
 
             res = org.wayround.xmpp.privacy.delete_list(
-                name, self._to_jid, self._from_jid, self._stanza_processor
+                name, self._to_jid, str(self._from_jid), self._stanza_processor
                 )
 
             if isinstance(res, org.wayround.xmpp.core.StanzaError):
-                org.wayround.pyabber.controller.stanza_error_error_message(
+                org.wayround.pyabber.misc.stanza_error_error_message(
                     self._window,
                     res,
                     "Can't delete list `{}'".format(name)

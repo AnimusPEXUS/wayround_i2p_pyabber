@@ -3,13 +3,8 @@ import logging
 
 logging.basicConfig(level='DEBUG')
 
-from gi.repository import Gtk
+import org.wayround.pyabber.main
 
-import org.wayround.pyabber.mainwindow
+ret = org.wayround.pyabber.main.main(None, None)
 
-w = org.wayround.pyabber.mainwindow.MainWindow()
-w.run()
-
-
-ret = 0
 exit(ret)

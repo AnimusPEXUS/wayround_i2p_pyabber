@@ -3,15 +3,27 @@ from gi.repository import Gtk
 
 import org.wayround.xmpp.core
 
+import org.wayround.pyabber.roster_window
+
 
 class ContactEditor:
 
-    def __init__(self, controller, jid=None, mode='new'):
+    def __init__(self, roster_window, jid=None, mode='new'):
 
         if not mode in ['new', 'edit']:
             raise Exception("DNA Error")
 
-        self.controller = controller
+        if not isinstance(
+            roster_window,
+            org.wayround.pyabber.roster_window.RosterWindow
+            ):
+            raise ValueError(
+                "`roster_window' must be "
+                "org.wayround.pyabber.roster_window.RosterWindow"
+                )
+
+        self._roster_window = roster_window
+
         window = Gtk.Window()
 
         if mode == 'new':
@@ -200,7 +212,7 @@ class ContactEditor:
         available_lst = Gtk.ListStore(str)
         current_lst = Gtk.ListStore(str)
 
-        groups = controller.main_window.roster_widget.get_groups()
+        groups = self._roster_window.roster_widget.get_groups()
         groups.sort()
 
         for i in groups:
@@ -208,7 +220,7 @@ class ContactEditor:
 
         available_groups_treeview.set_model(available_lst)
 
-        roster_data = controller.main_window.roster_widget.get_data()
+        roster_data = self._roster_window.roster_widget.get_data()
         current_list = []
 
         if mode == 'edit' and jid in roster_data:
@@ -305,9 +317,13 @@ class ContactEditor:
         if name == '':
             name = None
 
-        jid = org.wayround.xmpp.core.JID.new_from_str(self.jid_entry.get_text())
+        jid = org.wayround.xmpp.core.JID.new_from_str(
+            self.jid_entry.get_text()
+            )
 
-        self.controller.roster.set(subject_jid=jid.bare(), groups=lst, name=name)
+        self._roster_window.roster_client.set(
+            subject_jid=jid.bare(), groups=lst, name=name
+            )
 
         self.window.destroy()
 
