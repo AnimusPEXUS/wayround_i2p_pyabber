@@ -1,4 +1,8 @@
 
+import logging
+import gc
+import threading
+
 from gi.repository import Gtk
 
 import org.wayround.pyabber.icondb
@@ -23,6 +27,7 @@ class MainStatusIconMenu:
         close_profile_mi = Gtk.MenuItem("Close Profile")
 
         about_mi = Gtk.MenuItem("About..")
+        garbage_mi = Gtk.MenuItem("print garbage")
 
         exit_mi = Gtk.MenuItem("Exit")
 
@@ -33,6 +38,7 @@ class MainStatusIconMenu:
         m.append(connections_mi)
         m.append(Gtk.SeparatorMenuItem())
         m.append(about_mi)
+        m.append(garbage_mi)
         m.append(Gtk.SeparatorMenuItem())
         m.append(exit_mi)
 
@@ -49,6 +55,8 @@ class MainStatusIconMenu:
             'activate',
             self._on_close_profile_mi_activate
             )
+
+        garbage_mi.connect('activate', self._on_print_threads)
 
         connections_mi.set_submenu(mm)
 
@@ -90,6 +98,9 @@ class MainStatusIconMenu:
 
     def _on_close_profile_mi_activate(self, mi):
         self._main.unset_profile()
+
+    def _on_print_threads(self, mi):
+        logging.debug(repr(threading.enumerate()))
 
 
 class MainStatusIcon:

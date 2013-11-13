@@ -270,7 +270,7 @@ class ProfileWindow:
 
     def __init__(self, parent, profile=None, typ='new'):
 
-        self.iteration_loop = org.wayround.utils.gtk.GtkIteratedLoop()
+        self._iteration_loop = org.wayround.utils.gtk.GtkIteratedLoop()
 
         if not typ in ['new', 'edit', 'open']:
             raise ValueError("`typ' must be in ['new', 'edit', 'open']")
@@ -400,9 +400,13 @@ class ProfileWindow:
 
         self.window_elements.win.show_all()
 
-        self.iteration_loop.wait()
+        self._iteration_loop.wait()
 
         return self.result
+
+    def destory(self):
+        self.window_elements.win.destroy()
+        self._iteration_loop.stop()
 
     def _ok(self, button):
 
@@ -472,4 +476,4 @@ class ProfileWindow:
     def _window_destroy(self, window):
 
         self.window_elements.win.hide()
-        self.iteration_loop.stop()
+        self._iteration_loop.stop()

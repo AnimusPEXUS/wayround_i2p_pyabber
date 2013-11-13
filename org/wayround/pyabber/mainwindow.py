@@ -38,7 +38,7 @@ class MainWindow:
 
         self.controller = org.wayround.pyabber.controller.MainController(self)
 
-        self.iteration_loop = org.wayround.utils.gtk.GtkIteratedLoop()
+        self._iteration_loop = org.wayround.utils.gtk.GtkIteratedLoop()
 
         pyabber_config = os.path.expanduser(pyabber_config)
 
@@ -133,7 +133,7 @@ class MainWindow:
                 )
             )
 
-        self.iteration_loop.wait()
+        self._iteration_loop.wait()
 
         return 0
 
@@ -305,7 +305,7 @@ class MainWindow:
         return b
 
     def app_exit(self, user_data):
-        self.iteration_loop.stop()
+        self._iteration_loop.stop()
 
     def main_notebook_switch_page(self, notebook, page, pagenum):
 

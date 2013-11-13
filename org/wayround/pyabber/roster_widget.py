@@ -13,6 +13,7 @@ import org.wayround.xmpp.core
 
 import org.wayround.pyabber.contact_popup_menu
 import org.wayround.pyabber.icondb
+import org.wayround.pyabber.roster_storage
 
 
 ROW_CELL_NAMES = [
@@ -392,6 +393,8 @@ class RosterWidget:
 
         self._lock = threading.Lock()
 
+        self._roster_storage = None
+
         self._data = {}
 
         self._treeview = Gtk.TreeView()
@@ -410,7 +413,6 @@ class RosterWidget:
             'button-release-event',
             self._on_treeview_buttonpress
             )
-#        self._treeview.connect('key-press-event', self._on_treeview_keypress)
 
         _c = Gtk.TreeViewColumn()
         _r = RosterCellRenderer()
@@ -820,15 +822,15 @@ class RosterWidget:
 
         return ret
 
-    def _sync_treeview_with_data_contacts_resources(self):
+    def _sync_treeview_with_data_contacts_resources(self, new_data):
 
-        for bare_jid in self._data.keys():
+        for bare_jid in new_data.keys():
 
             all_contact_row_refs = self._get_contact_row_refs(bare_jid)
 
-            for resource in self._data[bare_jid]['full'].keys():
+            for resource in new_data[bare_jid]['full'].keys():
 
-                data = self._data[bare_jid]['full'][resource]
+                data = new_data[bare_jid]['full'][resource]
 
                 for i in all_contact_row_refs:
                     pat = i.get_path()
@@ -856,13 +858,13 @@ class RosterWidget:
 
         return
 
-    def _sync_treeview_with_data_contacts(self):
+    def _sync_treeview_with_data_contacts(self, new_data):
 
         group_names = self._groups_list()
 
         for i in group_names:
-            for j in self._data.keys():
-                if (not i in self._data[j]['bare']['groups']
+            for j in new_data.keys():
+                if (not i in new_data[j]['bare']['groups']
                     or j == self._self_bare_jid):
 
                     g_iter = self._group_get_iter(i)
@@ -871,10 +873,10 @@ class RosterWidget:
                     if self._store.iter_n_children(g_iter) == 0:
                         self._store.remove(g_iter)
 
-        for i in self._data.keys():
-            for j in self._data[i]['bare']['groups']:
+        for i in new_data.keys():
+            for j in new_data[i]['bare']['groups']:
 
-                data = copy.deepcopy(self._data[i]['bare'])
+                data = copy.deepcopy(new_data[i]['bare'])
 
                 if 'is_transport' in data:
                     del(data['is_transport'])
@@ -901,13 +903,13 @@ class RosterWidget:
             lst = self._level_contacts_get_list(div_iter)
 
             for j in lst:
-                if not j in self._data:
+                if not j in new_data:
                     div_iter = self._division_get_iter(i)
                     self._level_contact_remove(div_iter, j)
 
-        for i in self._data.keys():
+        for i in new_data.keys():
 
-            data = copy.deepcopy(self._data[i]['bare'])
+            data = copy.deepcopy(new_data[i]['bare'])
 
             is_transport = False
             not_in_roster = False
@@ -999,9 +1001,9 @@ class RosterWidget:
 
         return
 
-    def _sync_treeview_with_data(self):
-        self._sync_treeview_with_data_contacts()
-        self._sync_treeview_with_data_contacts_resources()
+    def _sync_treeview_with_data(self, data):
+        self._sync_treeview_with_data_contacts(data)
+        self._sync_treeview_with_data_contacts_resources(data)
 
         while Gtk.events_pending():
             Gtk.main_iteration_do(False)
@@ -1011,142 +1013,29 @@ class RosterWidget:
     def set_self(self, self_bare_jid):
         self._self_bare_jid = self_bare_jid
 
-    def set_contact_resource(
-        self,
-        bare_jid,
-        resource,
-        available=None,
-        show=None,
-        status=None,
-        not_in_roster=None
-        ):
+    def set_storage_connection(self, roster_storage):
 
-        self.set_contact(
-            bare_jid=bare_jid,
-            available=available,
-            show=show,
-            status=status,
-            sync=False
-            )
+        if not isinstance(
+            roster_storage,
+            org.wayround.pyabber.roster_storage.RosterStorage
+            ):
+            raise ValueError(
+                "`roster_storage' must be "
+                "org.wayround.pyabber.roster_storage.RosterStorage"
+                )
 
-        self._lock.acquire()
+        if self._roster_storage:
+            self._roster_storage.disconnect_signal(self._storage_waiter)
 
-        if not resource in self._data[bare_jid]['full']:
-            self._data[bare_jid]['full'][resource] = {}
+        self._roster_storage = roster_storage
 
-        for i in [
-            'available',
-            'show',
-            'status'
-            ]:
-
-            ev = eval(i)
-            if ev != None:
-                self._data[bare_jid]['full'][resource][i] = ev
-
-            if not i in self._data[bare_jid]['full'][resource]:
-                self._data[bare_jid]['full'][resource][i] = None
-
-        self._sync_treeview_with_data()
-
-        self._lock.release()
+        self._roster_storage.connect_signal(True, self._storage_waiter)
 
         return
 
-    def set_contact(
-        self,
-        bare_jid,
-        name_or_title=None, groups=None,
-        approved=None, ask=None, subscription=None,
-        nick=None, userpic=None, available=None, show=None, status=None,
-        has_new_messages=None,
-        not_in_roster=None, is_transport=None, sync=True
-        ):
-
-        """
-        Change indication parameters
-
-        For all parameters (except bare_jid off course) None value means - do
-        no change current indication.
-
-        threadsafe using Lock()
-        """
-
+    def _storage_waiter(self, event, storage, bare_jid, data, jid_data):
         self._lock.acquire()
-
-        if not bare_jid in self._data:
-            self._data[bare_jid] = {
-                'bare': {},
-                'full': {}
-                }
-
-        for i in [
-            'name_or_title', 'groups',
-            'approved', 'ask', 'subscription',
-            'nick', 'userpic', 'available', 'show', 'status',
-            'has_new_messages',
-            'not_in_roster', 'is_transport'
-            ]:
-
-            ev = eval(i)
-            if ev != None:
-                self._data[bare_jid]['bare'][i] = ev
-
-            if not i in self._data[bare_jid]['bare']:
-                self._data[bare_jid]['bare'][i] = None
-
-        if ask == None:
-            self._data[bare_jid]['bare']['ask'] = None
-
-        if self._data[bare_jid]['bare']['groups'] == None:
-            self._data[bare_jid]['bare']['groups'] = set()
-
-        if sync:
-            self._sync_treeview_with_data()
-
-        self._lock.release()
-
-        return
-
-    def get_contacts(self):
-
-        self._lock.acquire()
-
-        ret = list(self._data.keys())
-
-        self._lock.release()
-
-        return ret
-
-    def get_data(self):
-
-        self._lock.acquire()
-
-        ret = copy.deepcopy(self._data)
-
-        self._lock.release()
-
-        return ret
-
-    def get_groups(self):
-
-        self._lock.acquire()
-
-        ret = self._groups_list()
-
-        self._lock.release()
-
-        return ret
-
-    def forget(self, bare_jid):
-
-        self._lock.acquire()
-
-        if bare_jid in self._data:
-            del self._data[bare_jid]
-
-        self._sync_treeview_with_data()
-
+        self._sync_treeview_with_data(data)
         self._lock.release()
 
     def _on_treeview_buttonpress(self, widget, event):

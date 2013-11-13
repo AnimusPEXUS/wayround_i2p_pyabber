@@ -16,7 +16,12 @@ import org.wayround.pyabber.roster_widget
 
 class RosterWindow:
 
-    def __init__(self, client, own_jid):
+    def __init__(
+        self,
+        client, own_jid,
+        roster_client, presence_client,
+        roster_storage
+        ):
 
         if not isinstance(client, org.wayround.xmpp.client.XMPPC2SClient):
             raise ValueError(
@@ -28,8 +33,46 @@ class RosterWindow:
                 "`own_jid' must be org.wayround.xmpp.core.JID"
                 )
 
+        if not isinstance(
+            roster_client,
+            org.wayround.xmpp.client.Roster
+            ):
+            raise ValueError(
+                "`roster_client' must be org.wayround.xmpp.client.Roster"
+                )
+
+        if not isinstance(
+            presence_client,
+            org.wayround.xmpp.client.Presence
+            ):
+            raise ValueError(
+                "`presence_client' must be org.wayround.xmpp.client.Presence"
+                )
+
+        if not isinstance(
+            roster_storage,
+            org.wayround.pyabber.roster_storage.RosterStorage
+            ):
+            raise ValueError(
+                "`roster_storage' must be "
+                "org.wayround.pyabber.roster_storage.RosterStorage"
+                )
+
+
+#        if not isinstance(
+#            message_client,
+#            org.wayround.xmpp.client.Message
+#            ):
+#            raise ValueError(
+#                "`message_client' must be org.wayround.xmpp.client.Message"
+#                )
+
         self._own_jid = own_jid
         self._client = client
+        self._roster_client = roster_client
+        self._presence_client = presence_client
+        self._roster_storage = roster_storage
+#        self._message_client = message_client
 
         b = Gtk.Box()
         b.set_orientation(Gtk.Orientation.VERTICAL)
@@ -132,28 +175,10 @@ class RosterWindow:
         window = Gtk.Window()
 
         window.add(b)
+        window.connect('destroy', self._on_destroy)
 
         self.roster_widget.set_self(self._own_jid.bare())
-
-        self._roster_client = org.wayround.xmpp.client.Roster(
-            self._client,
-            self._own_jid
-            )
-
-        self._presence_client = org.wayround.xmpp.client.Presence(
-            self._client,
-            self._own_jid
-            )
-
-        self._roster_client.connect_signal(
-            ['push'],
-            self._on_roster_push
-            )
-
-        self._presence_client.connect_signal(
-            ['presence'],
-            self._on_presence
-            )
+        self.roster_widget.set_storage_connection(self._roster_storage)
 
         self._window = window
 
@@ -174,163 +199,16 @@ class RosterWindow:
         self.roster_widget.destroy()
 
     def _on_destroy(self, window):
-        self._destroy()
-
-    def _on_roster_push(self, event, roster_obj, stanza_data):
-
-        if event != 'push':
-            pass
-        else:
-
-            jid = list(stanza_data.keys())[0]
-            data = stanza_data[jid]
-
-            not_in_roster = data.get_subscription() == 'remove'
-
-            self.roster_widget.set_contact(
-                name_or_title=data.get_name(),
-                bare_jid=jid,
-                groups=data.get_groups(),
-                approved=data.get_approved(),
-                ask=data.get_ask(),
-                subscription=data.get_subscription(),
-                not_in_roster=not_in_roster
-                )
-
-        return
-
-    def _on_presence(self, event, presence_obj, from_jid, to_jid, stanza):
-
-        if event == 'presence':
-
-            if not stanza.get_typ() in [
-                'unsubscribe', 'subscribed', 'unsubscribed'
-                ]:
-
-                f_jid = None
-
-                if from_jid:
-                    f_jid = org.wayround.xmpp.core.JID.new_from_str(from_jid)
-                else:
-                    f_jid = self.jid.copy()
-                    f_jid.user = None
-
-                not_in_roster = None
-                if stanza.get_typ() == 'remove':
-                    not_in_roster = True
-
-                if (not f_jid.bare() in
-                    self.roster_widget.get_data()):
-                    not_in_roster = True
-
-                status = None
-                s = stanza.get_status()
-                if len(s) != 0:
-                    status = s[0].get_text()
-                else:
-                    status = ''
-
-                show = stanza.get_show()
-                if show:
-                    show = show.get_text()
-                else:
-                    show = 'available'
-                    if stanza.get_typ() == 'unavailable':
-                        show = 'unavailable'
-
-                if f_jid.is_full():
-                    self.roster_widget.set_contact_resource(
-                        bare_jid=f_jid.bare(),
-                        resource=f_jid.resource,
-                        available=stanza.get_typ() != 'unavailable',
-                        show=show,
-                        status=status,
-                        not_in_roster=not_in_roster
-                        )
-                elif f_jid.is_bare():
-                    self.roster_widget.set_contact(
-                        bare_jid=f_jid.bare(),
-                        available=stanza.get_typ() != 'unavailable',
-                        show=show,
-                        status=status,
-                        not_in_roster=not_in_roster
-                        )
-                else:
-                    logging.error("Don't know what to do")
-
-            else:
-                logging.warning(
-                    "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stanza.typ is {}".format(
-                        stanza.get_typ()
-                        )
-                    )
-
-        return
+        self.destroy()
 
     def _on_get_roster_button_clicked(self, button):
 
-        res = self._roster_client.get(from_jid=self._own_jid.full())
+        self._roster_storage.load_from_server(
+            self._own_jid,
+            self._roster_client, True, self._window
+            )
 
-        if res == None:
-            d = org.wayround.utils.gtk.MessageDialog(
-                self._window,
-                Gtk.DialogFlags.MODAL
-                | Gtk.DialogFlags.DESTROY_WITH_PARENT,
-                Gtk.MessageType.ERROR,
-                Gtk.ButtonsType.OK,
-                "Roster retrieval attempt returned not a stanza"
-                )
-            d.run()
-            d.destroy()
-        else:
-            if (isinstance(res, org.wayround.xmpp.core.Stanza)
-                and res.is_error()):
-                d = org.wayround.utils.gtk.MessageDialog(
-                    self._window,
-                    Gtk.DialogFlags.MODAL
-                    | Gtk.DialogFlags.DESTROY_WITH_PARENT,
-                    Gtk.MessageType.ERROR,
-                    Gtk.ButtonsType.OK,
-                    "Error getting roster:\n{}".format(repr(res.gen_error()))
-                    )
-                d.run()
-                d.destroy()
-
-            elif (isinstance(res, org.wayround.xmpp.core.Stanza)
-                  and not res.is_error()):
-
-                d = org.wayround.utils.gtk.MessageDialog(
-                    self._window,
-                    Gtk.DialogFlags.MODAL
-                    | Gtk.DialogFlags.DESTROY_WITH_PARENT,
-                    Gtk.MessageType.ERROR,
-                    Gtk.ButtonsType.OK,
-                    "Unexpected return value:\n{}".format(res)
-                    )
-                d.run()
-                d.destroy()
-
-            elif isinstance(res, dict):
-                conts = self.roster_widget.get_contacts()
-
-                for i in res.keys():
-                    self.roster_widget.set_contact(
-                        name_or_title=res[i].get_name(),
-                        bare_jid=i,
-                        groups=res[i].get_group(),
-                        approved=res[i].get_approved(),
-                        ask=res[i].get_ask(),
-                        subscription=res[i].get_subscription()
-                        )
-
-                for i in conts:
-                    if not i in res:
-                        self.roster_widget.set_contact(
-                            bare_jid=i,
-                            not_in_roster=True
-                            )
-            else:
-                raise Exception("DNA error")
+        return
 
     def _on_add_contact_button_clicked(self, button):
 

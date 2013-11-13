@@ -17,6 +17,7 @@ import org.wayround.xmpp.muc
 import org.wayround.xmpp.privacy
 
 import org.wayround.pyabber.main
+import org.wayround.pyabber.roster_storage
 import org.wayround.pyabber.roster_window
 
 
@@ -70,10 +71,15 @@ class ConnectionStatusMenu:
             self._client_connetion_controller.roster_window = \
                 org.wayround.pyabber.roster_window.RosterWindow(
                     client=self._client_connetion_controller.client,
-                    own_jid=self._client_connetion_controller.jid
+                    own_jid=self._client_connetion_controller.jid,
+                    roster_client=self._client_connetion_controller.roster_client,
+                    presence_client=self._client_connetion_controller.presence_client,
+                    roster_storage=self._client_connetion_controller.roster_storage
                     )
             self._client_connetion_controller.roster_window.run()
-            self._client_connetion_controller.roster_window = None
+            if self._client_connetion_controller.roster_window != None:
+                self._client_connetion_controller.roster_window.destroy()
+                self._client_connetion_controller.roster_window = None
         else:
             self._client_connetion_controller.roster_window.show()
         return
@@ -89,7 +95,7 @@ class ConnectionStatusMenu:
         self._client_connetion_controller.destroy()
 
 
-class ClientConnetionController:
+class ClientConnectionController:
 
     def __init__(self, main, profile, preset_name):
 
@@ -151,16 +157,16 @@ class ClientConnetionController:
         self.auth_info = None
         self.client = None
         self.connection_info = None
-        self.jid = None
-        self.message = None
-        self.muc = None
-        self.presence = None
-        self.privacy = None
-        self.roster = None
-        self.sock = None
         self.is_driven = False
-
+        self.jid = None
+        self.message_client = None
+        self.muc_client = None
+        self.presence_client = None
+        self.privacy_client = None
+        self.roster_client = None
         self.roster_window = None
+        self.roster_storage = None
+        self.sock = None
 
         if init:
             self._disconnection_flag = threading.Event()
@@ -168,16 +174,19 @@ class ClientConnetionController:
             self._disconnection_flag.clear()
 
     def destroy(self):
+        self.disconnect()
+        if self.roster_window:
+            self.roster_window.destroy()
+            self.roster_window = None
         self.menu.destroy()
         self.menu = None
-        self.disconnect()
         self._remove_self_from_list()
 
     def connect(self):
 
         ret = 0
 
-        self.clear()
+        self.disconnect()
 
         self.jid = org.wayround.xmpp.core.JID(
             user=self.preset_data['username'],
@@ -189,6 +198,9 @@ class ClientConnetionController:
         self.auth_info = self.jid.make_authentication()
 
         self.auth_info.password = self.preset_data['password']
+
+        self.roster_storage = \
+            org.wayround.pyabber.roster_storage.RosterStorage()
 
         self.sock = socket.create_connection(
             (
@@ -203,27 +215,27 @@ class ClientConnetionController:
             self.sock
             )
 
-        self.roster = org.wayround.xmpp.client.Roster(
+        self.roster_client = org.wayround.xmpp.client.Roster(
             self.client,
             self.jid
             )
 
-        self.presence = org.wayround.xmpp.client.Presence(
+        self.presence_client = org.wayround.xmpp.client.Presence(
             self.client,
             self.jid
             )
 
-        self.message = org.wayround.xmpp.client.Message(
+        self.message_client = org.wayround.xmpp.client.Message(
             self.client,
             self.jid
             )
 
-        self.muc = org.wayround.xmpp.muc.Client(
+        self.muc_client = org.wayround.xmpp.muc.Client(
             self.client,
             self.jid
             )
 
-        self.privacy = org.wayround.xmpp.privacy.PrivacyClient(
+        self.privacy_client = org.wayround.xmpp.privacy.PrivacyClient(
             self.client,
             self.jid
             )
@@ -241,11 +253,6 @@ class ClientConnetionController:
             self._on_stream_io_event
             )
 
-#        self.client.io_machine.connect_signal(
-#            'in_element_readed',
-#            self._on_stream_object
-#            )
-
         features_waiter = org.wayround.utils.signal.SignalWaiter(
             self.client,
             'features'
@@ -254,7 +261,10 @@ class ClientConnetionController:
 
         self.is_driven = True
 
-        self.client.start()
+        self.client.start(
+            from_jid=self.jid.bare(),
+            to_jid=self.connection_info.host
+            )
         self.client.wait('working')
 
         auto = self.preset_data['stream_features_handling'] == 'auto'
@@ -263,15 +273,18 @@ class ClientConnetionController:
             ret = 0
             res = None
 
-            features = features_waiter.pop()
-            features_waiter.stop()
-            del(features_waiter)
+            if ret == 0:
 
-            if features == None:
-                logging.error("Timedout waiting for initial server features")
-                ret = 1
-            else:
-                last_features = features['args'][1]
+                features = features_waiter.pop()
+                features_waiter.stop()
+
+                if features == None:
+                    logging.error(
+                        "Timedout waiting for initial server features"
+                        )
+                    ret = 1
+                else:
+                    last_features = features['args'][1]
 
             if (not self._disconnection_flag.is_set()
                 and self.preset_data['STARTTLS']
@@ -376,33 +389,61 @@ class ClientConnetionController:
 
             if (not self._disconnection_flag.is_set()
                 and ret == 0):
-                self.roster.connect_signal(['push'], self._on_roster_push)
+                self.roster_client.connect_signal(
+                    ['push'], self._on_roster_push
+                    )
 
-                self.presence.connect_signal(['presence'],
-                                             self._on_presence
-                                             )
+                self.presence_client.connect_signal(
+                    ['presence'], self._on_presence
+                    )
 
-                self.message.connect_signal(['message'],
-                                             self._on_message
-                                             )
-
-            if ret != 0:
-                threading.Thread(
-                    target=self.disconnect,
-                    name="Disconnecting by connection error"
-                    ).start()
+                self.message_client.connect_signal(
+                    ['message'], self._on_message
+                    )
 
         self.is_driven = False
 
-        return
+        if ret != 0:
+            threading.Thread(
+                target=self.disconnect,
+                name="Disconnecting by connection error"
+                ).start()
+
+        return ret
 
     def disconnect(self):
-        self._disconnection_flag.set()
-        self.clear()
+        if not self._disconnection_flag.is_set():
+            self._disconnection_flag.set()
+
+            if self.client != None:
+
+                self.client.stop()
+                logging.debug("Now waiting for client to stop...")
+                self.client.wait('stopped')
+
+                sock = self.client.get_socket()
+
+                logging.debug("Shutting down socket")
+                try:
+                    sock.shutdown(socket.SHUT_RDWR)
+                except:
+                    logging.exception(
+                        "Can't shutdown socket. Maybe it's already dead"
+                        )
+
+                logging.debug("Closing socket object")
+                try:
+                    sock.close()
+                except:
+                    logging.exception(
+                        "Can't close socket. Maybe it's already dead"
+                        )
+
+            self.clear()
 
     def _on_connection_event(self, event, streamer, sock):
 
-        if self.is_driven:
+        if not self.is_driven:
 
             logging.debug(
                 "_on_connection_event `{}', `{}'".format(event, sock)
@@ -410,21 +451,6 @@ class ClientConnetionController:
 
             if event == 'start':
                 logging.debug("Connection started")
-
-                self.client.wait('working')
-
-                logging.debug(
-                    "Ended waiting for connection. Opening output stream"
-                    )
-
-                self.client.io_machine.send(
-                    org.wayround.xmpp.core.start_stream_tpl(
-                        from_jid=self.jid.bare(),
-                        to_jid=self.connection_info.host
-                        )
-                    )
-
-                logging.debug("Stream opening tag was started")
 
             elif event == 'stop':
                 logging.debug("Connection stopped")
@@ -438,7 +464,7 @@ class ClientConnetionController:
 
     def _on_stream_io_event(self, event, io_machine, attrs=None):
 
-        if self.is_driven:
+        if not self.is_driven:
 
             logging.debug("Stream io event `{}' : `{}'".format(event, attrs))
 
@@ -610,11 +636,96 @@ class ClientConnetionController:
 
         return ret
 
-    def _on_roster_push(self, event, roster_obj, stanza_data):
-        pass
-
-    def _on_presence(self, event, presence_obj, from_jid, to_jid, stanza):
-        pass
-
     def _on_message(self, event, message_obj, stanza):
         pass
+
+    def _on_roster_push(self, event, roster_obj, stanza_data):
+
+        if event != 'push':
+            pass
+        else:
+
+            jid = list(stanza_data.keys())[0]
+            data = stanza_data[jid]
+
+            not_in_roster = data.get_subscription() == 'remove'
+
+            self.roster_storage.set_bare(
+                name_or_title=data.get_name(),
+                bare_jid=jid,
+                groups=data.get_groups(),
+                approved=data.get_approved(),
+                ask=data.get_ask(),
+                subscription=data.get_subscription(),
+                not_in_roster=not_in_roster
+                )
+
+        return
+
+    def _on_presence(self, event, presence_obj, from_jid, to_jid, stanza):
+
+        if event == 'presence':
+
+            if not stanza.get_typ() in [
+                'unsubscribe', 'subscribed', 'unsubscribed'
+                ]:
+
+                f_jid = None
+
+                if from_jid:
+                    f_jid = org.wayround.xmpp.core.JID.new_from_str(from_jid)
+                else:
+                    f_jid = self.jid.copy()
+                    f_jid.user = None
+
+                not_in_roster = None
+                if stanza.get_typ() == 'remove':
+                    not_in_roster = True
+
+                if (not f_jid.bare() in
+                    self.roster_storage.get_data()):
+                    not_in_roster = True
+
+                status = None
+                s = stanza.get_status()
+                if len(s) != 0:
+                    status = s[0].get_text()
+                else:
+                    status = ''
+
+                show = stanza.get_show()
+                if show:
+                    show = show.get_text()
+                else:
+                    show = 'available'
+                    if stanza.get_typ() == 'unavailable':
+                        show = 'unavailable'
+
+                if f_jid.is_full():
+                    self.roster_storage.set_resource(
+                        bare_jid=f_jid.bare(),
+                        resource=f_jid.resource,
+                        available=stanza.get_typ() != 'unavailable',
+                        show=show,
+                        status=status,
+                        not_in_roster=not_in_roster
+                        )
+                elif f_jid.is_bare():
+                    self.roster_storage.set_bare(
+                        bare_jid=f_jid.bare(),
+                        available=stanza.get_typ() != 'unavailable',
+                        show=show,
+                        status=status,
+                        not_in_roster=not_in_roster
+                        )
+                else:
+                    logging.error("Don't know what to do")
+
+            else:
+                logging.warning(
+                    "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stanza.typ is {}".format(
+                        stanza.get_typ()
+                        )
+                    )
+
+        return

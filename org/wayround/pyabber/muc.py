@@ -77,6 +77,10 @@ class MUCJIDEntryDialog:
         self._iteration_loop.wait()
         return self._result
 
+    def destroy(self):
+        self._window.destroy()
+        self._iteration_loop.stop()
+
     def _on_ok_button_clicked(self, button):
         self._result = self._entry.get_text()
         self._iteration_loop.stop()
@@ -84,7 +88,6 @@ class MUCJIDEntryDialog:
 
     def _on_destroy(self, *args, **kwargs):
         self._iteration_loop.stop()
-        self._iteration_loop = None
         self._window.hide()
         return
 

@@ -1,6 +1,7 @@
 
+import threading
+import logging
 import os.path
-import weakref
 
 from gi.repository import Gtk
 
@@ -40,11 +41,16 @@ class Main:
             self._working = False
 
     def destroy(self):
+        logging.debug("main destroy 1")
         self.unset_profile()
+        logging.debug("main destroy 2")
         self.status_icon.destroy()
+        logging.debug("main destroy 3")
         if self._profile_selection_dialog:
             self._profile_selection_dialog.destroy()
+        logging.debug("main destroy 4")
         self._iteration_loop.stop()
+        logging.debug("main destroy 5")
         return
 
     def show_profile_selection_dialog(self):
@@ -53,8 +59,9 @@ class Main:
             self._profile_selection_dialog = \
                 org.wayround.pyabber.profile_window.ProfileMgrWindow(self)
             self._profile_selection_dialog.run()
-            self._profile_selection_dialog.destroy()
-            self._profile_selection_dialog = None
+            if self._profile_selection_dialog != None:
+                self._profile_selection_dialog.destroy()
+                self._profile_selection_dialog = None
         else:
             self._profile_selection_dialog.show()
 
@@ -150,8 +157,9 @@ class ProfileSession:
                     self._main, self
                     )
             self._connection_mgr_dialog.run()
-            self._connection_mgr_dialog.destroy()
-            self._connection_mgr_dialog = None
+            if self._connection_mgr_dialog != None:
+                self._connection_mgr_dialog.destroy()
+                self._connection_mgr_dialog = None
         else:
             self._connection_mgr_dialog.show()
 
@@ -161,6 +169,7 @@ class ProfileSession:
 
         if self._connection_mgr_dialog:
             self._connection_mgr_dialog.destroy()
+            self._connection_mgr_dialog = None
 
         for i in list(self.connection_controllers):
             i.destroy()
@@ -186,3 +195,4 @@ def main(opts, args):
 
     m = Main()
     m.run()
+    logging.debug(repr(threading.enumerate()))

@@ -196,6 +196,7 @@ class ConnectionMgrWindow:
         self._conn_table = conn_table
 
         window = Gtk.Window()
+        window.connect('destroy', self._on_destroy)
 
         window.add(b)
 
@@ -218,12 +219,17 @@ class ConnectionMgrWindow:
         self._iterated_loop.stop()
         self._window.destroy()
 
+    def _on_destroy(self, window):
+        self._window.hide()
+        self._iterated_loop.stop()
+
     def _on_new_clicked(self, button):
 
         w = org.wayround.pyabber.connection_window.ConnectionPresetWindow(
             self.window_elements.window, typ='new'
             )
         r = w.run()
+        w.destroy()
 
         result_code = r['button']
 
@@ -287,6 +293,7 @@ class ConnectionMgrWindow:
                 )
 
             r = w.run()
+            w.destroy()
 
             result_code = r['button']
 
@@ -366,7 +373,7 @@ class ConnectionMgrWindow:
                 already_exists = True
 
         if not already_exists:
-            org.wayround.pyabber.ccc.ClientConnetionController(
+            org.wayround.pyabber.ccc.ClientConnectionController(
                 self._main, self._profile, name
                 )
 
@@ -436,7 +443,7 @@ class ConnectionPresetWindow:
 
     def __init__(self, parent, preset_name=None, preset_data=None, typ='new'):
 
-        self.iteration_loop = org.wayround.utils.gtk.GtkIteratedLoop()
+        self._iteration_loop = org.wayround.utils.gtk.GtkIteratedLoop()
 
         if not typ in ['new', 'edit']:
             raise ValueError("`typ' must be in ['new', 'edit']")
@@ -889,9 +896,13 @@ class ConnectionPresetWindow:
 
         self.window_elements.win.show_all()
 
-        self.iteration_loop.wait()
+        self._iteration_loop.wait()
 
         return self.result
+
+    def destroy(self):
+        self.window_elements.win.destroy()
+        self._iteration_loop.stop()
 
     def _ok(self, button):
 
@@ -1074,4 +1085,4 @@ class ConnectionPresetWindow:
 
     def _window_destroy(self, window):
 
-        self.iteration_loop.stop()
+        self._iteration_loop.stop()
