@@ -408,6 +408,11 @@ class ProfileWindow:
         self.window_elements.win.destroy()
         self._iteration_loop.stop()
 
+    def _window_destroy(self, window):
+
+        self.window_elements.win.hide()
+        self._iteration_loop.stop()
+
     def _ok(self, button):
 
         name = self.window_elements.name_editor.get_text()
@@ -473,7 +478,4 @@ class ProfileWindow:
 
         self.window_elements.win.destroy()
 
-    def _window_destroy(self, window):
-
-        self.window_elements.win.hide()
-        self._iteration_loop.stop()
+        return

@@ -368,7 +368,7 @@ class MUCDestructionDialog:
 
 class MUCPopupMenu:
 
-    def __init__(self, muc_jid, own_jid, client):
+    def __init__(self, own_jid, client):
 
         if not isinstance(own_jid, org.wayround.xmpp.core.JID):
             raise ValueError(
@@ -380,28 +380,10 @@ class MUCPopupMenu:
                 "`client' must be org.wayround.xmpp.client.XMPPC2SClient"
                 )
 
-        if not isinstance(muc_jid, str):
-            raise ValueError("`muc_jid' must be str")
-
-        self._muc_jid = muc_jid
         self._own_jid = own_jid
         self._client = client
 
-        jid = org.wayround.xmpp.core.JID.new_from_string(muc_jid)
-
-        jid_service = False
-        if jid:
-            jid_service = jid.user == None
-
-        self._jid_service = jid_service
-
-        self._menu = Gtk.Menu()
-        menu = self._menu
-
-        self._menu.connect('destroy', self._on_destroy)
-        self._menu.connect('hide', self._on_hide)
-        self._menu.connect('selection-done', self._on_selection_done)
-        self._menu.connect('deactivate', self._on_deactivate)
+        menu = Gtk.Menu()
 
         new_muc_inst_mi = Gtk.MenuItem("New Instant..")
         new_muc_conf_mi = Gtk.MenuItem("New Configuring..")
@@ -417,9 +399,6 @@ class MUCPopupMenu:
         edit_ban_list_muc_mi = Gtk.MenuItem("Ban List..")
 
         destroy_muc_mi = Gtk.MenuItem("Destroy..")
-
-        new_muc_inst_mi.set_sensitive(jid_service)
-        new_muc_conf_mi.set_sensitive(jid_service)
 
         new_muc_inst_mi.connect('activate', self._on_new_muc_inst_mi_activated)
         new_muc_conf_mi.connect('activate', self._on_new_muc_conf_mi_activated)
@@ -468,7 +447,31 @@ class MUCPopupMenu:
         menu.append(Gtk.SeparatorMenuItem())
         menu.append(destroy_muc_mi)
 
-        self._menu.show_all()
+        menu.show_all()
+
+        self._menu = menu
+        self._new_muc_conf_mi = new_muc_conf_mi
+        self._new_muc_inst_mi = new_muc_inst_mi
+
+        return
+
+    def set(self, muc_jid):
+
+        if not isinstance(muc_jid, str):
+            raise ValueError("`muc_jid' must be str")
+
+        self._muc_jid = muc_jid
+
+        jid = org.wayround.xmpp.core.JID.new_from_string(muc_jid)
+
+        jid_service = False
+        if jid:
+            jid_service = jid.user == None
+
+        self._jid_service = jid_service
+        self._new_muc_inst_mi.set_sensitive(jid_service)
+        self._new_muc_conf_mi.set_sensitive(jid_service)
+
         return
 
     def show(self):
@@ -699,18 +702,6 @@ class MUCPopupMenu:
             w.show()
 
         return
-
-    def _on_selection_done(self, menu):
-        print("Menu Selection Done")
-
-    def _on_deactivate(self, menu):
-        print("Menu Deactivate")
-
-    def _on_destroy(self, menu):
-        print("Menu Destroy")
-
-    def _on_hide(self, menu):
-        print("Menu Hide")
 
 
 class MUCIdentityEditorWindow:

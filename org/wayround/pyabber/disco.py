@@ -20,10 +20,77 @@ import org.wayround.pyabber.privacy
 
 class DiscoMenu:
 
-    def __init__(
-        self,
-        target_jid_str, node=None, own_jid_obj=None, client=None
-        ):
+    def __init__(self, own_jid=None, client=None, disco=None):
+
+        if not isinstance(own_jid, org.wayround.xmpp.core.JID):
+            raise ValueError(
+                "`own_jid' must be org.wayround.xmpp.core.JID"
+                )
+
+        if not isinstance(client, org.wayround.xmpp.client.XMPPC2SClient):
+            raise ValueError(
+                "`client' must be org.wayround.xmpp.client.XMPPC2SClient"
+                )
+
+        if not isinstance(disco, Disco):
+            raise ValueError(
+                "`disco' must be Disco"
+                )
+
+        menu = Gtk.Menu()
+
+        self._client = client
+        self._own_jid = own_jid
+
+        addr_mi = Gtk.MenuItem("target_jid and node")
+        error_mi = Gtk.MenuItem("no errors")
+
+        commands_mi = Gtk.MenuItem("Commands")
+        muc_mi = Gtk.MenuItem("MUC")
+        privacy_mi = Gtk.MenuItem("Privacy..")
+
+        menu.append(addr_mi)
+        menu.append(Gtk.SeparatorMenuItem())
+        menu.append(error_mi)
+        menu.append(Gtk.SeparatorMenuItem())
+        menu.append(commands_mi)
+        menu.append(muc_mi)
+        menu.append(privacy_mi)
+
+        addr_submenu = Gtk.Menu()
+        addr_mi.set_submenu(addr_submenu)
+
+        addr_open_mi = Gtk.MenuItem("Open")
+        addr_copy_mi = Gtk.MenuItem("Copy to Clipboard")
+
+        addr_submenu.append(addr_open_mi)
+        addr_submenu.append(Gtk.SeparatorMenuItem())
+        addr_submenu.append(addr_copy_mi)
+
+        mucmenu = org.wayround.pyabber.muc.MUCPopupMenu(
+            own_jid=self._own_jid,
+            client=self._client
+            )
+
+        muc_mi.set_submenu(mucmenu.get_widget())
+
+        menu.show_all()
+
+        addr_open_mi.connect('activate', self._on_addr_open_activated)
+        commands_mi.connect('activate', self._on_commands_mi_activated)
+        privacy_mi.connect('activate', self._on_privacy_mi_activated)
+
+        self._addr_mi = addr_mi
+        self._commands_mi = commands_mi
+        self._disco = disco
+        self._error_mi = error_mi
+        self._menu = menu
+        self._muc_mi = muc_mi
+        self._mucmenu = mucmenu
+
+        return
+
+    def set(self, target_jid_str, node=None):
 
         if not isinstance(target_jid_str, str):
             raise ValueError(
@@ -35,99 +102,45 @@ class DiscoMenu:
                 "`node' must be None or str"
                 )
 
-        if not isinstance(own_jid_obj, org.wayround.xmpp.core.JID):
-            raise ValueError(
-                "`own_jid_obj' must be org.wayround.xmpp.core.JID"
-                )
-
-        if not isinstance(client, org.wayround.xmpp.client.XMPPC2SClient):
-            raise ValueError(
-                "`client' must be org.wayround.xmpp.client.XMPPC2SClient"
-                )
-
         self._target_jid_str = target_jid_str
-        self._own_jid = own_jid_obj
         self._node = node
-        self._client = client
-
-        self._menu = Gtk.Menu()
-
-        addr_mi = Gtk.MenuItem("target_jid and node")
-        error_mi = Gtk.MenuItem("no errors")
-
-        commands_mi = Gtk.MenuItem("Commands")
-        commands_mi.connect('activate', self._on_commands_mi_activated)
-
-        muc_mi = Gtk.MenuItem("MUC")
-
-        privacy_mi = Gtk.MenuItem("Privacy..")
-        privacy_mi.connect('activate', self._on_privacy_mi_activated)
-
-        self.addr_mi = addr_mi
-
-        self._menu.append(addr_mi)
-        self._menu.append(Gtk.SeparatorMenuItem())
-        self._menu.append(error_mi)
-        self._menu.append(Gtk.SeparatorMenuItem())
-        self._menu.append(commands_mi)
-        self._menu.append(muc_mi)
-        self._menu.append(privacy_mi)
-
-        addr_submenu = Gtk.Menu()
-        addr_mi.set_submenu(addr_submenu)
-
-        addr_open_mi = Gtk.MenuItem("Open")
-        addr_copy_mi = Gtk.MenuItem("Copy to Clipboard")
-
-        addr_open_mi.connect('activate', self._on_addr_open_activated)
-
-        addr_submenu.append(addr_open_mi)
-        addr_submenu.append(Gtk.SeparatorMenuItem())
-        addr_submenu.append(addr_copy_mi)
 
         q, stanza = org.wayround.xmpp.disco.get_info(
             to_jid=self._target_jid_str,
             from_jid=self._own_jid.full(),
-            node=node,
+            node=self._node,
             stanza_processor=self._client.stanza_processor
             )
 
-        commands_mi.set_sensitive(False)
-        error_mi.set_sensitive(False)
-        muc_mi.set_sensitive(False)
+        self._commands_mi.set_sensitive(False)
+        self._error_mi.set_sensitive(False)
+        self._muc_mi.set_sensitive(False)
+
 #        privacy_mi.set_sensitive(False)
 
         if stanza.is_error():
-            error_mi.set_label(stanza.gen_error().gen_text().strip())
+            self._error_mi.set_label(stanza.gen_error().gen_text().strip())
 
         t = self._target_jid_str
         if node:
             t += '\{}'.format(node)
 
-        self.addr_mi.set_label(t)
+        self._addr_mi.set_label(t)
 
         if q != None:
-            commands_mi.set_sensitive(
+            self._commands_mi.set_sensitive(
                 q.has_feature('http://jabber.org/protocol/commands')
                 )
 
-            muc_mi.set_sensitive(
+            self._muc_mi.set_sensitive(
                 q.has_feature('http://jabber.org/protocol/muc')
                 )
 
-#            privacy_mi.set_sensitive(
-#                q.has_feature('jabber:iq:privacy')
-#                )
+            #            self._privacy_mi.set_sensitive(
+            #                q.has_feature('jabber:iq:privacy')
+            #                )
 
-            muc_mi.set_submenu(
-                org.wayround.pyabber.muc.MUCPopupMenu(
-                    muc_jid=self._target_jid_str,
-                    own_jid=self._own_jid,
-                    client=self._client
-                    ).get_widget()
-                )
-
-        self._menu.show_all()
+        self._mucmenu.set(target_jid_str)
 
         return
 
@@ -153,12 +166,7 @@ class DiscoMenu:
             )
 
     def _on_addr_open_activated(self, menuitem):
-        disco(
-            self._target_jid_str,
-            self._node,
-            self._own_jid,
-            self._client
-            )
+        self._disco.disco_show_cb(self._target_jid_str, self._node)
 
     def _on_privacy_mi_activated(self, menuitem):
 
@@ -173,34 +181,13 @@ class DiscoMenu:
         return
 
 
-def disco_menu(target_jid_str, node, own_jid_obj, client):
-
-    disco_menu = DiscoMenu(target_jid_str, node, own_jid_obj, client)
-    disco_menu.show()
-
-    return
-
-
 class Disco:
 
-    def __init__(
-            self,
-            target_jid_str, node=None, own_jid_obj=None, client=None
-            ):
+    def __init__(self, own_jid=None, client=None, disco_show_cb=None):
 
-        if not isinstance(target_jid_str, str):
+        if not isinstance(own_jid, org.wayround.xmpp.core.JID):
             raise ValueError(
-                "`target_jid_str' must be str"
-                )
-
-        if node is not None and not isinstance(node, str):
-            raise ValueError(
-                "`node' must be None or str"
-                )
-
-        if not isinstance(own_jid_obj, org.wayround.xmpp.core.JID):
-            raise ValueError(
-                "`own_jid_obj' must be org.wayround.xmpp.core.JID"
+                "`own_jid' must be org.wayround.xmpp.core.JID"
                 )
 
         if not isinstance(client, org.wayround.xmpp.client.XMPPC2SClient):
@@ -208,10 +195,17 @@ class Disco:
                 "`client' must be org.wayround.xmpp.client.XMPPC2SClient"
                 )
 
+        if not callable(disco_show_cb):
+            raise ValueError("`disco_show_cb' must be callable")
+
+        self._disco_show_cb = disco_show_cb
+
+        self.menu = DiscoMenu(own_jid, client, self)
+
         self._client = client
-        self._node = node
-        self._own_jid = own_jid_obj
-        self._target_jid_str = target_jid_str
+        self._own_jid = own_jid
+        self._node = None
+        self._target_jid_str = None
 
         window = Gtk.Window()
         window.set_default_size(500, 500)
@@ -331,13 +325,11 @@ class Disco:
 
         self._work_jid = None
         self._work_node = None
+        window.connect('destroy', self._on_destroy)
 
         self._lock = threading.Lock()
 
-        if (self._target_jid_str != None
-            or (self._target_jid_str != None and self._node != None)):
-
-            self.set_addr(target_jid_str, node)
+        self._iterated_loop = org.wayround.utils.gtk.GtkIteratedLoop()
 
         return
 
@@ -350,6 +342,39 @@ class Disco:
                 self._work_node
                 )
             )
+
+    def run(self, target_jid_str=None, node=None):
+
+        self.show()
+
+        if not isinstance(target_jid_str, str):
+            raise ValueError(
+                "`target_jid_str' must be str"
+                )
+
+        if node is not None and not isinstance(node, str):
+            raise ValueError(
+                "`node' must be None or str"
+                )
+
+        self._node = node
+        self._target_jid_str = target_jid_str
+
+        if (self._target_jid_str != None
+            or (self._target_jid_str != None and self._node != None)):
+
+            self.set_addr(self._target_jid_str, self._node)
+
+        self._iterated_loop.wait()
+
+        return
+
+    def destroy(self, window):
+        self.window.destroy()
+        self._iterated_loop.stop()
+
+    def _on_destroy(self):
+        self.destroy()
 
     def show(self):
 
@@ -703,12 +728,11 @@ class Disco:
     def _on_server_menu_button_clicked(self, button):
 
         if self._work_jid:
-            disco_menu(
+            self.menu.set(
                 target_jid_str=self._work_jid,
-                node=self._work_node,
-                own_jid_obj=self._own_jid,
-                client=self._client
+                node=self._work_node
                 )
+            self.menu.show()
 
     def _on_row_activated(self, view, path, column):
 
@@ -782,23 +806,13 @@ class Disco:
                         if values[9] != None:
                             node = values[9]
 
-                        disco_menu(
+                        self.menu.set(
                             target_jid_str=values[8],
-                            node=node,
-                            own_jid_obj=self._own_jid,
-                            client=self._client
+                            node=node
                             )
+                        self.menu.show()
 
         return
 
     def _on_jid_or_node_entry_activate(self, entry):
-
         self._go_button.emit('clicked')
-
-    def _on_destroy(self, *args, **kwargs):
-        self.window.hide()
-
-
-def disco(target_jid_str, node, own_jid_obj, client):
-    a = Disco(target_jid_str, node, own_jid_obj, client)
-    a.show()

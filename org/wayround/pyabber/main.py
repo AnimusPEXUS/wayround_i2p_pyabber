@@ -27,9 +27,17 @@ class Main:
 
         self.status_icon = None
 
+        self._rel_win_ctl = org.wayround.utils.gtk.RelatedWindowCollector()
+        self._rel_win_ctl.set_constructor_cb(
+            'profile_selection_dialog',
+            self._profile_selection_dialog_constructor
+            )
+
         self._iteration_loop = org.wayround.utils.gtk.GtkIteratedLoop()
-        self._profile_selection_dialog = None
         self._working = False
+
+    def _profile_selection_dialog_constructor(self):
+        return org.wayround.pyabber.profile_window.ProfileMgrWindow(self)
 
     def run(self):
         if not self._working:
@@ -46,8 +54,7 @@ class Main:
         logging.debug("main destroy 2")
         self.status_icon.destroy()
         logging.debug("main destroy 3")
-        if self._profile_selection_dialog:
-            self._profile_selection_dialog.destroy()
+        self._rel_win_ctl.destroy()
         logging.debug("main destroy 4")
         self._iteration_loop.stop()
         logging.debug("main destroy 5")
@@ -55,15 +62,7 @@ class Main:
 
     def show_profile_selection_dialog(self):
 
-        if self._profile_selection_dialog == None:
-            self._profile_selection_dialog = \
-                org.wayround.pyabber.profile_window.ProfileMgrWindow(self)
-            self._profile_selection_dialog.run()
-            if self._profile_selection_dialog != None:
-                self._profile_selection_dialog.destroy()
-                self._profile_selection_dialog = None
-        else:
-            self._profile_selection_dialog.show()
+        self._rel_win_ctl.show('profile_selection_dialog')
 
         return
 
@@ -147,29 +146,28 @@ class ProfileSession:
 
         self.connection_controllers = set()
 
-        self._connection_mgr_dialog = None
+        self._rel_win_ctl = org.wayround.utils.gtk.RelatedWindowCollector()
+        self._rel_win_ctl.set_constructor_cb(
+            'connection_mgr_dialog',
+            self._connection_mgr_dialog_constructor
+            )
+
+#        self._connection_mgr_dialog = None
+
+    def _connection_mgr_dialog_constructor(self):
+        return org.wayround.pyabber.connection_window.ConnectionMgrWindow(
+            self._main, self
+                )
 
     def show_connection_mgr_dialog(self):
 
-        if self._connection_mgr_dialog == None:
-            self._connection_mgr_dialog = \
-                org.wayround.pyabber.connection_window.ConnectionMgrWindow(
-                    self._main, self
-                    )
-            self._connection_mgr_dialog.run()
-            if self._connection_mgr_dialog != None:
-                self._connection_mgr_dialog.destroy()
-                self._connection_mgr_dialog = None
-        else:
-            self._connection_mgr_dialog.show()
+        self._rel_win_ctl.show('connection_mgr_dialog')
 
         return
 
     def destroy(self):
 
-        if self._connection_mgr_dialog:
-            self._connection_mgr_dialog.destroy()
-            self._connection_mgr_dialog = None
+        self._rel_win_ctl.destroy()
 
         for i in list(self.connection_controllers):
             i.destroy()

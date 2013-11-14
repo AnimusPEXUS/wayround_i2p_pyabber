@@ -20,7 +20,8 @@ class RosterWindow:
         self,
         client, own_jid,
         roster_client, presence_client,
-        roster_storage
+        roster_storage,
+        disco_show_cb
         ):
 
         if not isinstance(client, org.wayround.xmpp.client.XMPPC2SClient):
@@ -58,14 +59,10 @@ class RosterWindow:
                 "org.wayround.pyabber.roster_storage.RosterStorage"
                 )
 
+        if not callable(disco_show_cb):
+            raise ValueError("`disco_show_cb' must be callable")
 
-#        if not isinstance(
-#            message_client,
-#            org.wayround.xmpp.client.Message
-#            ):
-#            raise ValueError(
-#                "`message_client' must be org.wayround.xmpp.client.Message"
-#                )
+        self._disco_show_cb = disco_show_cb
 
         self._own_jid = own_jid
         self._client = client
@@ -230,9 +227,7 @@ class RosterWindow:
         presence_control_popup_window.show()
 
     def _on_show_disco_button(self, button):
-        org.wayround.pyabber.disco.disco(
-            self._own_jid.domain, None, self._own_jid, self._client
-            )
+        self._disco_show_cb(self._own_jid.domain, None)
 
     def _on_send_space_button_clicked(self, button):
         self._client.io_machine.send(' ')

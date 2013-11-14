@@ -19,6 +19,7 @@ import org.wayround.xmpp.privacy
 import org.wayround.pyabber.main
 import org.wayround.pyabber.roster_storage
 import org.wayround.pyabber.roster_window
+import org.wayround.pyabber.disco
 
 
 class ConnectionStatusMenu:
@@ -67,22 +68,7 @@ class ConnectionStatusMenu:
         self._connections_submenu_item = menuitem
 
     def _on_roster_mi_activated(self, mi):
-        if self._client_connetion_controller.roster_window == None:
-            self._client_connetion_controller.roster_window = \
-                org.wayround.pyabber.roster_window.RosterWindow(
-                    client=self._client_connetion_controller.client,
-                    own_jid=self._client_connetion_controller.jid,
-                    roster_client=self._client_connetion_controller.roster_client,
-                    presence_client=self._client_connetion_controller.presence_client,
-                    roster_storage=self._client_connetion_controller.roster_storage
-                    )
-            self._client_connetion_controller.roster_window.run()
-            if self._client_connetion_controller.roster_window != None:
-                self._client_connetion_controller.roster_window.destroy()
-                self._client_connetion_controller.roster_window = None
-        else:
-            self._client_connetion_controller.roster_window.show()
-        return
+        self._client_connetion_controller.show_roster_window()
 
     def _on_reconnect_mi_activated(self, mi):
         self._client_connetion_controller.disconnect()
@@ -142,6 +128,17 @@ class ClientConnectionController:
 
         self.profile.connection_controllers.add(self)
 
+        self._rel_win_ctl = org.wayround.utils.gtk.RelatedWindowCollector()
+        self._rel_win_ctl.set_constructor_cb(
+            'roster_window',
+            self._roster_window_constructor
+            )
+        self._rel_win_ctl.set_constructor_cb(
+            'disco_window',
+            self._disco_window_constructor,
+            single=False
+            )
+
         self.clear(init=True)
 
     def __del__(self):
@@ -150,6 +147,29 @@ class ClientConnectionController:
     def _remove_self_from_list(self):
         if self in self.profile.connection_controllers:
             self.profile.connection_controllers.remove(self)
+
+    def _roster_window_constructor(self):
+        return org.wayround.pyabber.roster_window.RosterWindow(
+            client=self.client,
+            own_jid=self.jid,
+            roster_client=self.roster_client,
+            presence_client=self.presence_client,
+            roster_storage=self.roster_storage,
+            disco_show_cb=self.show_disco_window
+            )
+
+    def show_roster_window(self):
+        self._rel_win_ctl.show('roster_window')
+
+    def _disco_window_constructor(self):
+        return org.wayround.pyabber.disco.Disco(
+            self.jid,
+            self.client,
+            self.show_disco_window
+            )
+
+    def show_disco_window(self, *args, **kwargs):
+        self._rel_win_ctl.show('disco_window', *args, **kwargs)
 
     def clear(self, init=False):
 
@@ -164,7 +184,6 @@ class ClientConnectionController:
         self.presence_client = None
         self.privacy_client = None
         self.roster_client = None
-        self.roster_window = None
         self.roster_storage = None
         self.sock = None
 
@@ -175,9 +194,7 @@ class ClientConnectionController:
 
     def destroy(self):
         self.disconnect()
-        if self.roster_window:
-            self.roster_window.destroy()
-            self.roster_window = None
+        self._rel_win_ctl.destroy()
         self.menu.destroy()
         self.menu = None
         self._remove_self_from_list()
