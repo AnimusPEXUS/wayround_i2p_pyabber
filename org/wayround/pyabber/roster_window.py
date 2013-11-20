@@ -1,74 +1,30 @@
 
-import logging
-
 from gi.repository import Gtk
 
 import org.wayround.utils.gtk
 
-import org.wayround.xmpp.client
-import org.wayround.xmpp.core
-
-import org.wayround.pyabber.contact_editor
-import org.wayround.pyabber.disco
-import org.wayround.pyabber.presence_control_popup
 import org.wayround.pyabber.roster_widget
+import org.wayround.pyabber.ccc
 
 
 class RosterWindow:
 
-    def __init__(
-        self,
-        client, own_jid,
-        roster_client, presence_client,
-        roster_storage,
-        disco_show_cb
-        ):
-
-        if not isinstance(client, org.wayround.xmpp.client.XMPPC2SClient):
-            raise ValueError(
-                "`client' must be org.wayround.xmpp.client.XMPPC2SClient"
-                )
-
-        if not isinstance(own_jid, org.wayround.xmpp.core.JID):
-            raise ValueError(
-                "`own_jid' must be org.wayround.xmpp.core.JID"
-                )
+    def __init__(self, controller):
 
         if not isinstance(
-            roster_client,
-            org.wayround.xmpp.client.Roster
+            controller,
+            org.wayround.pyabber.ccc.ClientConnectionController
             ):
             raise ValueError(
-                "`roster_client' must be org.wayround.xmpp.client.Roster"
+                "`controller' must be org.wayround.xmpp.client.XMPPC2SClient"
                 )
 
-        if not isinstance(
-            presence_client,
-            org.wayround.xmpp.client.Presence
-            ):
-            raise ValueError(
-                "`presence_client' must be org.wayround.xmpp.client.Presence"
-                )
-
-        if not isinstance(
-            roster_storage,
-            org.wayround.pyabber.roster_storage.RosterStorage
-            ):
-            raise ValueError(
-                "`roster_storage' must be "
-                "org.wayround.pyabber.roster_storage.RosterStorage"
-                )
-
-        if not callable(disco_show_cb):
-            raise ValueError("`disco_show_cb' must be callable")
-
-        self._disco_show_cb = disco_show_cb
-
-        self._own_jid = own_jid
-        self._client = client
-        self._roster_client = roster_client
-        self._presence_client = presence_client
-        self._roster_storage = roster_storage
+        self._controller = controller
+        self._own_jid = self._controller.jid
+        self._client = self._controller.client
+        self._roster_client = self._controller.roster_client
+        self._presence_client = self._controller.presence_client
+        self._roster_storage = self._controller.roster_storage
 #        self._message_client = message_client
 
         b = Gtk.Box()
@@ -209,25 +165,17 @@ class RosterWindow:
 
     def _on_add_contact_button_clicked(self, button):
 
-        w = org.wayround.pyabber.contact_editor.ContactEditor(
-            self.controller
-            )
-        w.show()
+        self._controller.show_contact_editor_window()
 
     def _on_initial_presence_button_clicked(self, button):
         self._presence_client.presence()
 
     def _on_change_presence_button_clicked(self, button):
 
-        presence_control_popup_window = (
-            org.wayround.pyabber.presence_control_popup.PresenceControlPopup(
-                self._presence_client
-                )
-            )
-        presence_control_popup_window.show()
+        self._controller.show_presence_control_window()
 
     def _on_show_disco_button(self, button):
-        self._disco_show_cb(self._own_jid.domain, None)
+        self._controller.show_disco_window(self._own_jid.domain, None)
 
     def _on_send_space_button_clicked(self, button):
         self._client.io_machine.send(' ')

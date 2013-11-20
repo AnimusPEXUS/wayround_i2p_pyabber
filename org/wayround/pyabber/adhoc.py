@@ -1,4 +1,7 @@
 
+import threading
+import logging
+
 from gi.repository import Gtk
 
 import org.wayround.utils.gtk
@@ -13,30 +16,25 @@ import org.wayround.pyabber.xdata
 
 class AD_HOC_Window:
 
-    def __init__(self, commands, to_jid, own_jid, client):
+    def __init__(self, controller):
 
-        if not isinstance(commands, dict):
-            raise TypeError("`commands' must be dict")
-
-        if to_jid is not None and not isinstance(to_jid, str):
-            raise ValueError("`to_jid' must be None or str")
-
-        if not isinstance(own_jid, org.wayround.xmpp.core.JID):
-            raise ValueError("`own_jid' must be org.wayround.xmpp.core.JID")
-
-        if not isinstance(client, org.wayround.xmpp.client.XMPPC2SClient):
+        if not isinstance(
+            controller,
+            org.wayround.pyabber.ccc.ClientConnectionController
+            ):
             raise ValueError(
-                "`client' must be org.wayround.xmpp.client.XMPPC2SClient"
+                "`controller' must be org.wayround.xmpp.client.XMPPC2SClient"
                 )
 
-        self._client = client
-        self._commands = commands
-        self._own_jid = own_jid
-        self._to_jid = to_jid
+        self._controller = controller
+
+        self._client = self._controller.client
+        self._own_jid = self._controller.jid
 
         self._selected_command = None
 
         self._window = Gtk.Window()
+        self._window.connect('destroy', self._on_destroy)
         self._window.set_default_size(500, 500)
 
         b = Gtk.Box()
@@ -51,6 +49,7 @@ class AD_HOC_Window:
         sw = Gtk.ScrolledWindow()
 
         rbb = Gtk.Box()
+        self._rbb = rbb
         sw.add(rbb)
         rbb.set_orientation(Gtk.Orientation.VERTICAL)
         rbb.set_spacing(5)
@@ -61,10 +60,35 @@ class AD_HOC_Window:
         rbb.set_margin_right(5)
 
         none_rb = Gtk.RadioButton()
+        self._none_rb = none_rb
         none_rb.connect('toggled', self._on_one_of_radios_toggled, None)
         none_rb.set_label("(None)")
 
         rbb.pack_start(none_rb, False, False, 0)
+
+        ok_button = Gtk.Button("Continue")
+        ok_button.connect('clicked', self._on_ok_button_clicked)
+
+        b.pack_start(sw, True, True, 0)
+        b.pack_start(ok_button, False, False, 0)
+
+        self._iterated_loop = org.wayround.utils.gtk.GtkIteratedLoop()
+
+        return
+
+    def run(self, commands, to_jid):
+
+        if not isinstance(commands, dict):
+            raise TypeError("`commands' must be dict")
+
+        if to_jid is not None and not isinstance(to_jid, str):
+            raise ValueError("`to_jid' must be None or str")
+
+        self._commands = commands
+        self._to_jid = to_jid
+
+        rbb = self._rbb
+        none_rb = self._none_rb
 
         keys_sorted = list(commands.keys())
         keys_sorted.sort()
@@ -78,17 +102,20 @@ class AD_HOC_Window:
 
             rbb.pack_start(rb, False, False, 0)
 
-        ok_button = Gtk.Button("Continue")
-        ok_button.connect('clicked', self._on_ok_button_clicked)
+        self.show()
 
-        b.pack_start(sw, True, True, 0)
-        b.pack_start(ok_button, False, False, 0)
-
-        return
+        self._iterated_loop.wait()
 
     def show(self):
-
         self._window.show_all()
+
+    def destroy(self):
+        self._window.hide()
+        self._window.destroy()
+        self._iterated_loop.stop()
+
+    def _on_destroy(self, window):
+        self.destroy()
 
     def _on_ok_button_clicked(self, button):
 
@@ -126,11 +153,10 @@ class AD_HOC_Window:
                 wait=None
                 )
 
-            process_command_stanza_result(
-                res,
-                self._own_jid,
-                self._client
-                )
+            threading.Thread(
+                target=process_command_stanza_result,
+                args=(res, self._controller)
+                ).start()
 
         return
 
@@ -139,82 +165,25 @@ class AD_HOC_Window:
         self._selected_command = name
 
 
-def adhoc_window(commands, to_jid, own_jid, client):
-
-    a = AD_HOC_Window(commands, to_jid, own_jid, client)
-    a.show()
-
-    return
-
-
-def adhoc_window_for_jid_and_node(
-    to_jid, own_jid, client
-    ):
-
-    if to_jid is not None and not isinstance(to_jid, str):
-        raise ValueError("`to_jid' must be None or str")
-
-    if not isinstance(own_jid, org.wayround.xmpp.core.JID):
-        raise ValueError("`own_jid' must be org.wayround.xmpp.core.JID")
-
-    if not isinstance(client, org.wayround.xmpp.client.XMPPC2SClient):
-        raise ValueError(
-            "`client' must be org.wayround.xmpp.client.XMPPC2SClient"
-            )
-
-    own_jid2 = None
-    if own_jid != None:
-        own_jid2 = str(own_jid)
-
-    commands = org.wayround.xmpp.adhoc.get_commands_list(
-        to_jid, own_jid2, client.stanza_processor
-        )
-
-    if commands:
-        adhoc_window(commands, to_jid, own_jid, client)
-    else:
-        d = org.wayround.utils.gtk.MessageDialog(
-            None,
-            0,
-            Gtk.MessageType.ERROR,
-            Gtk.ButtonsType.OK,
-            "Can't get commands list"
-            )
-        d.run()
-        d.destroy()
-
-    return
-
-
 class AD_HOC_Response_Window:
 
-    def __init__(self, stanza_response, command_struct, own_jid, client):
+    def __init__(self, controller):
 
-        if not isinstance(stanza_response, org.wayround.xmpp.core.Stanza):
-            raise TypeError(
-                "`stanza_response' must be org.wayround.xmpp.core.Stanza"
-                )
-
-        if not isinstance(command_struct, org.wayround.xmpp.adhoc.Command):
-            raise TypeError(
-                "`command_struct' must be org.wayround.xmpp.adhoc.Command"
-                )
-
-        if not isinstance(own_jid, org.wayround.xmpp.core.JID):
-            raise ValueError("`own_jid' must be org.wayround.xmpp.core.JID")
-
-        if not isinstance(client, org.wayround.xmpp.client.XMPPC2SClient):
+        if not isinstance(
+            controller,
+            org.wayround.pyabber.ccc.ClientConnectionController
+            ):
             raise ValueError(
-                "`client' must be org.wayround.xmpp.client.XMPPC2SClient"
+                "`controller' must be org.wayround.xmpp.client.XMPPC2SClient"
                 )
 
-        self._own_jid = own_jid
-        self._client = client
-        self._stanza_response = stanza_response
+        self._controller = controller
 
-        self._command_struct = command_struct
+        self._own_jid = self._controller.jid
+        self._client = self._controller.client
 
         self._window = Gtk.Window()
+        self._window.connect('destroy', self._on_destroy)
         self._window.set_default_size(500, 500)
 
         self._form_controller = None
@@ -238,7 +207,8 @@ class AD_HOC_Response_Window:
         label.set_alignment(0.0, 0.5)
         info_box.attach(label, 0, 0, 1, 1)
 
-        label = Gtk.Label(command_struct.get_node())
+        label = Gtk.Label()
+        self._node_label = label
         label.set_alignment(0.0, 0.5)
         info_box.attach(label, 1, 0, 1, 1)
 
@@ -246,7 +216,8 @@ class AD_HOC_Response_Window:
         label.set_alignment(0.0, 0.5)
         info_box.attach(label, 0, 1, 1, 1)
 
-        label = Gtk.Label(command_struct.get_status())
+        label = Gtk.Label()
+        self._status_label = label
         label.set_alignment(0.0, 0.5)
         info_box.attach(label, 1, 1, 1, 1)
 
@@ -254,7 +225,8 @@ class AD_HOC_Response_Window:
         label.set_alignment(0.0, 0.5)
         info_box.attach(label, 0, 2, 1, 1)
 
-        label = Gtk.Label(command_struct.get_sessionid())
+        label = Gtk.Label()
+        self._sessionid_label = label
         label.set_alignment(0.0, 0.5)
         info_box.attach(label, 1, 2, 1, 1)
 
@@ -269,6 +241,41 @@ class AD_HOC_Response_Window:
 
         sw = Gtk.ScrolledWindow()
         sw.add(self._scrolled_box)
+
+        bb = Gtk.ButtonBox()
+        bb.set_orientation(Gtk.Orientation.HORIZONTAL)
+
+        self._bb = bb
+
+        b.pack_start(sw, True, True, 0)
+        b.pack_start(bb, False, False, 0)
+
+        self._window.add(b)
+
+        self._iterated_loop = org.wayround.utils.gtk.GtkIteratedLoop()
+
+        return
+
+    def run(self, stanza_response, command_struct):
+
+        if not isinstance(stanza_response, org.wayround.xmpp.core.Stanza):
+            raise TypeError(
+                "`stanza_response' must be org.wayround.xmpp.core.Stanza"
+                )
+
+        if not isinstance(command_struct, org.wayround.xmpp.adhoc.Command):
+            raise TypeError(
+                "`command_struct' must be org.wayround.xmpp.adhoc.Command"
+                )
+
+        self._stanza_response = stanza_response
+        self._command_struct = command_struct
+
+        bb = self._bb
+
+        self._node_label.set_text(command_struct.get_node())
+        self._status_label.set_text(command_struct.get_status())
+        self._sessionid_label.set_text(command_struct.get_sessionid())
 
         for i in command_struct.get_note():
             self._add_note(i)
@@ -289,9 +296,6 @@ class AD_HOC_Response_Window:
                 d.destroy()
             else:
                 self._add_x_form(i)
-
-        bb = Gtk.ButtonBox()
-        bb.set_orientation(Gtk.Orientation.HORIZONTAL)
 
         buttons = {}
 
@@ -323,16 +327,22 @@ class AD_HOC_Response_Window:
             else:
                 self._window.set_default(buttons['complete'])
 
-        b.pack_start(sw, True, True, 0)
-        b.pack_start(bb, False, False, 0)
+        self.show()
 
-        self._window.add(b)
+        self._iterated_loop.wait()
 
         return
 
     def show(self):
-
         self._window.show_all()
+
+    def destroy(self):
+        self._window.hide()
+        self._window.destroy()
+        self._iterated_loop.stop()
+
+    def _on_destroy(self, window):
+        self.destroy()
 
     def _add_note(self, note):
 
@@ -437,25 +447,64 @@ class AD_HOC_Response_Window:
                         wait=None
                         )
 
-                    process_command_stanza_result(
-                        res,
-                        self._own_jid,
-                        self._client
-                        )
+                    threading.Thread(
+                        target=process_command_stanza_result,
+                        args=(res, self._controller)
+                        ).start()
 
-                    self._window.destroy()
+                    self.destroy()
 
         return
 
 
-def process_command_stanza_result(res, own_jid, client):
+def adhoc_window_for_jid_and_node(to_jid, controller):
 
-    if not isinstance(own_jid, org.wayround.xmpp.core.JID):
-        raise ValueError("`own_jid' must be org.wayround.xmpp.core.JID")
+    if to_jid is not None and not isinstance(to_jid, str):
+        raise ValueError("`to_jid' must be None or str")
 
-    if not isinstance(client, org.wayround.xmpp.client.XMPPC2SClient):
+    if not isinstance(
+        controller,
+        org.wayround.pyabber.ccc.ClientConnectionController
+        ):
         raise ValueError(
-            "`client' must be org.wayround.xmpp.client.XMPPC2SClient"
+            "`controller' must be org.wayround.xmpp.client.XMPPC2SClient"
+            )
+
+    own_jid = controller.jid
+    client = controller.client
+
+    own_jid2 = None
+    if own_jid != None:
+        own_jid2 = str(own_jid)
+
+    commands = org.wayround.xmpp.adhoc.get_commands_list(
+        to_jid, own_jid2, client.stanza_processor
+        )
+
+    if commands:
+        controller.show_adhoc_window(commands, to_jid)
+    else:
+        d = org.wayround.utils.gtk.MessageDialog(
+            None,
+            0,
+            Gtk.MessageType.ERROR,
+            Gtk.ButtonsType.OK,
+            "Can't get commands list"
+            )
+        d.run()
+        d.destroy()
+
+    return
+
+
+def process_command_stanza_result(res, controller):
+
+    if not isinstance(
+        controller,
+        org.wayround.pyabber.ccc.ClientConnectionController
+        ):
+        raise ValueError(
+            "`controller' must be org.wayround.xmpp.client.XMPPC2SClient"
             )
 
     if not isinstance(res, org.wayround.xmpp.core.Stanza):
@@ -498,9 +547,8 @@ def process_command_stanza_result(res, own_jid, client):
             else:
 
                 for i in commands:
-                    w = AD_HOC_Response_Window(
-                        res, i, own_jid, client
+                    controller.show_adhoc_response_window(
+                        res, i
                         )
-                    w.show()
 
     return

@@ -5,18 +5,21 @@ from gi.repository import Gdk
 import org.wayround.xmpp.client
 
 
-class PresenceControlPopup:
+class PresenceControlWindow:
 
-    def __init__(self, presence_client):
+    def __init__(self, controller):
 
-        if not isinstance(presence_client, org.wayround.xmpp.client.Presence):
+        if not isinstance(
+            controller,
+            org.wayround.pyabber.ccc.ClientConnectionController
+            ):
             raise ValueError(
-                "`presence_client' must be org.wayround.xmpp.client.Presence"
+                "`controller' must be org.wayround.xmpp.client.XMPPC2SClient"
                 )
 
-        self.presence_client = presence_client
-        self.window = Gtk.Window()
-        win = self.window
+        self._controller = controller
+
+        window = Gtk.Window()
 
         b = Gtk.Box()
         b.set_orientation(Gtk.Orientation.VERTICAL)
@@ -55,29 +58,28 @@ class PresenceControlPopup:
         bb.pack_start(dnd_button, False, False, 0)
 
         status_cb = Gtk.CheckButton()
-        status_cb.set_label("Add status description")
-        self.status_cb = status_cb
+        status_cb.set_label("Add _status description")
 
         status_frame = Gtk.Frame()
         status_frame.set_label_widget(status_cb)
 
+        status_sw = Gtk.ScrolledWindow()
+
         text_view = Gtk.TextView()
-        self.status = text_view
+        status_sw.add(text_view)
         text_view.set_margin_top(5)
         text_view.set_margin_bottom(5)
         text_view.set_margin_left(5)
         text_view.set_margin_right(5)
-        status_frame.add(text_view)
+        status_frame.add(status_sw)
 
         to_entry = Gtk.Entry()
-        self.to = to_entry
         to_entry.set_margin_top(5)
         to_entry.set_margin_bottom(5)
         to_entry.set_margin_left(5)
         to_entry.set_margin_right(5)
 
         to_cb = Gtk.CheckButton()
-        self.to_cb = to_cb
         to_cb.set_label("Add `to' destination")
         to_frame = Gtk.Frame()
         to_frame.set_label_widget(to_cb)
@@ -87,21 +89,44 @@ class PresenceControlPopup:
         b.pack_start(status_frame, True, True, 5)
         b.pack_start(bb, False, False, 0)
 
-        win.add(b)
-        win.set_title("Send new presence status")
-#        win.set_transient_for(parent_window)
-#        win.set_keep_above(True)
-        win.set_default_size(300, 200)
+        window.add(b)
+        window.set_title("Send new presence _status")
+#        window.set_transient_for(parent_window)
+#        window.set_keep_above(True)
+        window.set_default_size(300, 200)
+        window.connect('destroy', self._on_destroy)
+        window.set_position(Gtk.WindowPosition.CENTER)
+
+        self._iterated_loop = org.wayround.utils.gtk.GtkIteratedLoop()
+        self._presence_client = self._controller.presence_client
+        self._status = text_view
+        self._status_cb = status_cb
+        self._to = to_entry
+        self._to_cb = to_cb
+        self._window = window
 
 #        ok_button.set_can_default(True)
-#        win.set_default(ok_button)
+#        window.set_default(ok_button)
 #
 #        ok_button.connect('clicked', self._ok)
 #        cancel_button.connect('clicked', self._cancel)
 
+    def run(self):
+
+        self.show()
+
+        self._iterated_loop.wait()
+
     def show(self):
-        self.window.set_position(Gtk.WindowPosition.CENTER)
-        self.window.show_all()
+        self._window.show_all()
+
+    def destroy(self):
+        self._window.hide()
+        self._window.destroy()
+        self._iterated_loop.stop()
+
+    def _on_destroy(self, window):
+        self.destroy()
 
     def _on_button_pressed(self, button, value):
 
@@ -119,19 +144,19 @@ class PresenceControlPopup:
                 typ = 'unavailable'
 
             to = None
-            if self.to_cb.get_active():
-                to = self.to.get_text()
+            if self._to_cb.get_active():
+                to = self._to.get_text()
 
             status = None
-            if self.status_cb.get_active():
-                b = self.status.get_buffer()
+            if self._status_cb.get_active():
+                b = self._status.get_buffer()
                 status = b.get_text(
                     b.get_start_iter(),
                     b.get_end_iter(),
                     False
                     )
 
-            self.presence_client.presence(
+            self._presence_client.presence(
                 show=show,
                 to_full_or_bare_jid=to,
                 status=status,

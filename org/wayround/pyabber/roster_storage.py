@@ -157,7 +157,7 @@ class RosterStorage(org.wayround.utils.signal.Signal):
         groups = set()
 
         for i in self._data.keys():
-            groups += set(self._data[i]['bare']['groups'])
+            groups |= set(self._data[i]['bare']['groups'])
 
         ret = list(groups)
 

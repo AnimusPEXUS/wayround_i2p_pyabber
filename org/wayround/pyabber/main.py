@@ -78,33 +78,6 @@ class Main:
     def get_profile(self):
         return self.profile
 
-    def open(self, name):
-
-        w = org.wayround.pyabber.profile_window.ProfileWindow(
-            None, typ='open', profile=name
-            )
-        r = w.run()
-
-        if r['button'] == 'ok':
-
-            password = r['password']
-
-            self.set_profile(
-                ProfileSession(
-                    self,
-                    name,
-                    org.wayround.pyabber.profile.open_pfl(
-                        org.wayround.utils.path.join(
-                            self.profiles_path, name + '.pfl'
-                            ),
-                        password
-                        ),
-                    password
-                    )
-                )
-
-        return
-
     def save(self, name, data, password):
 
         if not isinstance(name, str) or not isinstance(data, dict):
@@ -157,7 +130,7 @@ class ProfileSession:
     def _connection_mgr_dialog_constructor(self):
         return org.wayround.pyabber.connection_window.ConnectionMgrWindow(
             self._main, self
-                )
+            )
 
     def show_connection_mgr_dialog(self):
 

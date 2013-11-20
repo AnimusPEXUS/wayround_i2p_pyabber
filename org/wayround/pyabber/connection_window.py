@@ -216,17 +216,17 @@ class ConnectionMgrWindow:
         self._window.show_all()
 
     def destroy(self):
-        self._iterated_loop.stop()
+        self._window.hide()
         self._window.destroy()
+        self._iterated_loop.stop()
 
     def _on_destroy(self, window):
-        self._window.hide()
-        self._iterated_loop.stop()
+        self.destroy()
 
     def _on_new_clicked(self, button):
 
-        w = org.wayround.pyabber.connection_window.ConnectionPresetWindow(
-            self.window_elements.window, typ='new'
+        w = ConnectionPresetWindow(
+            self._window, typ='new'
             )
         r = w.run()
         w.destroy()
@@ -261,7 +261,7 @@ class ConnectionMgrWindow:
 
         if i_len == 0:
             d = org.wayround.utils.gtk.MessageDialog(
-                self.window_elements.window,
+                self._window,
                 Gtk.DialogFlags.MODAL
                 | Gtk.DialogFlags.DESTROY_WITH_PARENT,
                 Gtk.MessageType.ERROR,
@@ -280,13 +280,15 @@ class ConnectionMgrWindow:
     def _on_edit_clicked(self, button):
 
         name = self._get_selection_name()
+        data = None
 
-        # FIXME: insanity here
+        if name in self._profile.data['connection_presets']:
+            data = self._profile.data['connection_presets'][name]
 
-        if name:
+        if data:
 
-            w = org.wayround.pyabber.connection_window.ConnectionPresetWindow(
-                self.window_elements.window,
+            w = ConnectionPresetWindow(
+                self._window,
                 typ='edit',
                 preset_name=name,
                 preset_data=data
@@ -336,7 +338,7 @@ class ConnectionMgrWindow:
         if name:
 
             d = org.wayround.utils.gtk.MessageDialog(
-                self.window_elements.window,
+                self._window,
                 Gtk.DialogFlags.MODAL
                 | Gtk.DialogFlags.DESTROY_WITH_PARENT,
                 Gtk.MessageType.QUESTION,
@@ -434,14 +436,11 @@ class ConnectionMgrWindow:
         self._reload_list()
 
 
-# TODO: remove this
-class Dumb:
-    pass
-
-
 class ConnectionPresetWindow:
 
     def __init__(self, parent, preset_name=None, preset_data=None, typ='new'):
+
+        # TODO: redo to general practice
 
         self._iteration_loop = org.wayround.utils.gtk.GtkIteratedLoop()
 
@@ -455,9 +454,7 @@ class ConnectionPresetWindow:
             if not isinstance(preset_data, dict):
                 raise ValueError("in ['edit'] mode `preset_data' must be dict")
 
-        self.window_elements = Dumb()
-
-        self.typ = typ
+        self._typ = typ
 
         win = Gtk.Window()
 
@@ -467,6 +464,13 @@ class ConnectionPresetWindow:
             title = "Editing Connection Preset `{}'".format(preset_name)
 
         win.set_title(title)
+        if parent != None:
+            win.set_transient_for(parent)
+#            win.set_parent_window(parent)
+            win.set_destroy_with_parent(True)
+
+        win.set_modal(True)
+        win.set_type_hint(Gdk.WindowTypeHint.DIALOG)
 
         b = Gtk.Box()
         b.set_orientation(Gtk.Orientation.VERTICAL)
@@ -741,10 +745,6 @@ class ConnectionPresetWindow:
         b.pack_start(bb, False, False, 0)
 
         win.add(b)
-        win.set_modal(True)
-        win.set_transient_for(parent)
-        win.set_destroy_with_parent(True)
-        win.set_type_hint(Gdk.WindowTypeHint.DIALOG)
 
         ok_button.set_can_default(True)
         win.set_default(ok_button)
@@ -759,37 +759,37 @@ class ConnectionPresetWindow:
         auto_routines_rb.connect('toggled', self._auto_routines_rb_toggled)
         manual_routines_rb.connect('toggled', self._manual_routines_rb_toggled)
 
-        win.connect('destroy', self._window_destroy)
+        win.connect('destroy', self._on_destroy)
 
-        self.window_elements.win = win
-        self.window_elements.preset_name_entry = preset_name_entry
-        self.window_elements.username_entry = username_entry
-        self.window_elements.server_entry = server_entry
-        self.window_elements.resource_switch_combobox = \
+        self._win = win
+        self._preset_name_entry = preset_name_entry
+        self._username_entry = username_entry
+        self._server_entry = server_entry
+        self._resource_switch_combobox = \
             resource_switch_combobox
-        self.window_elements.resource_entry = resource_entry
-        self.window_elements.password_entry = password_entry
-        self.window_elements.password_entry2 = password_entry2
-        self.window_elements.manual_server_cb = manual_server_cb
-        self.window_elements.host_entry = host_entry
-        self.window_elements.port_entry = port_entry
-        self.window_elements.auto_routines_rb = auto_routines_rb
-        self.window_elements.manual_routines_rb = manual_routines_rb
-        self.window_elements.use_starttls_cb = use_starttls_cb
-        self.window_elements.starttls_necessarity_mode_combobox = \
+        self._resource_entry = resource_entry
+        self._password_entry = password_entry
+        self._password_entry2 = password_entry2
+        self._manual_server_cb = manual_server_cb
+        self._host_entry = host_entry
+        self._port_entry = port_entry
+        self._auto_routines_rb = auto_routines_rb
+        self._manual_routines_rb = manual_routines_rb
+        self._use_starttls_cb = use_starttls_cb
+        self._starttls_necessarity_mode_combobox = \
             starttls_necessarity_mode_combobox
-        self.window_elements.cert_verification_mode_combobox = \
+        self._cert_verification_mode_combobox = \
             cert_verification_mode_combobox
-        self.window_elements.register_cb = register_cb
-        self.window_elements.login_cb = login_cb
-        self.window_elements.bind_cb = bind_cb
-        self.window_elements.session_cb = session_cb
+        self._register_cb = register_cb
+        self._login_cb = login_cb
+        self._bind_cb = bind_cb
+        self._session_cb = session_cb
 
-        self.window_elements.host_port_grid = host_port_grid
-        self.window_elements.auto_routines_grid_or_box = \
+        self._host_port_grid = host_port_grid
+        self._auto_routines_grid_or_box = \
             auto_routines_grid_or_box
-        self.window_elements.manual_routines_label = manual_routines_label
-        self.window_elements.cancel_button = cancel_button
+        self._manual_routines_label = manual_routines_label
+        self._cancel_button = cancel_button
 
         self.result = {
             'button': 'cancel',
@@ -894,25 +894,29 @@ class ConnectionPresetWindow:
 
     def run(self):
 
-        self.window_elements.win.show_all()
+        self._win.show_all()
 
         self._iteration_loop.wait()
 
         return self.result
 
     def destroy(self):
-        self.window_elements.win.destroy()
+        self._win.hide()
+        self._win.destroy()
         self._iteration_loop.stop()
+
+    def _on_destroy(self, window):
+        self.destroy()
 
     def _ok(self, button):
 
-        name = self.window_elements.preset_name_entry.get_text()
-        pwd1 = self.window_elements.password_entry.get_text()
-        pwd2 = self.window_elements.password_entry2.get_text()
+        name = self._preset_name_entry.get_text()
+        pwd1 = self._password_entry.get_text()
+        pwd2 = self._password_entry2.get_text()
 
         if name == '':
             d = org.wayround.utils.gtk.MessageDialog(
-                self.window_elements.win,
+                self._win,
                 Gtk.DialogFlags.MODAL
                 | Gtk.DialogFlags.DESTROY_WITH_PARENT,
                 Gtk.MessageType.ERROR,
@@ -923,9 +927,9 @@ class ConnectionPresetWindow:
             d.destroy()
         else:
 
-            if self.typ in ['new', 'edit'] and pwd1 != pwd2:
+            if self._typ in ['new', 'edit'] and pwd1 != pwd2:
                 d = org.wayround.utils.gtk.MessageDialog(
-                    self.window_elements.win,
+                    self._win,
                     Gtk.DialogFlags.MODAL
                     | Gtk.DialogFlags.DESTROY_WITH_PARENT,
                     Gtk.MessageType.ERROR,
@@ -938,7 +942,7 @@ class ConnectionPresetWindow:
 
                 if pwd1 == '':
                     d = org.wayround.utils.gtk.MessageDialog(
-                        self.window_elements.win,
+                        self._win,
                         Gtk.DialogFlags.MODAL
                         | Gtk.DialogFlags.DESTROY_WITH_PARENT,
                         Gtk.MessageType.ERROR,
@@ -952,32 +956,31 @@ class ConnectionPresetWindow:
                     self.result['button'] = 'ok'
 
                     self.result['name'] = \
-                        self.window_elements.preset_name_entry.get_text()
+                        self._preset_name_entry.get_text()
 
                     self.result['username'] = \
-                        self.window_elements.username_entry.get_text()
+                        self._username_entry.get_text()
 
                     self.result['server'] = \
-                        self.window_elements.server_entry.get_text()
+                        self._server_entry.get_text()
 
                     self.result['resource'] = \
-                        self.window_elements.resource_entry.get_text()
+                        self._resource_entry.get_text()
 
                     self.result['password'] = \
-                        self.window_elements.password_entry.get_text()
+                        self._password_entry.get_text()
 
                     self.result['password2'] = \
-                        self.window_elements.password_entry2.get_text()
+                        self._password_entry2.get_text()
 
                     self.result['host'] = \
-                        self.window_elements.host_entry.get_text()
+                        self._host_entry.get_text()
 
                     self.result['port'] = \
-                        int(self.window_elements.port_entry.get_text())
+                        int(self._port_entry.get_text())
 
                     active_cb_value = \
-                        self.window_elements.\
-                        resource_switch_combobox.get_active()
+                        self._resource_switch_combobox.get_active()
 
                     if active_cb_value == 0:
                         self.result['resource_mode'] = 'manual'
@@ -991,8 +994,7 @@ class ConnectionPresetWindow:
                             )
 
                     active_cb_value = \
-                        self.window_elements.\
-                            starttls_necessarity_mode_combobox.get_active()
+                        self._starttls_necessarity_mode_combobox.get_active()
 
                     if active_cb_value == 0:
                         self.result['starttls_necessarity_mode'] = 'necessary'
@@ -1005,8 +1007,7 @@ class ConnectionPresetWindow:
                             )
 
                     active_cb_value = \
-                        self.window_elements.\
-                            cert_verification_mode_combobox.get_active()
+                        self._cert_verification_mode_combobox.get_active()
 
                     if active_cb_value == 0:
                         self.result['cert_verification_mode'] = \
@@ -1029,39 +1030,39 @@ class ConnectionPresetWindow:
                             )
 
                     self.result['manual_host_and_port'] = \
-                        self.window_elements.manual_server_cb.get_active()
+                        self._manual_server_cb.get_active()
 
-                    if (self.window_elements.auto_routines_rb.get_active()
+                    if (self._auto_routines_rb.get_active()
                         == True):
                         self.result['stream_features_handling'] = 'auto'
                     else:
                         self.result['stream_features_handling'] = 'manual'
 
                     self.result['STARTTLS'] = \
-                        self.window_elements.use_starttls_cb.get_active()
+                        self._use_starttls_cb.get_active()
 
                     self.result['register'] = \
-                        self.window_elements.register_cb.get_active()
+                        self._register_cb.get_active()
 
                     self.result['login'] = \
-                        self.window_elements.login_cb.get_active()
+                        self._login_cb.get_active()
 
                     self.result['bind'] = \
-                        self.window_elements.bind_cb.get_active()
+                        self._bind_cb.get_active()
 
                     self.result['session'] = \
-                        self.window_elements.session_cb.get_active()
+                        self._session_cb.get_active()
 
-                    self.window_elements.win.destroy()
+                    self._win.destroy()
 
     def _cancel(self, button):
 
         self.result['button'] = 'cancel'
-        self.window_elements.win.destroy()
+        self._win.destroy()
 
     def _resource_mode_changed(self, checkbox):
 
-        self.window_elements.resource_entry.set_sensitive(
+        self._resource_entry.set_sensitive(
             checkbox.get_active() == 0
             )
 
@@ -1069,20 +1070,17 @@ class ConnectionPresetWindow:
 
     def _manual_server_toggled(self, cb):
 
-        self.window_elements.host_port_grid.set_sensitive(cb.get_active())
+        self._host_port_grid.set_sensitive(cb.get_active())
 
     def _auto_routines_rb_toggled(self, cb):
 
-        self.window_elements.auto_routines_grid_or_box.set_sensitive(
+        self._auto_routines_grid_or_box.set_sensitive(
             cb.get_active()
             )
 
     def _manual_routines_rb_toggled(self, cb):
 
-        self.window_elements.manual_routines_label.set_sensitive(
+        self._manual_routines_label.set_sensitive(
             cb.get_active()
             )
 
-    def _window_destroy(self, window):
-
-        self._iteration_loop.stop()

@@ -18,18 +18,11 @@ import org.wayround.pyabber.misc
 
 class MUCJIDEntryDialog:
 
-    def __init__(self, jid, title):
-
-        if not isinstance(jid, str):
-            raise ValueError("`jid' must be str")
-
-        if not isinstance(title, str):
-            raise ValueError("`title' must be str")
+    def __init__(self):
 
         window = Gtk.Window()
 
         self._window = window
-        window.set_title(title)
 
         b = Gtk.Box()
         b.set_orientation(Gtk.Orientation.VERTICAL)
@@ -45,7 +38,6 @@ class MUCJIDEntryDialog:
 
         l = Gtk.Label("JID")
         e = Gtk.Entry()
-        e.set_text(jid)
 
         self._entry = e
 
@@ -65,19 +57,36 @@ class MUCJIDEntryDialog:
 
         window.add(b)
 
-        self._iteration_loop = \
-            org.wayround.utils.gtk.GtkIteratedLoop()
+        self._iteration_loop = org.wayround.utils.gtk.GtkIteratedLoop()
 
         self._result = None
 
         window.connect('destroy', self._on_destroy)
 
-    def run(self):
-        self._window.show_all()
+    def run(self, jid, title):
+
+        if not isinstance(jid, str):
+            raise ValueError("`jid' must be str")
+
+        if not isinstance(title, str):
+            raise ValueError("`title' must be str")
+
+        self.show()
+
+        self._window.set_title(title)
+        self._entry.set_text(jid)
+
         self._iteration_loop.wait()
         return self._result
 
+    def show(self):
+        self._window.show_all()
+
+    def _on_destroy(self, window):
+        self.destroy()
+
     def destroy(self):
+        self._window.hide()
         self._window.destroy()
         self._iteration_loop.stop()
 
@@ -86,37 +95,53 @@ class MUCJIDEntryDialog:
         self._iteration_loop.stop()
         self._window.destroy()
 
-    def _on_destroy(self, *args, **kwargs):
-        self._iteration_loop.stop()
-        self._window.hide()
-        return
-
 
 class MUCConfigWindow:
 
-    def __init__(self, client, own_jid, stanza):
-        """
-        :param org.wayround.xmpp.core.Stanza stanza:
-        """
+    def __init__(self, controller):
 
-        if not isinstance(own_jid, org.wayround.xmpp.core.JID):
+        if not isinstance(
+            controller,
+            org.wayround.pyabber.ccc.ClientConnectionController
+            ):
             raise ValueError(
-                "`own_jid' must be org.wayround.xmpp.core.JID"
+                "`controller' must be org.wayround.xmpp.client.XMPPC2SClient"
                 )
 
-        if not isinstance(client, org.wayround.xmpp.client.XMPPC2SClient):
-            raise ValueError(
-                "`client' must be org.wayround.xmpp.client.XMPPC2SClient"
-                )
+        self._controller = controller
+
+        self._own_jid = self._controller.jid
+        self._client = self._controller.client
+
+        self._window = Gtk.Window()
+        w = self._window
+
+        b = Gtk.Box()
+        self._b = b
+        b.set_orientation(Gtk.Orientation.VERTICAL)
+        b.set_margin_left(5)
+        b.set_margin_right(5)
+        b.set_margin_top(5)
+        b.set_margin_bottom(5)
+        b.set_spacing(5)
+
+        w.add(b)
+        w.connect('destroy', self._on_destroy)
+
+        self._iterated_loop = org.wayround.utils.gtk.GtkIteratedLoop()
+
+        return
+
+    def run(self, stanza):
 
         if not isinstance(stanza, org.wayround.xmpp.core.Stanza):
             raise ValueError(
                 "`xdata' must be org.wayround.xmpp.core.Stanza inst"
                 )
 
+        b = self._b
+
         self._stanza = stanza
-        self._own_jid = own_jid
-        self._client = client
 
         xdata = None
 
@@ -150,19 +175,6 @@ class MUCConfigWindow:
             else:
 
                 xdata = x
-
-        self._window = Gtk.Window()
-        w = self._window
-
-        b = Gtk.Box()
-        b.set_orientation(Gtk.Orientation.VERTICAL)
-        b.set_margin_left(5)
-        b.set_margin_right(5)
-        b.set_margin_top(5)
-        b.set_margin_bottom(5)
-        b.set_spacing(5)
-
-        w.add(b)
 
         if error_result:
             lab = Gtk.Label(error_result)
@@ -199,18 +211,29 @@ class MUCConfigWindow:
 
             b.pack_start(bb, False, False, 0)
 
-        w.set_title(
+        self._window.set_title(
             "Configuring room `{room}' as `{who}'".format(
                 room=stanza.get_from_jid(),
                 who=stanza.get_to_jid()
                 )
             )
 
+        self.show()
+
+        self._iterated_loop.wait()
+
         return
 
     def show(self):
-
         self._window.show_all()
+
+    def destroy(self):
+        self._window.hide()
+        self._window.destroy()
+        self._iterated_loop.stop()
+
+    def _on_destroy(self, window):
+        self.destroy()
 
     def _on_submit_pressed(self, button):
 
@@ -254,11 +277,20 @@ class MUCConfigWindow:
 
 class MUCDestructionDialog:
 
-    def __init__(self, own_jid, room_jid, stanza_processor):
+    def __init__(self, controller):
 
-        self._own_jid = own_jid
-        self._room_jid = room_jid
-        self._stanza_processor = stanza_processor
+        if not isinstance(
+            controller,
+            org.wayround.pyabber.ccc.ClientConnectionController
+            ):
+            raise ValueError(
+                "`controller' must be org.wayround.xmpp.client.XMPPC2SClient"
+                )
+
+        self._controller = controller
+
+        self._own_jid = self._controller.jid
+        self._stanza_processor = self._controller.client.stanza_processor
 
         b = Gtk.Box()
         b.set_orientation(Gtk.Orientation.VERTICAL)
@@ -312,19 +344,34 @@ class MUCDestructionDialog:
 
         self._window = Gtk.Window()
         window = self._window
-        window.set_title(
-            "Destroying room `{}' being `{}'".format(
-                room_jid,
-                own_jid
-                )
-            )
 
         window.add(b)
+        window.connect('destroy', self._on_destroy)
+
+        self._iterated_loop = org.wayround.utils.gtk.GtkIteratedLoop()
 
         return
 
+    def run(self, room_jid):
+        self._window.set_title(
+            "Destroying room `{}' being `{}'".format(
+                room_jid,
+                self.own_jid
+                )
+            )
+        self.show()
+        self._iterated_loop.wait()
+
     def show(self):
         self._window.show_all()
+
+    def destroy(self):
+        self._window.hide()
+        self._window.destroy()
+        self._iterated_loop.stop()
+
+    def _on_destroy(self, window):
+        self.destroy()
 
     def _on_submit_button_clicked(self, button):
 
@@ -368,20 +415,20 @@ class MUCDestructionDialog:
 
 class MUCPopupMenu:
 
-    def __init__(self, own_jid, client):
+    def __init__(self, controller):
 
-        if not isinstance(own_jid, org.wayround.xmpp.core.JID):
+        if not isinstance(
+            controller,
+            org.wayround.pyabber.ccc.ClientConnectionController
+            ):
             raise ValueError(
-                "`own_jid' must be org.wayround.xmpp.core.JID"
+                "`controller' must be org.wayround.xmpp.client.XMPPC2SClient"
                 )
 
-        if not isinstance(client, org.wayround.xmpp.client.XMPPC2SClient):
-            raise ValueError(
-                "`client' must be org.wayround.xmpp.client.XMPPC2SClient"
-                )
+        self._controller = controller
 
-        self._own_jid = own_jid
-        self._client = client
+        self._own_jid = self._controller.jid
+        self._client = self._controller.client
 
         menu = Gtk.Menu()
 
@@ -487,19 +534,21 @@ class MUCPopupMenu:
 
         return
 
+    def destroy(self):
+        self._menu.destroy()
+
     def get_widget(self):
         return self._menu
 
     def _on_new_muc_inst_mi_activated(self, menuitem):
 
-        w = MUCJIDEntryDialog(
+        jid = self._controller.show_muc_jid_entry_dialog(
             '@{}'.format(self._muc_jid),
             "Instantly Creating New Room on `{}' as `{}'".format(
                 self._muc_jid,
                 self._own_jid.full()
                 )
             )
-        jid = w.run()
 
         if jid != None:
 
@@ -519,14 +568,13 @@ class MUCPopupMenu:
         return
 
     def _on_new_muc_conf_mi_activated(self, menuitem):
-        w = MUCJIDEntryDialog(
+        jid = self._controller.show_muc_jid_entry_dialog(
             '@{}'.format(self._muc_jid),
             "Configuring New Room on `{}' as `{}'".format(
                 self._muc_jid,
                 self._own_jid.full()
                 )
             )
-        jid = w.run()
 
         if jid != None:
 
@@ -536,12 +584,7 @@ class MUCPopupMenu:
                 stanza_processor=self._client.stanza_processor
                 )
 
-            w = org.wayround.pyabber.muc.MUCConfigWindow(
-                self._client,
-                self._own_jid,
-                res
-                )
-            w.show()
+            self._controller.show_muc_config_window(res)
 
         return
 
@@ -549,14 +592,13 @@ class MUCPopupMenu:
 
         jid = self._muc_jid
         if self._jid_service:
-            w = MUCJIDEntryDialog(
+            jid = self._controller.show_muc_jid_entry_dialog(
                 '@{}'.format(self._muc_jid),
                 "Input JID to configure on `{}' as `{}'".format(
                     self._muc_jid,
                     self._own_jid.full()
                     )
                 )
-            jid = w.run()
 
         if jid != None:
 
@@ -566,12 +608,7 @@ class MUCPopupMenu:
                 stanza_processor=self._client.stanza_processor
                 )
 
-            w = org.wayround.pyabber.muc.MUCConfigWindow(
-                self._client,
-                self._own_jid,
-                res
-                )
-            w.show()
+            self._controller.show_muc_config_window(res)
 
         return
 
@@ -579,14 +616,13 @@ class MUCPopupMenu:
 
         jid = self._muc_jid
         if self._jid_service:
-            w = MUCJIDEntryDialog(
+            jid = self._controller.show_muc_jid_entry_dialog(
                 '@{}'.format(self._muc_jid),
                 "Input room JID to discover own jid on `{}' as `{}'".format(
                     self._muc_jid,
                     self._own_jid.full()
                     )
                 )
-            jid = w.run()
 
         if jid != None:
 
@@ -649,24 +685,19 @@ class MUCPopupMenu:
 
         jid = self._muc_jid
         if self._jid_service:
-            w = MUCJIDEntryDialog(
+            jid = self._controller.show_muc_jid_entry_dialog(
                 '@{}'.format(self._muc_jid),
                 "Input JID to delete on `{}' as `{}'".format(
                     self._muc_jid,
                     self._own_jid.full()
                     )
                 )
-            jid = w.run()
 
         if jid != None:
 
-            w = MUCDestructionDialog(
-                own_jid=self._own_jid.full(),
-                room_jid=jid,
-                stanza_processor=self._client.stanza_processor
+            self._controller.show_muc_destruction_dialog(
+                room_jid=jid
                 )
-
-            w.show()
 
         return
 
@@ -681,7 +712,7 @@ class MUCPopupMenu:
 
         jid = self._muc_jid
         if self._jid_service:
-            w = MUCJIDEntryDialog(
+            jid = self._controller.show_muc_jid_entry_dialog(
                 '@{}'.format(self._muc_jid),
                 "Input JID of room on `{}' to edit `{}' list as `{}'".format(
                     self._muc_jid,
@@ -689,36 +720,37 @@ class MUCPopupMenu:
                     self._own_jid.full()
                     )
                 )
-            jid = w.run()
 
         if jid != None:
 
-            w = MUCIdentityEditorWindow(
-                self._client.stanza_processor,
-                self._own_jid.full(),
+            self._controller.show_muc_identity_editor_window(
                 target_jid=jid,
                 mode=mode
                 )
-            w.show()
 
         return
 
 
 class MUCIdentityEditorWindow:
 
-    def __init__(
-        self,
-        stanza_processor, own_jid, target_jid, mode=None
-        ):
+    def __init__(self, controller):
 
-        self._stanza_processor = stanza_processor
-        self._own_jid = own_jid
-        self._target_jid = target_jid
+        if not isinstance(
+            controller,
+            org.wayround.pyabber.ccc.ClientConnectionController
+            ):
+            raise ValueError(
+                "`controller' must be org.wayround.xmpp.client.XMPPC2SClient"
+                )
+
+        self._controller = controller
+
+        self._stanza_processor = self._controller.client.stanza_processor
+        self._own_jid = self._controller.jid
 
         g_box_grid_jid_label = Gtk.Label("Room JID")
         g_box_grid_jid_entry = Gtk.Entry()
         self._g_box_grid_jid_entry = g_box_grid_jid_entry
-        g_box_grid_jid_entry.set_text(target_jid)
         g_box_grid_jid_entry.connect(
             'key-release-event', self._on_target_jid_edited
             )
@@ -895,13 +927,31 @@ List of dictionaries. Add to dictionaties only changes (delta)
         b.pack_start(paned, True, True, 0)
 
         window.add(b)
+        window.connect('destroy', self._on_destroy)
 
-        self._on_query_fast_mod_clicked(None, mode)
+        self._iterated_loop = org.wayround.utils.gtk.GtkIteratedLoop()
 
         return
 
+    def run(self, target_jid, mode=None):
+        self.show()
+
+        self._g_box_grid_jid_entry.set_text(target_jid)
+        self._target_jid = target_jid
+        self._on_query_fast_mod_clicked(None, mode)
+
+        self._iterated_loop.wait()
+
     def show(self):
         self._window.show_all()
+
+    def destroy(self):
+        self._window.hide()
+        self._window.destroy()
+        self._iterated_loop.stop()
+
+    def _on_destroy(self, window):
+        self.destroy()
 
     def _on_g_box_execute_query_button_clicked(self, button):
 

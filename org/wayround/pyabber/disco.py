@@ -20,27 +20,22 @@ import org.wayround.pyabber.privacy
 
 class DiscoMenu:
 
-    def __init__(self, own_jid=None, client=None, disco=None):
+    def __init__(self, controller):
 
-        if not isinstance(own_jid, org.wayround.xmpp.core.JID):
+        if not isinstance(
+            controller,
+            org.wayround.pyabber.ccc.ClientConnectionController
+            ):
             raise ValueError(
-                "`own_jid' must be org.wayround.xmpp.core.JID"
+                "`controller' must be org.wayround.xmpp.client.XMPPC2SClient"
                 )
 
-        if not isinstance(client, org.wayround.xmpp.client.XMPPC2SClient):
-            raise ValueError(
-                "`client' must be org.wayround.xmpp.client.XMPPC2SClient"
-                )
-
-        if not isinstance(disco, Disco):
-            raise ValueError(
-                "`disco' must be Disco"
-                )
+        self._controller = controller
 
         menu = Gtk.Menu()
 
-        self._client = client
-        self._own_jid = own_jid
+        self._client = self._controller.client
+        self._own_jid = self._controller.jid
 
         addr_mi = Gtk.MenuItem("target_jid and node")
         error_mi = Gtk.MenuItem("no errors")
@@ -68,8 +63,7 @@ class DiscoMenu:
         addr_submenu.append(addr_copy_mi)
 
         mucmenu = org.wayround.pyabber.muc.MUCPopupMenu(
-            own_jid=self._own_jid,
-            client=self._client
+            controller=controller
             )
 
         muc_mi.set_submenu(mucmenu.get_widget())
@@ -82,7 +76,6 @@ class DiscoMenu:
 
         self._addr_mi = addr_mi
         self._commands_mi = commands_mi
-        self._disco = disco
         self._error_mi = error_mi
         self._menu = menu
         self._muc_mi = muc_mi
@@ -157,16 +150,19 @@ class DiscoMenu:
 
         return
 
+    def destroy(self):
+        self._mucmenu.destroy()
+        self._menu.destroy()
+
     def _on_commands_mi_activated(self, menuitem):
 
         org.wayround.pyabber.adhoc.adhoc_window_for_jid_and_node(
-            to_jid=self._target_jid_str,
-            own_jid=self._own_jid,
-            client=self._client
+            self._target_jid_str,
+            self._controller
             )
 
     def _on_addr_open_activated(self, menuitem):
-        self._disco.disco_show_cb(self._target_jid_str, self._node)
+        self._controller.show_disco_window(self._target_jid_str, self._node)
 
     def _on_privacy_mi_activated(self, menuitem):
 
@@ -183,29 +179,22 @@ class DiscoMenu:
 
 class Disco:
 
-    def __init__(self, own_jid=None, client=None, disco_show_cb=None):
+    def __init__(self, controller):
 
-        if not isinstance(own_jid, org.wayround.xmpp.core.JID):
+        if not isinstance(
+            controller,
+            org.wayround.pyabber.ccc.ClientConnectionController
+            ):
             raise ValueError(
-                "`own_jid' must be org.wayround.xmpp.core.JID"
+                "`controller' must be org.wayround.xmpp.client.XMPPC2SClient"
                 )
 
-        if not isinstance(client, org.wayround.xmpp.client.XMPPC2SClient):
-            raise ValueError(
-                "`client' must be org.wayround.xmpp.client.XMPPC2SClient"
-                )
+        self._controller = controller
 
-        if not callable(disco_show_cb):
-            raise ValueError("`disco_show_cb' must be callable")
+        self._menu = DiscoMenu(controller)
 
-        self._disco_show_cb = disco_show_cb
-
-        self.menu = DiscoMenu(own_jid, client, self)
-
-        self._client = client
-        self._own_jid = own_jid
-        self._node = None
-        self._target_jid_str = None
+        self._client = self._controller.client
+        self._own_jid = self._controller.jid
 
         window = Gtk.Window()
         window.set_default_size(500, 500)
@@ -279,10 +268,6 @@ class Disco:
 
         window.add(main_box)
 
-        self.window = window
-        self.jid_entry = jid_entry
-        self.node_entry = node_entry
-
         # markup, disco, tag, category, type, name, var, jid, node
         # disco in ['info', 'items']
         # info : markup, tag, category, type, name, var,
@@ -303,8 +288,6 @@ class Disco:
 
         view_tw.set_model(view_model)
 
-        self._view_model = view_model
-
 #        font_desc = Pango.FontDescription()
 #        font_desc.set_family('Fixed')
 #        font_desc.set_size(12)
@@ -323,13 +306,21 @@ class Disco:
         view_tw.connect('row-activated', self._on_row_activated)
         view_tw.connect('button-release-event', self._on_treeview_buttonpress)
 
-        self._work_jid = None
-        self._work_node = None
         window.connect('destroy', self._on_destroy)
 
         self._lock = threading.Lock()
 
         self._iterated_loop = org.wayround.utils.gtk.GtkIteratedLoop()
+
+        self._node = None
+        self._target_jid_str = None
+        self._view_model = view_model
+        self._window = window
+
+        self._jid_entry = jid_entry
+        self._node_entry = node_entry
+        self._work_jid = None
+        self._work_node = None
 
         return
 
@@ -344,8 +335,6 @@ class Disco:
             )
 
     def run(self, target_jid_str=None, node=None):
-
-        self.show()
 
         if not isinstance(target_jid_str, str):
             raise ValueError(
@@ -365,22 +354,25 @@ class Disco:
 
             self.set_addr(self._target_jid_str, self._node)
 
+        self._stat_bar.push(0, "Ready")
+
+        self.show()
+
         self._iterated_loop.wait()
 
         return
 
-    def destroy(self, window):
-        self.window.destroy()
+    def show(self):
+        self._window.show_all()
+
+    def destroy(self):
+        self._menu.destroy()
+        self._window.hide()
+        self._window.destroy()
         self._iterated_loop.stop()
 
-    def _on_destroy(self):
+    def _on_destroy(self, window):
         self.destroy()
-
-    def show(self):
-
-        self.window.show_all()
-
-        self._stat_bar.push(0, "Ready")
 
     def _fill2(self, path, jid, node=None):
 
@@ -689,7 +681,7 @@ class Disco:
         self._work_jid = jid
         self._work_node = node
 
-        self.jid_entry.set_text(self._work_jid)
+        self._jid_entry.set_text(self._work_jid)
 
         nt = ''
         if self._work_node != None:
@@ -699,12 +691,12 @@ class Disco:
         if node:
             t += '\{}'.format(node)
 
-        self.node_entry.set_text(nt)
+        self._node_entry.set_text(nt)
         self._server_menu_button.set_label(
-            "`{}' menu".format(t)
+            "`{}' _menu".format(t)
             )
 
-        self.window.set_title(
+        self._window.set_title(
             "Discovering `{}' as `{}'".format(
                 "{}".format(t),
                 self._own_jid.full()
@@ -719,20 +711,20 @@ class Disco:
 
     def _on_go_button_pressed(self, button):
         node = None
-        nt = self.node_entry.get_text()
+        nt = self._node_entry.get_text()
         nt = nt.strip()
         if nt != '':
             node = nt
-        self.set_addr(self.jid_entry.get_text().strip(), node=node)
+        self.set_addr(self._jid_entry.get_text().strip(), node=node)
 
     def _on_server_menu_button_clicked(self, button):
 
         if self._work_jid:
-            self.menu.set(
+            self._menu.set(
                 target_jid_str=self._work_jid,
                 node=self._work_node
                 )
-            self.menu.show()
+            self._menu.show()
 
     def _on_row_activated(self, view, path, column):
 
@@ -789,7 +781,7 @@ class Disco:
 
         if event.button == Gdk.BUTTON_SECONDARY:
             bw = widget.get_bin_window()
-            if event.window == bw:
+            if event._window == bw:
 
                 res = widget.get_path_at_pos(event.x, event.y)
 
@@ -806,11 +798,11 @@ class Disco:
                         if values[9] != None:
                             node = values[9]
 
-                        self.menu.set(
+                        self._menu.set(
                             target_jid_str=values[8],
                             node=node
                             )
-                        self.menu.show()
+                        self._menu.show()
 
         return
 

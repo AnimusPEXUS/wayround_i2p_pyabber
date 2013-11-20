@@ -16,10 +16,28 @@ import org.wayround.xmpp.core
 import org.wayround.xmpp.muc
 import org.wayround.xmpp.privacy
 
+import org.wayround.pyabber.adhoc
+import org.wayround.pyabber.disco
 import org.wayround.pyabber.main
+import org.wayround.pyabber.muc
 import org.wayround.pyabber.roster_storage
 import org.wayround.pyabber.roster_window
-import org.wayround.pyabber.disco
+import org.wayround.pyabber.contact_editor
+import org.wayround.pyabber.presence_control_window
+
+SUBWINDOWS = [
+    # 1. registered window name; 2. single?; 3. threaded?.
+    ('adhoc_response_window', False, True),
+    ('adhoc_window', False, True,),
+    ('contact_editor_window', False, True),
+    ('disco_window', False, True),
+    ('muc_config_window', False, True),
+    ('muc_destruction_dialog', False, True),
+    ('muc_identity_editor_window', False, True),
+    ('muc_jid_entry_dialog', False, False),
+    ('presence_control_window', False, True),
+    ('roster_window', True, True),
+    ]
 
 
 class ConnectionStatusMenu:
@@ -72,7 +90,12 @@ class ConnectionStatusMenu:
 
     def _on_reconnect_mi_activated(self, mi):
         self._client_connetion_controller.disconnect()
-        self._client_connetion_controller.connect()
+        threading.Thread(
+            target=self._client_connetion_controller.connect,
+            name="Connection Thread {}".format(
+                self._client_connetion_controller
+                )
+            ).start()
 
     def _on_disconnect_mi_activated(self, mi):
         self._client_connetion_controller.disconnect()
@@ -119,25 +142,26 @@ class ClientConnectionController:
 
         logging.debug("adding conn status menu")
 
-        self.menu = ConnectionStatusMenu(self)
+        self._menu = ConnectionStatusMenu(self)
 
         self.main.status_icon.menu.add_connection_menu(
             self.preset_name,
-            self.menu
+            self._menu
             )
 
         self.profile.connection_controllers.add(self)
 
         self._rel_win_ctl = org.wayround.utils.gtk.RelatedWindowCollector()
-        self._rel_win_ctl.set_constructor_cb(
-            'roster_window',
-            self._roster_window_constructor
-            )
-        self._rel_win_ctl.set_constructor_cb(
-            'disco_window',
-            self._disco_window_constructor,
-            single=False
-            )
+
+        for i in SUBWINDOWS:
+            exec(
+                """\
+self._rel_win_ctl.set_constructor_cb(
+    '{i}',
+    self._{i}_constructor,
+    {s}
+    )
+""".format(i=i[0], s=i[1]))
 
         self.clear(init=True)
 
@@ -149,27 +173,47 @@ class ClientConnectionController:
             self.profile.connection_controllers.remove(self)
 
     def _roster_window_constructor(self):
-        return org.wayround.pyabber.roster_window.RosterWindow(
-            client=self.client,
-            own_jid=self.jid,
-            roster_client=self.roster_client,
-            presence_client=self.presence_client,
-            roster_storage=self.roster_storage,
-            disco_show_cb=self.show_disco_window
-            )
-
-    def show_roster_window(self):
-        self._rel_win_ctl.show('roster_window')
+        return org.wayround.pyabber.roster_window.RosterWindow(self)
 
     def _disco_window_constructor(self):
-        return org.wayround.pyabber.disco.Disco(
-            self.jid,
-            self.client,
-            self.show_disco_window
-            )
+        return org.wayround.pyabber.disco.Disco(self)
 
-    def show_disco_window(self, *args, **kwargs):
-        self._rel_win_ctl.show('disco_window', *args, **kwargs)
+    def _adhoc_window_constructor(self):
+        return org.wayround.pyabber.adhoc.AD_HOC_Window(self)
+
+    def _adhoc_response_window_constructor(self):
+        return org.wayround.pyabber.adhoc.AD_HOC_Response_Window(self)
+
+    def _contact_editor_window_constructor(self):
+        return org.wayround.pyabber.contact_editor.ContactEditor(self)
+
+    def _presence_control_window_constructor(self):
+        return \
+            org.wayround.pyabber.presence_control_window.PresenceControlWindow(
+                self
+                )
+
+    def _muc_jid_entry_dialog_constructor(self):
+        return org.wayround.pyabber.muc.MUCJIDEntryDialog()
+
+    def _muc_config_window_constructor(self):
+        return org.wayround.pyabber.muc.MUCConfigWindow(self)
+
+    def _muc_destruction_dialog_constructor(self):
+        return org.wayround.pyabber.muc.MUCDestructionDialog(self)
+
+    def _muc_identity_editor_window_constructor(self):
+        return org.wayround.pyabber.muc.MUCIdentityEditorWindow(self)
+
+    for i in SUBWINDOWS:
+        exec(
+            """\
+def show_{i}(self, *args, **kwargs):
+    if {threaded}:
+        self._rel_win_ctl.show_threaded('{i}', *args, **kwargs)
+    else:
+        self._rel_win_ctl.show('{i}', *args, **kwargs)
+""".format(i=i[0], threaded=i[2]))
 
     def clear(self, init=False):
 
@@ -195,8 +239,8 @@ class ClientConnectionController:
     def destroy(self):
         self.disconnect()
         self._rel_win_ctl.destroy()
-        self.menu.destroy()
-        self.menu = None
+        self._menu.destroy()
+        self._menu = None
         self._remove_self_from_list()
 
     def connect(self):

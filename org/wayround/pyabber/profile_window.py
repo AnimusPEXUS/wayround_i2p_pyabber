@@ -6,6 +6,7 @@ from gi.repository import Gtk, Gdk, GdkPixbuf
 
 import org.wayround.utils.gtk
 
+import org.wayround.pyabber.main
 import org.wayround.pyabber.profile
 
 
@@ -86,6 +87,7 @@ class ProfileMgrWindow:
         b.pack_start(b2, True, True, 0)
 
         window = Gtk.Window()
+#        window.set_type_hint(Gdk.WindowTypeHint.DIALOG)
 
         window.add(b)
 
@@ -112,8 +114,9 @@ class ProfileMgrWindow:
         self._window.show_all()
 
     def destroy(self):
-        self._iterated_loop.stop()
+#        self._window.hide()
         self._window.destroy()
+        self._iterated_loop.stop()
 
     def refresh_list(self):
 
@@ -146,8 +149,7 @@ class ProfileMgrWindow:
             self._profile_icon_view.select_path(selected)
 
     def _on_destroy(self, window):
-        self._window.hide()
-        self._iterated_loop.stop()
+        self.destroy()
 
     def _on_new_clicked(self, button):
 
@@ -161,6 +163,8 @@ class ProfileMgrWindow:
             self._main.save(r['name'], {}, r['password'])
 
             self.refresh_list()
+
+        return
 
     def _on_save_clicked(self, button):
         if self._main.profile:
@@ -250,7 +254,28 @@ class ProfileMgrWindow:
 
             name = self._profile_icon_view.get_model()[items[0]][0][:-4]
 
-            self._main.open(name)
+            w = ProfileWindow(
+                self._window, typ='open', profile=name
+                )
+            r = w.run()
+
+            if r['button'] == 'ok':
+
+                password = r['password']
+
+                self._main.set_profile(
+                    org.wayround.pyabber.main.ProfileSession(
+                        self._main,
+                        name,
+                        org.wayround.pyabber.profile.open_pfl(
+                            org.wayround.utils.path.join(
+                                self._main.profiles_path, name + '.pfl'
+                                ),
+                            password
+                            ),
+                        password
+                        )
+                    )
 
         return
 
@@ -259,11 +284,6 @@ class ProfileMgrWindow:
 
     def _on_iconview_item_activated(self, icon_view, path):
         self._on_activate_clicked(None)
-
-
-# TODO: remove this
-class Dumb:
-    pass
 
 
 class ProfileWindow:
@@ -280,11 +300,7 @@ class ProfileWindow:
                 "in ['edit', 'open'] mode `profile_data' must be str"
                 )
 
-        self.typ = typ
-
-        self.window_elements = Dumb()
-
-        win = Gtk.Window()
+        self._typ = typ
 
         title = "Creating New Profile"
 
@@ -293,6 +309,17 @@ class ProfileWindow:
 
         elif typ == 'open':
             title = "Opening Profile `{}'".format(profile)
+
+        win = Gtk.Window()
+
+        win.set_title(title)
+        if parent != None:
+            win.set_transient_for(parent)
+#            win.set_parent_window(parent)
+            win.set_destroy_with_parent(True)
+
+        win.set_modal(True)
+        win.set_type_hint(Gdk.WindowTypeHint.DIALOG)
 
         b = Gtk.Box()
         b.set_orientation(Gtk.Orientation.VERTICAL)
@@ -363,12 +390,6 @@ class ProfileWindow:
 
         win.add(b)
 
-        win.set_title(title)
-        win.set_modal(True)
-        win.set_transient_for(parent)
-        win.set_destroy_with_parent(True)
-        win.set_type_hint(Gdk.WindowTypeHint.DIALOG)
-
         ok_button.set_can_default(True)
 
         win.set_default(ok_button)
@@ -377,17 +398,17 @@ class ProfileWindow:
         passwd_editor.set_activates_default(True)
         passwd2_editor.set_activates_default(True)
 
-        self.window_elements.win = win
-        self.window_elements.ok_button = ok_button
-        self.window_elements.cancel_button = cancel_button
-        self.window_elements.name_editor = name_editor
-        self.window_elements.passwd_editor = passwd_editor
-        self.window_elements.passwd2_editor = passwd2_editor
+        self._win = win
+        self._ok_button = ok_button
+        self._cancel_button = cancel_button
+        self._name_editor = name_editor
+        self._passwd_editor = passwd_editor
+        self._passwd2_editor = passwd2_editor
 
         ok_button.connect('clicked', self._ok)
         cancel_button.connect('clicked', self._cancel)
 
-        win.connect('destroy', self._window_destroy)
+        win.connect('destroy', self._on_destroy)
 
         self.result = {
             'button': 'cancel',
@@ -398,30 +419,29 @@ class ProfileWindow:
 
     def run(self):
 
-        self.window_elements.win.show_all()
+        self._win.show_all()
 
         self._iteration_loop.wait()
 
         return self.result
 
-    def destory(self):
-        self.window_elements.win.destroy()
+    def destroy(self):
+        self._win.hide()
+        self._win.destroy()
         self._iteration_loop.stop()
 
-    def _window_destroy(self, window):
-
-        self.window_elements.win.hide()
-        self._iteration_loop.stop()
+    def _on_destroy(self, window):
+        self.destroy()
 
     def _ok(self, button):
 
-        name = self.window_elements.name_editor.get_text()
-        pwd1 = self.window_elements.passwd_editor.get_text()
-        pwd2 = self.window_elements.passwd2_editor.get_text()
+        name = self._name_editor.get_text()
+        pwd1 = self._passwd_editor.get_text()
+        pwd2 = self._passwd2_editor.get_text()
 
         if name == '':
             d = org.wayround.utils.gtk.MessageDialog(
-                self.window_elements.win,
+                self._win,
                 Gtk.DialogFlags.MODAL
                 | Gtk.DialogFlags.DESTROY_WITH_PARENT,
                 Gtk.MessageType.ERROR,
@@ -432,9 +452,9 @@ class ProfileWindow:
             d.destroy()
         else:
 
-            if self.typ in ['new', 'edit'] and pwd1 != pwd2:
+            if self._typ in ['new', 'edit'] and pwd1 != pwd2:
                 d = org.wayround.utils.gtk.MessageDialog(
-                    self.window_elements.win,
+                    self._win,
                     Gtk.DialogFlags.MODAL
                     | Gtk.DialogFlags.DESTROY_WITH_PARENT,
                     Gtk.MessageType.ERROR,
@@ -447,7 +467,7 @@ class ProfileWindow:
 
                 if pwd1 == '':
                     d = org.wayround.utils.gtk.MessageDialog(
-                        self.window_elements.win,
+                        self._win,
                         Gtk.DialogFlags.MODAL
                         | Gtk.DialogFlags.DESTROY_WITH_PARENT,
                         Gtk.MessageType.ERROR,
@@ -465,17 +485,17 @@ class ProfileWindow:
                         'password2': pwd2
                         }
 
-                    self.window_elements.win.destroy()
+                    self.destroy()
 
     def _cancel(self, button):
 
         self.result = {
             'button': 'cancel',
-            'name': self.window_elements.name_editor.get_text(),
-            'password': self.window_elements.passwd_editor.get_text(),
-            'password2': self.window_elements.passwd2_editor.get_text()
+            'name': self._name_editor.get_text(),
+            'password': self._passwd_editor.get_text(),
+            'password2': self._passwd2_editor.get_text()
             }
 
-        self.window_elements.win.destroy()
+        self.destroy()
 
         return

@@ -8,30 +8,23 @@ import org.wayround.pyabber.roster_window
 
 class ContactEditor:
 
-    def __init__(self, roster_window, jid=None, mode='new'):
-
-        if not mode in ['new', 'edit']:
-            raise Exception("DNA Error")
+    def __init__(self, controller):
 
         if not isinstance(
-            roster_window,
-            org.wayround.pyabber.roster_window.RosterWindow
+            controller,
+            org.wayround.pyabber.ccc.ClientConnectionController
             ):
             raise ValueError(
-                "`roster_window' must be "
-                "org.wayround.pyabber.roster_window.RosterWindow"
+                "`controller' must be org.wayround.xmpp.client.XMPPC2SClient"
                 )
 
-        self._roster_window = roster_window
+        self._controller = controller
+
+#        self._roster_window = roster_window
 
         window = Gtk.Window()
-
-        if mode == 'new':
-            window.set_title("Edit Properties for New Roster Contact")
-        else:
-            window.set_title("Edit Properties for `{}'".format(jid))
-
-        self.window = window
+        window.set_position(Gtk.WindowPosition.CENTER)
+        window.connect('destroy', self._on_destroy)
 
         b = Gtk.Box()
         b.set_orientation(Gtk.Orientation.VERTICAL)
@@ -44,19 +37,13 @@ class ContactEditor:
         jid_frame = Gtk.Frame()
         jid_frame.set_label("Jabber ID (JID)")
 
-        jid_frame.set_sensitive(mode == 'new')
-
         jid_entry = Gtk.Entry()
         jid_entry.set_margin_top(5)
         jid_entry.set_margin_bottom(5)
         jid_entry.set_margin_left(5)
         jid_entry.set_margin_right(5)
 
-        self.jid_entry = jid_entry
-
         jid_frame.add(jid_entry)
-        if mode == 'edit':
-            jid_entry.set_text(jid)
 
         nick_box = Gtk.Box()
         nick_box.set_margin_top(5)
@@ -66,11 +53,6 @@ class ContactEditor:
 
         nick_frame = Gtk.Frame()
 
-        if mode == 'new':
-            nick_frame.set_label("Nickname")
-        else:
-            nick_frame.set_label("Nickname for {}".format(jid))
-
         nick_box.set_orientation(Gtk.Orientation.VERTICAL)
         nick_box.set_margin_top(5)
         nick_box.set_margin_bottom(5)
@@ -78,7 +60,6 @@ class ContactEditor:
         nick_box.set_margin_right(5)
 
         nick_edit = Gtk.Entry()
-        self.nick_edit = nick_edit
 
         nick_box.pack_start(nick_edit, False, False, 0)
         nick_box.pack_start(
@@ -91,10 +72,6 @@ class ContactEditor:
         nick_frame.add(nick_box)
 
         groups_frame = Gtk.Frame()
-        if mode == 'new':
-            groups_frame.set_label("Groups")
-        else:
-            groups_frame.set_label("Groups for {}".format(jid))
 
         groups_box = Gtk.Box()
         groups_box.set_margin_top(5)
@@ -118,8 +95,6 @@ class ContactEditor:
             new_group_entry, True, True, 0
             )
         gr_entry_box.set_spacing(5)
-
-        self.new_group_entry = new_group_entry
 
         f1 = Gtk.Frame()
         sw1 = Gtk.ScrolledWindow()
@@ -209,18 +184,52 @@ class ContactEditor:
 
         window.add(b)
 
+        self._available_groups_treeview = available_groups_treeview
+        self._current_groups_treeview = current_groups_treeview
+        self._groups_frame = groups_frame
+        self._jid_entry = jid_entry
+        self._jid_frame = jid_frame
+        self._new_group_entry = new_group_entry
+        self._nick_edit = nick_edit
+        self._nick_frame = nick_frame
+        self._window = window
+
+        return
+
+    def run(self, jid=None, mode='new'):
+        if not mode in ['new', 'edit']:
+            raise Exception("DNA Error")
+
+        if mode == 'new':
+            self._window.set_title("Edit Properties for New Roster Contact")
+        else:
+            self._window.set_title("Edit Properties for `{}'".format(jid))
+
+        self._jid_frame.set_sensitive(mode == 'new')
+
+        if mode == 'edit':
+            self._jid_entry.set_text(jid)
+
+        if mode == 'new':
+            self._nick_frame.set_label("Nickname")
+        else:
+            self._nick_frame.set_label("Nickname for {}".format(jid))
+
+        if mode == 'new':
+            self._groups_frame.set_label("Groups")
+        else:
+            self._groups_frame.set_label("Groups for {}".format(jid))
+
         available_lst = Gtk.ListStore(str)
         current_lst = Gtk.ListStore(str)
 
-        groups = self._roster_window.roster_widget.get_groups()
+        groups = self._controller.roster_storage.get_groups()
         groups.sort()
 
         for i in groups:
             available_lst.append([i])
 
-        available_groups_treeview.set_model(available_lst)
-
-        roster_data = self._roster_window.roster_widget.get_data()
+        roster_data = self._controller.roster_storage.get_data()
         current_list = []
 
         if mode == 'edit' and jid in roster_data:
@@ -229,12 +238,25 @@ class ContactEditor:
         for i in current_list:
             current_lst.append([i])
 
-        current_groups_treeview.set_model(current_lst)
+        self._available_groups_treeview.set_model(available_lst)
+        self._current_groups_treeview.set_model(current_lst)
 
-        self.available_groups_treeview = available_groups_treeview
-        self.current_groups_treeview = current_groups_treeview
+        self.show()
+
+        self._iterated_loop = org.wayround.utils.gtk.GtkIteratedLoop()
 
         return
+
+    def show(self):
+        self._window.show_all()
+
+    def destroy(self):
+        self._window.hide()
+        self._window.destroy()
+        self._iterated_loop.stop()
+
+    def _on_destroy(self, window):
+        self.destroy()
 
     def _already_in(self, model, value):
 
@@ -254,18 +276,18 @@ class ContactEditor:
 
     def _on_add_clicked(self, button):
 
-        ne = self.new_group_entry.get_text()
+        ne = self._new_group_entry.get_text()
 
-        sele = self.available_groups_treeview.get_selection()
+        sele = self._available_groups_treeview.get_selection()
 
         am, rows = sele.get_selected_rows()
 
-        cm = self.current_groups_treeview.get_model()
+        cm = self._current_groups_treeview.get_model()
 
         if ne != '':
             if not self._already_in(cm, ne):
                 cm.append([ne])
-            self.new_group_entry.set_text('')
+            self._new_group_entry.set_text('')
         else:
 
             for i in rows:
@@ -273,13 +295,13 @@ class ContactEditor:
                 if not self._already_in(cm, ne):
                     cm.append([ne])
 
-        self.current_groups_treeview.set_model(cm)
+        self._current_groups_treeview.set_model(cm)
 
         return
 
     def _on_rm_clicked(self, button):
 
-        sele = self.current_groups_treeview.get_selection()
+        sele = self._current_groups_treeview.get_selection()
 
         am, rows = sele.get_selected_rows()
 
@@ -296,7 +318,7 @@ class ContactEditor:
             if i.valid():
                 i.free()
 
-        self.current_groups_treeview.set_model(am)
+        self._current_groups_treeview.set_model(am)
 
         return
 
@@ -304,7 +326,7 @@ class ContactEditor:
 
         lst = []
 
-        mod = self.current_groups_treeview.get_model()
+        mod = self._current_groups_treeview.get_model()
 
         it = mod.get_iter_first()
 
@@ -312,21 +334,19 @@ class ContactEditor:
             lst.append(mod[it][0])
             it = mod.iter_next(it)
 
-        name = self.nick_edit.get_text()
+        name = self._nick_edit.get_text()
 
         if name == '':
             name = None
 
         jid = org.wayround.xmpp.core.JID.new_from_str(
-            self.jid_entry.get_text()
+            self._jid_entry.get_text()
             )
 
-        self._roster_window.roster_client.set(
+        self._controller.roster_client.set(
             subject_jid=jid.bare(), groups=lst, name=name
             )
 
-        self.window.destroy()
+        self._window.destroy()
 
-    def show(self):
-        self.window.set_position(Gtk.WindowPosition.CENTER)
-        self.window.show_all()
+        return
