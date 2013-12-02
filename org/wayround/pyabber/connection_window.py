@@ -152,13 +152,15 @@ class ConnectionMgrWindow:
         conn_table_f = Gtk.Frame()
         sw = Gtk.ScrolledWindow()
         sw.add(conn_table)
-        conn_table_f.add(sw)
         conn_table_f.set_label("Available Presets")
 
-        conn_table.set_margin_left(5)
-        conn_table.set_margin_right(5)
-        conn_table.set_margin_top(5)
-        conn_table.set_margin_bottom(5)
+        conn_table_f2 = Gtk.Frame()
+        conn_table_f2.set_margin_left(5)
+        conn_table_f2.set_margin_right(5)
+        conn_table_f2.set_margin_top(5)
+        conn_table_f2.set_margin_bottom(5)
+        conn_table_f2.add(sw)
+        conn_table_f.add(conn_table_f2)
 
         bb01 = Gtk.ButtonBox()
         bb01.set_orientation(Gtk.Orientation.HORIZONTAL)
@@ -239,15 +241,18 @@ class ConnectionMgrWindow:
             new_preset = {}
             new_preset.update(r)
 
-            for i in range(
-                len(self._profile.data['connection_presets']) - 1, -1, -1
-                ):
+            already_exists = (
+                new_preset['name']
+                in self._profile.data.get_connection_presets_list()
+                )
 
-                if (self._profile.data['connection_presets'][i]['name']
-                    == new_preset['name']):
-                    del self._profile._data['connection_presets'][i]
+            if not already_exists:
 
-            self._profile.data['connection_presets'].append(new_preset)
+                self._profile.data.set_connection_preset(
+                    new_preset['name'],
+                    new_preset
+                    )
+
             self._reload_list()
             self._profile.save()
 
@@ -282,8 +287,8 @@ class ConnectionMgrWindow:
         name = self._get_selection_name()
         data = None
 
-        if name in self._profile.data['connection_presets']:
-            data = self._profile.data['connection_presets'][name]
+        if name in self._profile.data.get_connection_presets_list():
+            data = self._profile.data.get_connection_preset_by_name(name)
 
         if data:
 
@@ -305,28 +310,7 @@ class ConnectionMgrWindow:
                 new_preset = {}
                 new_preset.update(r)
 
-                for i in range(
-                    len(self._profile.data['connection_presets']) - 1,
-                    - 1,
-                    - 1
-                    ):
-
-                    if (
-                self._profile.data['connection_presets'][i]['name']
-                == new_preset['name']
-                        ):
-                        del self._profile.data['connection_presets'][i]
-
-                    elif (
-                self._profile.data['connection_presets'][i]['name']
-                == name
-                        ):
-                        del self._profile.data['connection_presets'][i]
-
-                self._profile.data['connection_presets'].append(
-                    new_preset
-                    )
-
+                self._profile.data.set_connection_preset(name, new_preset)
                 self._profile.save()
 
         self._reload_list()
@@ -350,19 +334,8 @@ class ConnectionMgrWindow:
 
             if r == Gtk.ResponseType.YES:
 
-                for i in range(
-                    len(self._profile.data['connection_presets']) - 1,
-                    - 1,
-                    - 1
-                    ):
-
-                    if (
-                self._profile.data['connection_presets'][i]['name']
-                == name
-                        ):
-                        del self._profile.data['connection_presets'][i]
-
-                self._main.profile.save()
+                self._profile.data.del_connection_preset(name)
+                self._profile.save()
 
         self._reload_list()
 
@@ -403,12 +376,15 @@ class ConnectionMgrWindow:
             bool  # 15. session
             )
 
-        if (self._profile.data
-            and 'connection_presets' in self._profile.data
-            and isinstance(self._profile.data['connection_presets'], list)
-            ):
+        if (self._profile.data):
 
-            for i in self._profile.data['connection_presets']:
+            for preset_name in self._profile.data.\
+                get_connection_presets_list():
+
+                i = self._profile.data.get_connection_preset_by_name(
+                    preset_name
+                    )
+
                 storage.append(
                     [
                     i['name'],
@@ -420,7 +396,7 @@ class ConnectionMgrWindow:
                     i['host'],
                     i['port'],
                     i['stream_features_handling'],
-                    i['STARTTLS'],
+                    i['starttls'],
                     i['starttls_necessarity_mode'],
                     i['cert_verification_mode'],
                     i['register'],
@@ -804,7 +780,7 @@ class ConnectionPresetWindow:
             'host': '',
             'port': 5222,
             'stream_features_handling': 'auto',
-            'STARTTLS': True,
+            'starttls': True,
             'starttls_necessarity_mode': 'necessary',
             'cert_verification_mode': 'can_selfsigned',
             'register': False,
@@ -884,7 +860,7 @@ class ConnectionPresetWindow:
         self._auto_routines_rb_toggled(auto_routines_rb)
         self._manual_routines_rb_toggled(manual_routines_rb)
 
-        use_starttls_cb.set_active(self.result['STARTTLS'])
+        use_starttls_cb.set_active(self.result['starttls'])
         register_cb.set_active(self.result['register'])
         login_cb.set_active(self.result['login'])
         bind_cb.set_active(self.result['bind'])
@@ -1038,7 +1014,7 @@ class ConnectionPresetWindow:
                     else:
                         self.result['stream_features_handling'] = 'manual'
 
-                    self.result['STARTTLS'] = \
+                    self.result['starttls'] = \
                         self._use_starttls_cb.get_active()
 
                     self.result['register'] = \

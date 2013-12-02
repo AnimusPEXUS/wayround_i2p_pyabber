@@ -4,10 +4,9 @@ import sys
 
 from gi.repository import Gtk, Gdk, GdkPixbuf
 
-import org.wayround.utils.gtk
-
 import org.wayround.pyabber.main
 import org.wayround.pyabber.profile
+import org.wayround.utils.gtk
 
 
 class ProfileMgrWindow:
@@ -160,7 +159,16 @@ class ProfileMgrWindow:
 
         if r['button'] == 'ok':
 
-            self._main.save(r['name'], {}, r['password'])
+            res = org.wayround.pyabber.profile.open_pfl(
+                org.wayround.utils.path.join(
+                    self._main.profiles_path, r['name'] + '.sqlite'
+                    ),
+                r['password']
+                )
+
+            res.create()
+            res.commit()
+            res.close()
 
             self.refresh_list()
 
@@ -190,7 +198,8 @@ class ProfileMgrWindow:
 
         else:
 
-            name = self._profile_icon_view.get_model()[items[0]][0][:-4]
+            name = self._profile_icon_view.\
+                get_model()[items[0]][0][:-len('.sqlite')]
 
             d = org.wayround.utils.gtk.MessageDialog(
                 self._window,
@@ -206,7 +215,7 @@ class ProfileMgrWindow:
             if r == Gtk.ResponseType.YES:
 
                 profile = org.wayround.utils.path.join(
-                    self._main.profiles_path, '{}.pfl'.format(name)
+                    self._main.profiles_path, '{}.sqlite'.format(name)
                     )
 
                 try:
@@ -252,7 +261,8 @@ class ProfileMgrWindow:
 
         else:
 
-            name = self._profile_icon_view.get_model()[items[0]][0][:-4]
+            name = self._profile_icon_view.\
+                get_model()[items[0]][0][:-len('.sqlite')]
 
             w = ProfileWindow(
                 self._window, typ='open', profile=name
@@ -266,14 +276,12 @@ class ProfileMgrWindow:
                 self._main.set_profile(
                     org.wayround.pyabber.main.ProfileSession(
                         self._main,
-                        name,
                         org.wayround.pyabber.profile.open_pfl(
                             org.wayround.utils.path.join(
-                                self._main.profiles_path, name + '.pfl'
+                                self._main.profiles_path, name + '.sqlite'
                                 ),
                             password
-                            ),
-                        password
+                            )
                         )
                     )
 

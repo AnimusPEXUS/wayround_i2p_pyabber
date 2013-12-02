@@ -1,32 +1,33 @@
 
-import copy
+import datetime
 import logging
 import socket
 import threading
 
-import lxml.etree
-
 from gi.repository import Gtk
 
+import lxml.etree
 import org.wayround.gsasl.gsasl
+import org.wayround.pyabber.adhoc
+import org.wayround.pyabber.chat_window
+import org.wayround.pyabber.contact_editor
+import org.wayround.pyabber.disco
+import org.wayround.pyabber.main
+import org.wayround.pyabber.muc
+import org.wayround.pyabber.presence_control_window
+import org.wayround.pyabber.roster_storage
+import org.wayround.pyabber.roster_window
 import org.wayround.utils.signal
-
 import org.wayround.xmpp.client
 import org.wayround.xmpp.core
 import org.wayround.xmpp.muc
 import org.wayround.xmpp.privacy
 
-import org.wayround.pyabber.adhoc
-import org.wayround.pyabber.disco
-import org.wayround.pyabber.main
-import org.wayround.pyabber.muc
-import org.wayround.pyabber.roster_storage
-import org.wayround.pyabber.roster_window
-import org.wayround.pyabber.contact_editor
-import org.wayround.pyabber.presence_control_window
 
 SUBWINDOWS = [
-    # 1. registered window name; 2. single?; 3. threaded?.
+    # 1. registered window name;
+    # 2. single?;
+    # 3. threaded?.
     ('adhoc_response_window', False, True),
     ('adhoc_window', False, True,),
     ('contact_editor_window', False, True),
@@ -37,6 +38,7 @@ SUBWINDOWS = [
     ('muc_jid_entry_dialog', False, False),
     ('presence_control_window', False, True),
     ('roster_window', True, True),
+    ('chat_window', True, True)
     ]
 
 
@@ -65,6 +67,7 @@ class ConnectionStatusMenu:
         m.append(destroy_mi)
 
         roster_mi.connect('activate', self._on_roster_mi_activated)
+        messages_mi.connect('activate', self._on_messages_mi_activated)
 
         reconnect_mi.connect('activate', self._on_reconnect_mi_activated)
         disconnect_mi.connect('activate', self._on_disconnect_mi_activated)
@@ -87,6 +90,9 @@ class ConnectionStatusMenu:
 
     def _on_roster_mi_activated(self, mi):
         self._client_connetion_controller.show_roster_window()
+
+    def _on_messages_mi_activated(self, mi):
+        self._client_connetion_controller.show_chat_window()
 
     def _on_reconnect_mi_activated(self, mi):
         self._client_connetion_controller.disconnect()
@@ -129,10 +135,12 @@ class ClientConnectionController:
         self.profile = profile
         self.preset_name = preset_name
         self.preset_data = None
+        self.storage = profile.data
 
-        for i in profile.data['connection_presets']:
-            if i['name'] == preset_name:
-                self.preset_data = copy.copy(i)
+        for i in profile.data.get_connection_presets_list():
+            if i == preset_name:
+                self.preset_data = \
+                    profile.data.get_connection_preset_by_name(i)
                 break
 
         if self.preset_data == None:
@@ -204,6 +212,9 @@ self._rel_win_ctl.set_constructor_cb(
 
     def _muc_identity_editor_window_constructor(self):
         return org.wayround.pyabber.muc.MUCIdentityEditorWindow(self)
+
+    def _chat_window_constructor(self):
+        return org.wayround.pyabber.chat_window.ChatWindow(self)
 
     for i in SUBWINDOWS:
         exec(
@@ -348,7 +359,7 @@ def show_{i}(self, *args, **kwargs):
                     last_features = features['args'][1]
 
             if (not self._disconnection_flag.is_set()
-                and self.preset_data['STARTTLS']
+                and self.preset_data['starttls']
                 and ret == 0):
 
                 logging.debug("Starting TLS")
@@ -698,7 +709,38 @@ def show_{i}(self, *args, **kwargs):
         return ret
 
     def _on_message(self, event, message_obj, stanza):
-        pass
+
+        if event == 'message':
+
+            type_ = 'message_normal'
+            typ = stanza.get_typ()
+            if typ != None and typ != 'normal':
+                type_ = 'message_{}'.format(typ)
+
+            thread = None
+            parent = None
+
+            _t = stanza.get_thread()
+            if _t:
+                thread = _t.get_thread()
+                parent = _t.get_parent()
+
+            self.profile.data.add_history_record(
+                date=datetime.datetime.utcnow(),
+                incomming=True,
+                connection_jid_obj=self.jid,
+                jid_obj=org.wayround.xmpp.core.JID.new_from_str(
+                    stanza.get_from_jid()
+                    ),
+                type_=type_,
+                parent_thread_id=parent,
+                thread_id=thread,
+                subject=stanza.get_subject_dict(),
+                plain=stanza.get_body_dict(),
+                xhtml=None
+                )
+
+        return
 
     def _on_roster_push(self, event, roster_obj, stanza_data):
 

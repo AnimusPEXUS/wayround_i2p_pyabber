@@ -38,7 +38,9 @@ class RosterWindow:
         roster_tools_box = Gtk.Toolbar()
         roster_tools_box.set_orientation(Gtk.Orientation.HORIZONTAL)
 
-        self.roster_widget = org.wayround.pyabber.roster_widget.RosterWidget()
+        self.roster_widget = org.wayround.pyabber.roster_widget.RosterWidget(
+            self._controller
+            )
 
         roster_treeview_widg = self.roster_widget.get_widget()
 

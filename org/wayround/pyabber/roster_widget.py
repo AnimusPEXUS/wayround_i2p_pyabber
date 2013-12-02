@@ -387,7 +387,17 @@ def draw_resource_cell(
 
 class RosterWidget:
 
-    def __init__(self):
+    def __init__(self, controller):
+
+        if not isinstance(
+            controller,
+            org.wayround.pyabber.ccc.ClientConnectionController
+            ):
+            raise ValueError(
+                "`controller' must be org.wayround.xmpp.client.XMPPC2SClient"
+                )
+
+        self._controller = controller
 
         self._self_bare_jid = None
 
@@ -433,6 +443,11 @@ class RosterWidget:
         self._treeview.set_headers_visible(False)
         self._treeview.set_enable_tree_lines(True)
 #        self._treeview.set_rules_hint(True)
+
+        self._contact_popup_menu = \
+            org.wayround.pyabber.contact_popup_menu.ContactPopupMenu(
+                self._controller
+                )
 
         self._division_add('Self', 'self')
         self._division_add('Grouped Contacts', 'groups')
@@ -1069,10 +1084,8 @@ class RosterWidget:
                         jid = org.wayround.xmpp.core.JID.new_from_str(bare_jid)
 
                         if jid:
-                            org.wayround.pyabber.contact_popup_menu.contact_popup_menu(
-                                self._main_window.controller,
-                                jid.bare()
-                                )
+                            self._contact_popup_menu.set(jid.bare())
+                            self._contact_popup_menu.show()
 
                     if row_t == 'resource':
                         resource = res

@@ -150,6 +150,9 @@ class DiscoMenu:
 
         return
 
+    def get_widget(self):
+        return self._menu
+
     def destroy(self):
         self._mucmenu.destroy()
         self._menu.destroy()

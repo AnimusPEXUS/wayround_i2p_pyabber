@@ -6,22 +6,34 @@ import org.wayround.xmpp.core
 import org.wayround.pyabber.contact_editor
 import org.wayround.pyabber.single_message_window
 import org.wayround.pyabber.chat_pager
+import org.wayround.pyabber.disco
 
-_contact_popup_menu = None
 
 class ContactPopupMenu:
 
-    def __init__(self):
+    def __init__(self, controller):
+
+        if not isinstance(
+            controller,
+            org.wayround.pyabber.ccc.ClientConnectionController
+            ):
+            raise ValueError(
+                "`controller' must be org.wayround.xmpp.client.XMPPC2SClient"
+                )
+
+        self._controller = controller
 
         menu = Gtk.Menu()
-        self.menu = menu
-        self.jid = None
+        self._menu = menu
+        self._jid = None
 
         subject_mi = Gtk.MenuItem.new_with_label("jid")
         jid_menu = Gtk.Menu()
         subject_mi.set_submenu(jid_menu)
 
-        jid_copy_to_clipboard_mi = Gtk.MenuItem.new_with_label("Copy To Clipboard")
+        jid_copy_to_clipboard_mi = Gtk.MenuItem.new_with_label(
+            "Copy To Clipboard"
+            )
         jid_menu.append(jid_copy_to_clipboard_mi)
         self.subject_mi = subject_mi
 
@@ -33,13 +45,24 @@ class ContactPopupMenu:
         forget_mi = Gtk.MenuItem.new_with_label("Forget")
 
         commands_mi = Gtk.MenuItem.new_with_label("Commands")
-        send_custom_presence_mi = Gtk.MenuItem.new_with_label("Send Custom Presence")
+        send_custom_presence_mi = Gtk.MenuItem.new_with_label(
+            "Send Custom Presence"
+            )
         vcard_mi = Gtk.MenuItem.new_with_label("vCard")
         send_users_mi = Gtk.MenuItem.new_with_label("Send Users")
         send_file_mi = Gtk.MenuItem.new_with_label("Send File")
         edit_mi = Gtk.MenuItem.new_with_label("Edit")
 
+        disco_mi = Gtk.MenuItem.new_with_label("Disco")
+
+        misco_menu = org.wayround.pyabber.disco.DiscoMenu(controller)
+        self._disco_menu = misco_menu
+
+        disco_mi.set_submenu(misco_menu.get_widget())
+
         menu.append(subject_mi)
+        menu.append(Gtk.SeparatorMenuItem())
+        menu.append(disco_mi)
         menu.append(Gtk.SeparatorMenuItem())
 
         menu.append(start_chat_mi)
@@ -86,7 +109,9 @@ class ContactPopupMenu:
         subscribe_mi.connect('activate', self._subs_activate, 'subscribe')
         unsubscribe_mi.connect('activate', self._subs_activate, 'unsubscribe')
         subscribed_mi.connect('activate', self._subs_activate, 'subscribed')
-        unsubscribed_mi.connect('activate', self._subs_activate, 'unsubscribed')
+        unsubscribed_mi.connect(
+            'activate', self._subs_activate, 'unsubscribed'
+            )
 
         remove_mi.connect('activate', self._remove_activate)
         forget_mi.connect('activate', self._forget_activate)
@@ -95,24 +120,23 @@ class ContactPopupMenu:
         send_message_mi.connect('activate', self._send_message_activate)
         start_chat_mi.connect('activate', self._start_chat_activate)
 
-    def show(self, controller, bare_or_full_jid, attach=None):
+        self._menu.show_all()
 
-        self._controller = controller
+    def set(self, bare_or_full_jid):
+
+        self._disco_menu.set(bare_or_full_jid, node=None)
 
         jid = org.wayround.xmpp.core.JID.new_from_str(bare_or_full_jid)
-        self.jid = jid
+        self._jid = jid
 
         self.subject_mi.set_label(str(jid))
 
-        while Gtk.events_pending():
-            Gtk.main_iteration()
+#        while Gtk.events_pending():
+#            Gtk.main_iteration()
 
-        if attach != None:
-            self.menu.attach_to_widget(attach, None)
+    def show(self):
 
-        self.menu.show_all()
-
-        self.menu.popup(
+        self._menu.popup(
             None,
             None,
             None,
@@ -123,35 +147,36 @@ class ContactPopupMenu:
 
         return
 
+    def get_widget(self):
+        return self._menu
+
     def _subs_activate(self, menuitem, data):
-        self._controller.presence.presence(
+        self._controller.presence_client.presence(
             typ=data,
-            to_full_or_bare_jid=self.jid.bare()
+            to_full_or_bare_jid=self._jid.bare()
             )
 
     def _remove_activate(self, menuitem):
-        self._controller.roster.set(
+        self._controller.roster_client.set(
             subscription='remove',
-            to_jid=self._controller.jid.bare(),
-            subject_jid=self.jid.bare()
+            to_jid=self._controller._jid.bare(),
+            subject_jid=self._jid.bare()
             )
 
     def _forget_activate(self, menuitem):
-        self._controller.main_window.roster_widget.forget(self.jid.bare())
+        self._controller.roster_storage.forget(self._jid.bare())
 
     def _edit_activate(self, menuitem):
-        w = org.wayround.pyabber.contact_editor.ContactEditor(
-            self._controller,
-            jid=self.jid.bare(),
+        self._controller.show_contact_editor_window(
+            jid=self._jid.bare(),
             mode='edit'
             )
-        w.show()
 
     def _send_message_activate(self, menuitem):
         org.wayround.pyabber.single_message_window.single_message(
             controller=self._controller,
             mode='new',
-            to_jid=str(self.jid),
+            to_jid=str(self._jid),
             from_jid=False,
             subject='HI!',
             body="How are You?"
@@ -162,24 +187,9 @@ class ContactPopupMenu:
         page = org.wayround.pyabber.chat_pager.Chat(
             self,
             controller=self._controller,
-            contact_bare_jid=self.jid.bare(),
+            contact_bare_jid=self._jid.bare(),
             contact_resource=None,  # TODO: really?
             thread_id=None
             )
 
         self._controller.main_window.chat_pager.add_page(page)
-
-
-
-def contact_popup_menu(controller, bare_or_full_jid, attach=None):
-
-    global _contact_popup_menu
-
-    if _contact_popup_menu == None:
-        _contact_popup_menu = ContactPopupMenu()
-
-    _contact_popup_menu.show(
-        attach=attach,
-        bare_or_full_jid=bare_or_full_jid,
-        controller=controller
-        )

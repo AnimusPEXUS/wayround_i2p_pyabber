@@ -78,44 +78,14 @@ class Main:
     def get_profile(self):
         return self.profile
 
-    def save(self, name, data, password):
-
-        if not isinstance(name, str) or not isinstance(data, dict):
-
-            d = org.wayround.utils.gtk.MessageDialog(
-                None,
-                Gtk.DialogFlags.MODAL
-                | Gtk.DialogFlags.DESTROY_WITH_PARENT,
-                Gtk.MessageType.ERROR,
-                Gtk.ButtonsType.OK,
-                "Profile not open - nothing to save"
-                )
-            d.run()
-            d.destroy()
-
-        else:
-
-            if not 'connection_presets' in data:
-                data['connection_presets'] = []
-
-            org.wayround.pyabber.profile.save_pfl(
-                org.wayround.utils.path.join(
-                    self.profiles_path, name + '.pfl'
-                    ),
-                password,
-                data
-                )
-
 
 class ProfileSession:
 
-    def __init__(self, main, name, data, password):
+    def __init__(self, main, data):
 
         self._main = main
 
-        self.name = name
         self.data = data
-        self.password = password
 
         self.connection_controllers = set()
 
@@ -148,11 +118,7 @@ class ProfileSession:
         return
 
     def save(self):
-        self.save(
-            self._main.profile.name,
-            self._main.profile.data,
-            self._main.profile.password
-            )
+        self.data.commit()
 
 
 def main(opts, args):

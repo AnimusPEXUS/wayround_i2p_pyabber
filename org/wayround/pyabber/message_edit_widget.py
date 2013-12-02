@@ -1,6 +1,7 @@
 
 from gi.repository import Gtk
 
+
 class MessageEdit:
 
     def __init__(self):
@@ -22,6 +23,9 @@ class MessageEdit:
 
     def get_widget(self):
         return self._main_box
+
+    def destroy(self):
+        self.get_widget().destroy()
 
     def get_text(self):
 
