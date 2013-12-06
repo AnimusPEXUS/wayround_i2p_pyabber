@@ -158,9 +158,9 @@ class ContactPopupMenu:
 
     def _remove_activate(self, menuitem):
         self._controller.roster_client.set(
+            self._jid.bare(),
             subscription='remove',
             to_jid=self._controller._jid.bare(),
-            subject_jid=self._jid.bare()
             )
 
     def _forget_activate(self, menuitem):
@@ -188,8 +188,12 @@ class ContactPopupMenu:
             self,
             controller=self._controller,
             contact_bare_jid=self._jid.bare(),
-            contact_resource=None,  # TODO: really?
             thread_id=None
             )
 
-        self._controller.main_window.chat_pager.add_page(page)
+        chat_window = self._controller.get_chat_window()
+        if chat_window == None:
+            self._controller.show_chat_window()
+            chat_window = self._controller.get_chat_window()
+
+        chat_window.chat_pager.add_page(page)

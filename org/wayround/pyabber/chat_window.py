@@ -33,9 +33,9 @@ class ChatWindow:
 
         window.add(b)
 
-        self._pager = org.wayround.pyabber.chat_pager.ChatPager(controller)
+        self.chat_pager = org.wayround.pyabber.chat_pager.ChatPager(controller)
 
-        b.pack_start(self._pager.get_widget(), True, True, 0)
+        b.pack_start(self.chat_pager.get_widget(), True, True, 0)
 
         self._window = window
 
@@ -51,7 +51,7 @@ class ChatWindow:
         self._window.show_all()
 
     def destroy(self):
-        self._pager.destroy()
+        self.chat_pager.destroy()
         self._window.hide()
         self._window.destroy()
         self._iterated_loop.stop()

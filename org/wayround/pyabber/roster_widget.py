@@ -1,19 +1,13 @@
 
-import threading
 import copy
+import threading
 
-from gi.repository import Gtk
-from gi.repository import Gdk
-from gi.repository import GdkPixbuf
-from gi.repository import GObject
-from gi.repository import Pango
-from gi.repository import PangoCairo
-
-import org.wayround.xmpp.core
+from gi.repository import GObject, Gdk, GdkPixbuf, Gtk, Pango, PangoCairo
 
 import org.wayround.pyabber.contact_popup_menu
 import org.wayround.pyabber.icondb
 import org.wayround.pyabber.roster_storage
+import org.wayround.xmpp.core
 
 
 ROW_CELL_NAMES = [
@@ -1101,14 +1095,16 @@ class RosterWidget:
                                     parent_row = model[parent]
                                     bare_jid = parent_row[ROW_CELL_BARE_JID]
 
-                                    jid = org.wayround.xmpp.core.JID.new_from_str(
-                                        bare_jid + '/' + resource
-                                        )
+                                    jid = org.wayround.xmpp.core.\
+                                        JID.new_from_str(
+                                            bare_jid + '/' + resource
+                                            )
 
-                                    org.wayround.pyabber.contact_popup_menu.contact_popup_menu(
-                                        self._main_window.controller,
-                                        jid.full()
-                                        )
+                                    if jid:
+                                        self._contact_popup_menu.set(
+                                            jid.full()
+                                            )
+                                        self._contact_popup_menu.show()
 
             self._lock.release()
 

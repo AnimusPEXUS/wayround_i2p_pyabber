@@ -344,7 +344,9 @@ class ContactEditor:
             )
 
         self._controller.roster_client.set(
-            subject_jid=jid.bare(), groups=lst, name=name
+            jid.bare(),
+            groups=lst,
+            name=name
             )
 
         self._window.destroy()

@@ -30,6 +30,7 @@ SUBWINDOWS = [
     # 3. threaded?.
     ('adhoc_response_window', False, True),
     ('adhoc_window', False, True,),
+    ('chat_window', True, True),
     ('contact_editor_window', False, True),
     ('disco_window', False, True),
     ('muc_config_window', False, True),
@@ -37,8 +38,7 @@ SUBWINDOWS = [
     ('muc_identity_editor_window', False, True),
     ('muc_jid_entry_dialog', False, False),
     ('presence_control_window', False, True),
-    ('roster_window', True, True),
-    ('chat_window', True, True)
+    ('roster_window', True, True)
     ]
 
 
@@ -224,6 +224,10 @@ def show_{i}(self, *args, **kwargs):
         self._rel_win_ctl.show_threaded('{i}', *args, **kwargs)
     else:
         self._rel_win_ctl.show('{i}', *args, **kwargs)
+
+def get_{i}(self):
+    return self._rel_win_ctl.get_window('{i}')
+
 """.format(i=i[0], threaded=i[2]))
 
     def clear(self, init=False):
@@ -756,7 +760,7 @@ def show_{i}(self, *args, **kwargs):
             self.roster_storage.set_bare(
                 name_or_title=data.get_name(),
                 bare_jid=jid,
-                groups=data.get_groups(),
+                groups=data.get_group(),
                 approved=data.get_approved(),
                 ask=data.get_ask(),
                 subscription=data.get_subscription(),

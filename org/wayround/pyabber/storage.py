@@ -108,7 +108,8 @@ class StorageDB(org.wayround.utils.db.BasicDB):
         date = sqlalchemy.Column(
             type_=sqlalchemy.DateTime,
             nullable=False,
-            default=datetime.datetime(1, 1, 1)
+            default=datetime.datetime(1, 1, 1),
+            index=True
             )
 
         incomming = sqlalchemy.Column(
@@ -119,22 +120,26 @@ class StorageDB(org.wayround.utils.db.BasicDB):
 
         connection_bare_jid = sqlalchemy.Column(
             type_=sqlalchemy.UnicodeText,
-            nullable=False
+            nullable=False,
+            index=True
             )
 
         connection_jid_resource = sqlalchemy.Column(
             type_=sqlalchemy.UnicodeText,
-            nullable=True
+            nullable=True,
+            index=True
             )
 
         bare_jid = sqlalchemy.Column(
             type_=sqlalchemy.UnicodeText,
-            nullable=False
+            nullable=False,
+            index=True
             )
 
         jid_resource = sqlalchemy.Column(
             type_=sqlalchemy.UnicodeText,
-            nullable=True
+            nullable=True,
+            index=True
             )
 
         type_ = sqlalchemy.Column(

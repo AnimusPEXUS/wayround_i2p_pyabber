@@ -16,6 +16,7 @@ class MessageEdit:
 
         text_view = Gtk.TextView()
         self._text_view = text_view
+        text_view.set_wrap_mode(Gtk.WrapMode.WORD)
 
         text_view_sw.add(text_view)
 
