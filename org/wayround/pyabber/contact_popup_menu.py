@@ -32,7 +32,7 @@ class ContactPopupMenu:
         subject_mi.set_submenu(jid_menu)
 
         jid_copy_to_clipboard_mi = Gtk.MenuItem.new_with_label(
-            "Copy To Clipboard"
+            "Copy to Clipboard"
             )
         jid_menu.append(jid_copy_to_clipboard_mi)
         self.subject_mi = subject_mi
@@ -160,7 +160,7 @@ class ContactPopupMenu:
         self._controller.roster_client.set(
             self._jid.bare(),
             subscription='remove',
-            to_jid=self._controller._jid.bare(),
+            to_jid=self._jid.bare(),
             )
 
     def _forget_activate(self, menuitem):
@@ -173,11 +173,10 @@ class ContactPopupMenu:
             )
 
     def _send_message_activate(self, menuitem):
-        org.wayround.pyabber.single_message_window.single_message(
-            controller=self._controller,
+        self._controller.show_single_message_window(
             mode='new',
             to_jid=str(self._jid),
-            from_jid=False,
+            from_jid=self._controller.jid.bare(),
             subject='HI!',
             body="How are You?"
             )

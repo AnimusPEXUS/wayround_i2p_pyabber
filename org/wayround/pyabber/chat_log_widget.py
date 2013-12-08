@@ -62,7 +62,6 @@ class ChatLogTableRow:
         self._language_switch = language_switch
 
         renderer_text = Gtk.CellRendererText()
-
         mode_switch.pack_start(renderer_text, True)
         mode_switch.add_attribute(renderer_text, "text", 0)
 
@@ -249,11 +248,11 @@ class ChatLogWidget:
             dict()
             )
 
-        self._looped_timer.start()
-
         self._last_scroll_date = None
 
         self.update()
+
+        self._looped_timer.start()
 
         return
 

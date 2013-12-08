@@ -696,7 +696,7 @@ class Disco:
 
         self._node_entry.set_text(nt)
         self._server_menu_button.set_label(
-            "`{}' _menu".format(t)
+            "`{}' menu".format(t)
             )
 
         self._window.set_title(
@@ -784,7 +784,7 @@ class Disco:
 
         if event.button == Gdk.BUTTON_SECONDARY:
             bw = widget.get_bin_window()
-            if event._window == bw:
+            if event.window == bw:
 
                 res = widget.get_path_at_pos(event.x, event.y)
 

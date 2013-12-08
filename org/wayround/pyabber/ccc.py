@@ -15,6 +15,7 @@ import org.wayround.pyabber.disco
 import org.wayround.pyabber.main
 import org.wayround.pyabber.muc
 import org.wayround.pyabber.presence_control_window
+import org.wayround.pyabber.single_message_window
 import org.wayround.pyabber.roster_storage
 import org.wayround.pyabber.roster_window
 import org.wayround.utils.signal
@@ -38,7 +39,8 @@ SUBWINDOWS = [
     ('muc_identity_editor_window', False, True),
     ('muc_jid_entry_dialog', False, False),
     ('presence_control_window', False, True),
-    ('roster_window', True, True)
+    ('roster_window', True, True),
+    ('single_message_window', False, True)
     ]
 
 
@@ -78,9 +80,12 @@ class ConnectionStatusMenu:
 
         self._connections_submenu_item = None
 
-        self.widget = m
+        self._widget = m
 
         return
+
+    def get_widget(self):
+        return self._widget
 
     def destroy(self):
         self._connections_submenu_item.destroy()
@@ -215,6 +220,11 @@ self._rel_win_ctl.set_constructor_cb(
 
     def _chat_window_constructor(self):
         return org.wayround.pyabber.chat_window.ChatWindow(self)
+
+    def _single_message_window_constructor(self):
+        return org.wayround.pyabber.single_message_window.SingleMessageWindow(
+            self
+            )
 
     for i in SUBWINDOWS:
         exec(

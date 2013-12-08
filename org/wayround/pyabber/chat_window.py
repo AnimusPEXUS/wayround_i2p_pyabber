@@ -32,6 +32,7 @@ class ChatWindow:
         b.set_spacing(5)
 
         window.add(b)
+        window.connect('destroy', self._on_destroy)
 
         self.chat_pager = org.wayround.pyabber.chat_pager.ChatPager(controller)
 

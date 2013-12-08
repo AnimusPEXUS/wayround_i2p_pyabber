@@ -168,6 +168,17 @@ class RosterStorage(org.wayround.utils.signal.Signal):
     def _get_data(self):
         return copy.deepcopy(self._data)
 
+    def get_jid_data(self, bare_jid):
+        data = self.get_data()
+        if not bare_jid in data:
+            self.set_bare(
+                bare_jid,
+                not_in_roster=True,
+                )
+            data = self.get_data()
+        ret = data[bare_jid]
+        return ret
+
     def get_data(self):
 
         self._lock.acquire()

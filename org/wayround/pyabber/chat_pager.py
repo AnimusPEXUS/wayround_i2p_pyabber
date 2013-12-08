@@ -9,6 +9,7 @@ import org.wayround.xmpp.core
 
 import org.wayround.pyabber.chat_log_widget
 import org.wayround.pyabber.message_edit_widget
+import org.wayround.pyabber.jid_widget
 
 
 class ChatPage:
@@ -65,12 +66,11 @@ class Chat(ChatPage):
         self.contact_bare_jid = contact_bare_jid
         self.thread_id = thread_id
 
-        self._title_label = Gtk.Label(contact_bare_jid)
-
         self._log = org.wayround.pyabber.chat_log_widget.ChatLogWidget(
             self._controller,
             self
             )
+
         log_widget = self._log.get_widget()
 
         self._editor = org.wayround.pyabber.message_edit_widget.MessageEdit()
@@ -87,10 +87,6 @@ class Chat(ChatPage):
 
         main_paned = Gtk.Paned()
         main_paned.set_orientation(Gtk.Orientation.VERTICAL)
-        main_paned.set_margin_top(5)
-        main_paned.set_margin_left(5)
-        main_paned.set_margin_right(5)
-        main_paned.set_margin_bottom(5)
         main_paned.set_position(400)
         main_paned.add1(log_widget)
         main_paned.add2(bottom_box)
@@ -100,7 +96,26 @@ class Chat(ChatPage):
         main_paned.child_set_property(bottom_box, 'shrink', False)
         main_paned.child_set_property(log_widget, 'shrink', False)
 
-        self._root_widget = main_paned
+        b = Gtk.Box()
+        b.set_margin_top(5)
+        b.set_margin_left(5)
+        b.set_margin_right(5)
+        b.set_margin_bottom(5)
+        b.set_orientation(Gtk.Orientation.VERTICAL)
+
+        jid_widget = org.wayround.pyabber.jid_widget.JIDWidget(
+            controller,
+            controller.roster_storage,
+            contact_bare_jid
+            )
+        self._jid_widget = jid_widget
+
+        self._title_label = jid_widget.get_widget()
+
+        b.pack_start(main_paned, True, True, 0)
+        b.set_spacing(5)
+
+        self._root_widget = b
 
         self._editor.connect('key-press-event', self._on_key_press_event)
         send_button.connect('clicked', self._on_send_button_clicked)
@@ -118,6 +133,8 @@ class Chat(ChatPage):
         return self._root_widget
 
     def destroy(self):
+        self._jid_widget.destroy()
+        self._title_label.destroy()
         self._editor.destroy()
         self._log.destroy()
         return

@@ -62,12 +62,12 @@ class MainStatusIconMenu:
 
         self._connections_submenu = mm
 
-        self.widget = m
+        self._menu = m
 
         return
 
     def destroy(self):
-        self.widget.destroy()
+        self.get_widget().destroy()
 
     def add_connection_menu(self, name, menu):
 
@@ -81,11 +81,14 @@ class MainStatusIconMenu:
 
         mi = Gtk.MenuItem(name)
         self._connections_submenu.append(mi)
-        mi.set_submenu(menu.widget)
+        mi.set_submenu(menu.get_widget())
         menu.set_connections_submenu_item(mi)
         mi.show()
 
         return
+
+    def get_widget(self):
+        return self._menu
 
     def _on_open_activate(self, mi):
         self._main.show_profile_selection_dialog()
@@ -123,7 +126,7 @@ class MainStatusIcon:
         self.menu.destroy()
 
     def _on_popup(self, icon, button, activate_time):
-        self.menu.widget.popup(
+        self.menu.get_widget().popup(
             None, None, self.widget.position_menu, icon, button, activate_time
             )
 

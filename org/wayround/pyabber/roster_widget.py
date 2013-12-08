@@ -1,1112 +1,201 @@
 
-import copy
 import threading
 
-from gi.repository import GObject, Gdk, GdkPixbuf, Gtk, Pango, PangoCairo
+from gi.repository import Gtk
 
-import org.wayround.pyabber.contact_popup_menu
-import org.wayround.pyabber.icondb
-import org.wayround.pyabber.roster_storage
+import org.wayround.pyabber.jid_widget
 import org.wayround.xmpp.core
 
 
-ROW_CELL_NAMES = [
-    'cell_type',
-    'name_or_title',
-    'bare_jid',
-    'resource',
-    'approved',
-    'ask',
-    'subscription',
-    'nick',
-    'userpic',
-    'available',
-    'show',
-    'status',
-    'has_new_messages'
+ROSTER_WIDGET_MODE_LIST = [
+    'all', 'grouped', 'ungrouped', 'transports', 'services',
+    'ask', 'to', 'from', 'none', 'not_in_roster_soft', 'not_in_roster_hard'
     ]
-
-ROW_CELL_NAMES_COUNT = len(ROW_CELL_NAMES)
-ROW_CELL_CELL_TYPE = 0
-ROW_CELL_NAME_OR_TITLE = 1
-ROW_CELL_BARE_JID = 2
-ROW_CELL_RESOURCE = 3
-ROW_CELL_APPROVED = 4
-ROW_CELL_ASK = 5
-ROW_CELL_SUBSCRIPTION = 6
-ROW_CELL_NICK = 7
-ROW_CELL_USERPIC = 8
-ROW_CELL_AVAILABLE = 9
-ROW_CELL_SHOW = 10
-ROW_CELL_STATUS = 11
-ROW_CELL_HAS_NEW_MESSAGES = 12
-
-LEVEL_CONTACT_SET_FULL_LIST = [
-    ROW_CELL_NAME_OR_TITLE,
-    ROW_CELL_APPROVED,
-    ROW_CELL_ASK,
-    ROW_CELL_SUBSCRIPTION,
-    ROW_CELL_NICK,
-    ROW_CELL_USERPIC,
-    ROW_CELL_AVAILABLE,
-    ROW_CELL_SHOW,
-    ROW_CELL_STATUS,
-    ROW_CELL_HAS_NEW_MESSAGES
-    ]
-
-CONTACTED_DIVISION_NAMES = [
-    'self',
-    'ungrouped',
-    'ask',
-    'to',
-    'from',
-    'none',
-    'transport',
-    'hard'
-    ]
-
-#for i in ROW_CELL_NAMES:
-#    exec("""\
-#ROW_CELL_{upper} = {normal}
-#""".formay(upper=i.upper(), normal=i))
-#
-#del(i)
-
-
-class RosterCellRenderer(Gtk.CellRenderer):
-
-    cell_type = GObject.property(type=str, default='contact')
-    name_or_title = GObject.property(type=str, default='')
-    bare_jid = GObject.property(type=str, default='')
-    resource = GObject.property(type=str, default='')
-    approved = GObject.property(type=str, default='')
-    ask = GObject.property(type=str, default='')
-    subscription = GObject.property(type=str, default='')
-    nick = GObject.property(type=str, default='')
-    userpic = GObject.property(type=GdkPixbuf.Pixbuf, default=None)
-    available = GObject.property(type=bool, default=False)
-    show = GObject.property(type=str, default='')
-    status = GObject.property(type=str, default='')
-    has_new_messages = GObject.property(type=bool, default=False)
-    not_in_roster = GObject.property(type=bool, default=False)
-
-    def __init__(self):
-
-        super().__init__()
-
-    def do_get_preferred_width(self, widget):
-
-        return (100, 100,)
-
-    def do_get_preferred_height(self, widget):
-        cell_type = self.get_property('cell_type')
-
-        ret = (1, 1,)
-
-        if cell_type == 'division':
-            ret = (12, 12,)
-        elif cell_type == 'group':
-            ret = (10, 10,)
-        elif cell_type == 'contact':
-            ret = (60, 60,)
-        elif cell_type == 'resource':
-            ret = (16, 16,)
-        else:
-            raise Exception("Invalid cell_type")
-
-        return ret
-
-#    def do_get_preferred_height_for_width(self, width):
-#        return self.get_preferred_height()
-#
-#    def do_get_preferred_width_for_height(self, height):
-#        return self.get_preferred_width()
-#
-#    def gtk_cell_renderer_get_aligned_area(self, widget, flags, cell_area):
-#        return cell_area
-#
-#    def get_size(self, widget, cell_area, x_offset, y_offset, width, height):
-#        return cell_area
-
-    def do_render(self, cr, widget, background_area, cell_area, flags):
-
-        initial_ctm = cr.get_matrix()
-#        resolution = widget.get_screen().get_resolution()
-
-        cell_type = self.get_property('cell_type')
-
-        if cell_type == 'division':
-
-            cr.translate(
-                cell_area.x,
-                cell_area.y,
-                )
-            draw_division_cell(
-                cr,
-                cell_area.width,
-                cell_area.height,
-                title=self.get_property('name_or_title')
-                )
-            cr.set_matrix(initial_ctm)
-
-        elif cell_type == 'group':
-
-            cr.translate(
-                cell_area.x,
-                cell_area.y,
-                )
-            draw_group_cell(
-                cr,
-                cell_area.width,
-                cell_area.height,
-                title=self.get_property('name_or_title')
-                )
-            cr.set_matrix(initial_ctm)
-
-        elif cell_type == 'contact':
-
-            cr.translate(
-                cell_area.x,
-                cell_area.y,
-                )
-            draw_contact_cell(
-                cr,
-                width=cell_area.width,
-                height=cell_area.height,
-                approved=self.get_property('approved'),
-                ask=self.get_property('ask'),
-                bare_jid=self.get_property('bare_jid'),
-                name=self.get_property('name_or_title'),
-                subscription=self.get_property('subscription'),
-                nick=self.get_property('nick'),
-                userpic=self.get_property('userpic'),
-                available=self.get_property('available'),
-                show=self.get_property('show'),
-                status=self.get_property('status'),
-                has_new_messages=self.get_property('has_new_messages')
-                )
-            cr.set_matrix(initial_ctm)
-
-        elif cell_type == 'resource':
-
-            cr.translate(
-                cell_area.x,
-                cell_area.y,
-                )
-            draw_resource_cell(
-                cr,
-                width=cell_area.width,
-                height=cell_area.height,
-                resource=self.get_property('resource'),
-                available=self.get_property('available'),
-                show=self.get_property('show'),
-                status=self.get_property('status'),
-                has_new_messages=self.get_property('has_new_messages')
-                )
-            cr.set_matrix(initial_ctm)
-
-        else:
-            raise Exception("Invalid cell_type")
-
-        return
-
-
-def draw_division_cell(cr, width, height, title):
-    ow = Gtk.OffscreenWindow()
-    ow.set_default_size(width, height)
-    l = Gtk.Label(title)
-    l.set_alignment(0, 0.5)
-    ow.add(l)
-    ow.show_all()
-    l.draw(cr)
-    ow.destroy()
-
-
-def draw_group_cell(cr, width, height, title):
-    ow = Gtk.OffscreenWindow()
-    ow.set_default_size(width, height)
-    l = Gtk.Label(title)
-    l.set_alignment(0, 0.5)
-    ow.add(l)
-    ow.show_all()
-    l.draw(cr)
-    ow.destroy()
-
-
-def draw_contact_cell(
-    cr, width, height,
-    approved, ask, bare_jid, name, subscription,
-    nick, userpic, available, show, status, has_new_messages
-    ):
-
-    ow = Gtk.OffscreenWindow()
-    ow.set_default_size(width, height)
-
-    main_box = Gtk.Box()
-    main_box.set_orientation(Gtk.Orientation.VERTICAL)
-
-    main_horizontal_box = Gtk.Box()
-    main_horizontal_box.set_orientation(Gtk.Orientation.HORIZONTAL)
-
-    text_info_box = Gtk.Box()
-    text_info_box.set_orientation(Gtk.Orientation.VERTICAL)
-
-    status_box = Gtk.Box()
-    status_box.set_orientation(Gtk.Orientation.HORIZONTAL)
-
-    ask_label = Gtk.Label("ask: " + str(ask))
-    approved_label = Gtk.Label("approved: " + str(approved))
-
-    subscription_i = Gtk.Image()
-    if subscription == None:
-        subscription = 'none'
-
-    subscription_i.set_from_pixbuf(
-        org.wayround.pyabber.icondb.get('subscription_{}'.format(subscription))
-        )
-
-    available_i = Gtk.Image()
-    if available:
-        available_i.set_from_pixbuf(
-            org.wayround.pyabber.icondb.get('contact_available')
-            )
-    else:
-        available_i.set_from_pixbuf(
-            org.wayround.pyabber.icondb.get('contact_unavailable')
-            )
-
-    show_i = Gtk.Image()
-
-    if not show in ['available', 'unavailable', 'dnd', 'away', 'xa', 'chat']:
-        show = 'unknown'
-
-    show_i.set_from_pixbuf(
-        org.wayround.pyabber.icondb.get('show_{}'.format(show))
-        )
-
-    status_box.pack_start(available_i, False, False, 0)
-    status_box.pack_start(show_i, False, False, 0)
-    status_box.pack_start(subscription_i, False, False, 0)
-    status_box.pack_start(ask_label, False, False, 3)
-    status_box.pack_start(approved_label, False, False, 3)
-
-    title_label_text = ''
-    if isinstance(name, str) and name != '' and not name.isspace():
-        title_label_text = name
-    elif isinstance(nick, str) and nick != '' and  not nick.isspace():
-        title_label_text = nick
-    else:
-        title_label_text = bare_jid
-
-    title_label = Gtk.Label(title_label_text)
-    title_label.set_alignment(0, 0.5)
-
-    jid_label = Gtk.Label(bare_jid)
-    jid_label.set_alignment(0, 0.5)
-
-    status_text_label = Gtk.Label(status)
-    status_text_label.set_alignment(0, 0)
-
-    img = Gtk.Image()
-    img.set_alignment(0.5, 0)
-    img.set_margin_right(5)
-    if not userpic:
-        img.set_from_stock('gtk-missing-image', Gtk.IconSize.BUTTON)
-    else:
-        img.set_from_pixbuf(userpic)
-
-    text_info_box.pack_start(title_label, False, False, 0)
-    text_info_box.pack_start(jid_label, False, False, 0)
-    text_info_box.pack_start(status_text_label, True, True, 0)
-    text_info_box.pack_start(status_box, False, False, 0)
-
-    main_horizontal_box.pack_start(img, False, False, 0)
-    main_horizontal_box.pack_start(text_info_box, True, True, 0)
-
-    main_box.pack_start(main_horizontal_box, True, True, 0)
-
-    ow.add(main_box)
-    ow.show_all()
-    main_box.draw(cr)
-    ow.destroy()
-
-
-def draw_resource_cell(
-    cr, width, height,
-    resource, available, show, status, has_new_messages
-    ):
-
-    ow = Gtk.OffscreenWindow()
-    ow.set_default_size(width, height)
-
-    main_box = Gtk.Box()
-    main_box.set_orientation(Gtk.Orientation.HORIZONTAL)
-
-    resource_l = Gtk.Label(str(resource))
-    available_i = Gtk.Image()
-    if available:
-        available_i.set_from_pixbuf(
-            org.wayround.pyabber.icondb.get('contact_available')
-            )
-    else:
-        available_i.set_from_pixbuf(
-            org.wayround.pyabber.icondb.get('contact_unavailable')
-            )
-
-    show_i = Gtk.Image()
-
-    if not show in ['available', 'unavailable', 'dnd', 'away', 'xa', 'chat']:
-        show = 'unknown'
-
-    show_i.set_from_pixbuf(
-        org.wayround.pyabber.icondb.get('show_{}'.format(show))
-        )
-
-    status_l = Gtk.Label(str(status))
-
-    main_box.pack_start(available_i, False, False, 0)
-    main_box.pack_start(show_i, False, False, 0)
-    main_box.pack_start(resource_l, False, False, 3)
-    main_box.pack_start(status_l, False, False, 3)
-
-    font_desc = Pango.FontDescription()
-    font_desc.set_weight(Pango.Weight.BOLD)
-    resource_l.override_font(font_desc)
-
-    ow.add(main_box)
-    ow.show_all()
-    main_box.draw(cr)
-    ow.destroy()
 
 
 class RosterWidget:
 
-    def __init__(self, controller):
-
-        if not isinstance(
-            controller,
-            org.wayround.pyabber.ccc.ClientConnectionController
-            ):
-            raise ValueError(
-                "`controller' must be org.wayround.xmpp.client.XMPPC2SClient"
-                )
+    def __init__(self, controller, roster_storage, mode='all'):
 
         self._controller = controller
-
-        self._self_bare_jid = None
-
-        self._lock = threading.Lock()
-
-        self._roster_storage = None
-
-        self._data = {}
-
-        self._treeview = Gtk.TreeView()
-
-        frame = Gtk.Frame()
-        scrolled = Gtk.ScrolledWindow()
-        frame.add(scrolled)
-
-        self._root_widget = frame
-
-        scrolled.add(self._treeview)
-
-        scrolled.set_size_request(200, -1)
-
-        self._treeview.connect(
-            'button-release-event',
-            self._on_treeview_buttonpress
-            )
-
-        _c = Gtk.TreeViewColumn()
-        _r = RosterCellRenderer()
-        _c.pack_start(_r, False)
-
-        for i in range(len(ROW_CELL_NAMES)):
-            _c.add_attribute(_r, ROW_CELL_NAMES[i], i)
-
-        _c.set_title('Roster')
-        self._treeview.append_column(_c)
-
-        self._store = Gtk.TreeStore(
-            str, str, str, str, bool, str, str, str,
-            GdkPixbuf.Pixbuf, bool, str, str, bool
-            )
-
-        self._treeview.set_model(self._store)
-        self._treeview.set_headers_visible(False)
-        self._treeview.set_enable_tree_lines(True)
-#        self._treeview.set_rules_hint(True)
-
-        self._contact_popup_menu = \
-            org.wayround.pyabber.contact_popup_menu.ContactPopupMenu(
-                self._controller
-                )
-
-        self._division_add('Self', 'self')
-        self._division_add('Grouped Contacts', 'groups')
-        self._division_add('Ungrouped Contacts', 'ungrouped')
-        self._division_add('Ask', 'ask')
-        self._division_add('To', 'to')
-        self._division_add('From', 'from')
-        self._division_add('None', 'none')
-        self._division_add('Transports', 'transport')
-        self._division_add('Not in roster', 'hard')
-
-    def destroy(self):
-        self._root_widget.destroy()
-
-    def _division_add(self, title, nick):
-        values = [None] * ROW_CELL_NAMES_COUNT
-
-        values[ROW_CELL_CELL_TYPE] = 'division'
-        values[ROW_CELL_NAME_OR_TITLE] = title
-        values[ROW_CELL_NICK] = nick
-
-        self._store.append(
-            None,
-            values
-            )
-
-    def _division_get_iter(self, nick):
-        """
-        Returns division iter
-        """
-        ret = None
-
-        ifr = self._store.get_iter_first()
-
-        while ifr:
-
-            if self._store[ifr][ROW_CELL_NICK] == nick:
-                ret = ifr
-                break
-
-            ifr = self._store.iter_next(ifr)
-
-        return ret
-
-    def _group_add(self, group):
-        """
-        Create group if not exists
-        """
-        if not self._group_get_iter(group):
-            division_iter = self._division_get_iter('groups')
-
-            values = [None] * ROW_CELL_NAMES_COUNT
-            values[ROW_CELL_CELL_TYPE] = 'group'
-            values[ROW_CELL_NAME_OR_TITLE] = group
-
-            self._store.append(
-                division_iter,
-                values
-                )
-
-    def _group_get_iter(self, name):
-        """
-        Returns TreeIter of the group
-
-        If not found - None is returned
-        """
-        ret = None
-
-        group_iter = self._division_get_iter('groups')
-
-        child = self._store.iter_children(group_iter)
-
-        while child != None:
-
-            if self._store[child][ROW_CELL_NAME_OR_TITLE] == name:
-                ret = child
-                break
-
-            child = self._store.iter_next(child)
-
-        return ret
-
-    def _groups_list(self):
-
-        """
-        Returns str list
-        """
-
-        ret = []
-
-        group_iter = self._division_get_iter('groups')
-
-        child = self._store.iter_children(group_iter)
-
-        while child != None:
-            ret.append(self._store[child][ROW_CELL_NAME_OR_TITLE])
-            child = self._store.iter_next(child)
-
-        return ret
-
-    def _mode_check(self, mode):
-        if not mode in ['contact', 'resource']:
-            raise ValueError("Invalid contact/resource mode")
-
-    def _level_contact_add(self, itera, value, mode='contact'):
-
-        self._mode_check(mode)
-
-        itera_type = self._store[itera][ROW_CELL_CELL_TYPE]
-
-        if ((mode == 'contact' and not itera_type in ['division', 'group'])
-            or (mode == 'resource' and itera_type != 'contact')):
-            raise Exception(
-                "pointed node type is invalid for adding {}".format(mode)
-                )
-
-        sr = None
-        if mode == 'contact':
-            sr = self._level_contact_get_iter(itera, value)
-        else:
-            sr = self._level_resource_get_iter(itera, value)
-
-        if not sr:
-
-            values = [None] * ROW_CELL_NAMES_COUNT
-
-            values[ROW_CELL_CELL_TYPE] = mode
-
-            if mode == 'contact':
-                values[ROW_CELL_BARE_JID] = value
-            else:
-                values[ROW_CELL_RESOURCE] = value
-
-            self._store.append(
-                itera,
-                values
-                )
-
-        return
-
-    def _level_resource_add(self, itera, resource):
-        return self._level_contact_add(itera, value=resource, mode='resource')
-
-    def _level_contact_get_iter(self, itera, bare_jid, mode='contact'):
-        """
-        Gets contact TreeIter
-
-        If not found - None is returned
-        """
-
-        self._mode_check(mode)
-
-        ret = None
-
-        child = self._store.iter_children(itera)
-
-        looking_for_cell = None
-
-        if mode == 'contact':
-            looking_for_cell = ROW_CELL_BARE_JID
-        else:
-            looking_for_cell = ROW_CELL_RESOURCE
-
-        while child:
-
-            if (self._store[child][ROW_CELL_CELL_TYPE] == mode
-                and self._store[child][looking_for_cell] == bare_jid):
-                ret = child
-                break
-
-            child = self._store.iter_next(child)
-
-        return ret
-
-    def _level_resource_get_iter(self, itera, resource):
-        return self._level_contact_get_iter(
-            itera, bare_jid=resource, mode='resource'
-            )
-
-    def _level_contact_remove(self, itera, bare_jid, mode='contact'):
-
-        self._mode_check(mode)
-
-        res = None
-        if mode == 'contact':
-            res = self._level_contact_get_iter(itera, bare_jid)
-        else:
-            res = self._level_resource_get_iter(itera, bare_jid)
-
-        if res:
-            self._store.remove(res)
-
-        return
-
-    def _level_resource_remove(self, itera, resource):
-        return self._level_contact_remove(
-            itera, bare_jid=resource, mode='resource'
-            )
-
-    def _level_contact_get(self, itera, bare_jid, mode='contact'):
-
-        self._mode_check(mode)
-
-        ret = None
-
-        it = None
-        if mode == 'contact':
-            it = self._level_contact_get_iter(itera, bare_jid)
-        else:
-            it = self._level_resource_get_iter(itera, bare_jid)
-
-        if it:
-            _ts = self._store[it]
-            ret = {
-#                'cell_type': _ts[ROW_CELL_CELL_TYPE],
-                'name_or_title': _ts[ROW_CELL_NAME_OR_TITLE],
-                'bare_jid': _ts[ROW_CELL_BARE_JID],
-                'resource': _ts[ROW_CELL_RESOURCE],
-                'approved': _ts[ROW_CELL_APPROVED],
-                'ask': _ts[ROW_CELL_ASK],
-                'subscription': _ts[ROW_CELL_SUBSCRIPTION],
-                'nick': _ts[ROW_CELL_NICK],
-                'userpic': _ts[ROW_CELL_USERPIC],
-                'available': _ts[ROW_CELL_AVAILABLE],
-                'show': _ts[ROW_CELL_SHOW],
-                'status': _ts[ROW_CELL_STATUS],
-                'has_new_messages': _ts[ROW_CELL_HAS_NEW_MESSAGES]
-                }
-
-        return ret
-
-    def _level_resource_get(self, itera, resource):
-        return self._level_contact_get(
-            itera, bare_jid=resource, mode='resource'
-            )
-
-    def _level_contacts_get_list(self, itera, mode='contact'):
-
-        self._mode_check(mode)
-
-        values = set()
-
-        looking_for_cell = None
-
-        if mode == 'contact':
-            looking_for_cell = ROW_CELL_BARE_JID
-        else:
-            looking_for_cell = ROW_CELL_RESOURCE
-
-        child = self._store.iter_children(itera)
-
-        while child:
-
-            if self._store[child][ROW_CELL_CELL_TYPE] == mode:
-                values.add(self._store[child][looking_for_cell])
-
-            child = self._store.iter_next(child)
-
-        ret = values
-
-        return ret
-
-    def _level_resources_get_list(self, itera):
-        return self._level_contacts_get_list(itera, mode='resource')
-
-    def _level_contact_set(
-        self,
-        itera,
-        value,
-        name_or_title=None,
-        approved=None,
-        ask=None,
-        subscription=None,
-        nick=None,
-        userpic=None,
-        available=None,
-        show=None,
-        status=None,
-        has_new_messages=None,
-        mode='contact'
-        ):
-        """
-        Set contact parameters in selected groups's or division's child level
-        """
-
-        self._mode_check(mode)
-
-        itera_type = self._store[itera][ROW_CELL_CELL_TYPE]
-
-        if ((mode == 'contact' and not itera_type in ['division', 'group'])
-            or (mode == 'resource' and itera_type != 'contact')):
-            raise Exception(
-                "pointed node type is invalid for setting {}".format(mode)
-                )
-
-        values = [
-            ROW_CELL_CELL_TYPE, mode
-            ]
-
-        if mode == 'contact':
-            values += [ROW_CELL_BARE_JID, value]
-        else:
-            values += [ROW_CELL_RESOURCE, value]
-
-        for i in LEVEL_CONTACT_SET_FULL_LIST:
-
-            er = eval(ROW_CELL_NAMES[i])
-
-            if er != None:
-                values += [i, er]
-
-        ti = ROW_CELL_RESOURCE
-        if mode == 'contact':
-            ti = ROW_CELL_BARE_JID
-
-        child = self._store.iter_children(itera)
-
-        while child:
-
-            if self._store[child][ti] == value:
-                self._store.set(
-                    child,
-                    *values
-                    )
-                break
-
-            child = self._store.iter_next(child)
-
-        return
-
-    def _level_resource_set(
-            self,
-            itera, resource,
-            name_or_title=None,
-            approved=None,
-            ask=None,
-            subscription=None,
-            nick=None,
-            userpic=None,
-            available=None,
-            show=None,
-            status=None,
-            has_new_messages=None
-            ):
-        """
-        Set resource parameters in selected contact's child level
-        """
-        return self._level_contact_set(
-            itera, resource, name_or_title, approved, ask,
-            subscription, nick, userpic, available, show,
-            status, has_new_messages, mode='resource'
-            )
-
-    def _get_contact_row_refs(self, bare_jid):
-
-        ret = []
-
-        groups = self._groups_list()
-
-        for i in groups:
-            group_iter = self._group_get_iter(i)
-            if group_iter:
-                itera = self._level_contact_get_iter(group_iter, bare_jid)
-
-                if itera:
-                    ret.append(
-                        Gtk.TreeRowReference.new(
-                            self._store, self._store.get_path(itera)
-                            )
-                        )
-
-        for i in CONTACTED_DIVISION_NAMES:
-
-            it = self._division_get_iter(i)
-            if it:
-                itera = self._level_contact_get_iter(
-                    it,
-                    bare_jid
-                    )
-
-                if itera:
-                    ret.append(
-                        Gtk.TreeRowReference.new(
-                            self._store, self._store.get_path(itera)
-                            )
-                        )
-
-        return ret
-
-    def _sync_treeview_with_data_contacts_resources(self, new_data):
-
-        for bare_jid in new_data.keys():
-
-            all_contact_row_refs = self._get_contact_row_refs(bare_jid)
-
-            for resource in new_data[bare_jid]['full'].keys():
-
-                data = new_data[bare_jid]['full'][resource]
-
-                for i in all_contact_row_refs:
-                    pat = i.get_path()
-                    if pat:
-                        it = self._store.get_iter(pat)
-                        if it:
-                            self._level_resource_add(
-                                it,
-                                resource
-                                )
-                    pat = i.get_path()
-                    if pat:
-                        it = self._store.get_iter(pat)
-                        if it:
-                            self._level_resource_set(
-                                it,
-                                resource,
-                                **data
-                                )
-
-                # TODO: is it a memory leak?
-                #                for i in all_contact_row_refs:
-                #                    if i.valid():
-                #                        i.free()
-
-        return
-
-    def _sync_treeview_with_data_contacts(self, new_data):
-
-        group_names = self._groups_list()
-
-        for i in group_names:
-            for j in new_data.keys():
-                if (not i in new_data[j]['bare']['groups']
-                    or j == self._self_bare_jid):
-
-                    g_iter = self._group_get_iter(i)
-                    self._level_contact_remove(g_iter, j)
-                    g_iter = self._group_get_iter(i)
-                    if self._store.iter_n_children(g_iter) == 0:
-                        self._store.remove(g_iter)
-
-        for i in new_data.keys():
-            for j in new_data[i]['bare']['groups']:
-
-                data = copy.deepcopy(new_data[i]['bare'])
-
-                if 'is_transport' in data:
-                    del(data['is_transport'])
-
-                if 'not_in_roster' in data:
-                    del(data['not_in_roster'])
-
-                if 'groups' in data:
-                    del(data['groups'])
-
-                self._group_add(j)
-
-                g_iter = self._group_get_iter(j)
-                self._level_contact_add(g_iter, i)
-
-                g_iter = self._group_get_iter(j)
-                self._level_contact_set(
-                    g_iter, i, **data
-                    )
-
-        for i in CONTACTED_DIVISION_NAMES:
-
-            div_iter = self._division_get_iter(i)
-            lst = self._level_contacts_get_list(div_iter)
-
-            for j in lst:
-                if not j in new_data:
-                    div_iter = self._division_get_iter(i)
-                    self._level_contact_remove(div_iter, j)
-
-        for i in new_data.keys():
-
-            data = copy.deepcopy(new_data[i]['bare'])
-
-            is_transport = False
-            not_in_roster = False
-            groups = set()
-
-            if 'is_transport' in data:
-                is_transport = data['is_transport']
-                del(data['is_transport'])
-
-            if 'not_in_roster' in data:
-                not_in_roster = data['not_in_roster']
-                del(data['not_in_roster'])
-
-            if 'groups' in data:
-                groups = data['groups']
-                del(data['groups'])
-
-            itera = self._division_get_iter('hard')
-
-            if not_in_roster and i != self._self_bare_jid:
-                self._level_contact_add(itera, i)
-                itera = self._division_get_iter('hard')
-                self._level_contact_set(itera, i, **data)
-
-            else:
-                self._level_contact_remove(itera, i)
-
-            itera = self._division_get_iter('transport')
-
-            if (is_transport
-                and not not_in_roster
-                and i != self._self_bare_jid):
-
-                self._level_contact_add(itera, i)
-                itera = self._division_get_iter('transport')
-                self._level_contact_set(itera, i, **data)
-
-            else:
-                self._level_contact_remove(itera, i)
-
-            itera = self._division_get_iter('ungrouped')
-
-            if (len(groups) == 0
-                and not is_transport
-                and not not_in_roster
-                and i != self._self_bare_jid):
-
-                self._level_contact_add(itera, i)
-                itera = self._division_get_iter('ungrouped')
-                self._level_contact_set(itera, i, **data)
-
-            else:
-                self._level_contact_remove(itera, i)
-
-            for j in ['to', 'from', 'none']:
-
-                itera = self._division_get_iter(j)
-
-                if (data['subscription'] == j
-                    and not not_in_roster
-                    and i != self._self_bare_jid):
-
-                    self._level_contact_add(itera, i)
-                    itera = self._division_get_iter(j)
-                    self._level_contact_set(itera, i, **data)
-
-                else:
-                    self._level_contact_remove(itera, i)
-
-            itera = self._division_get_iter('ask')
-
-            if data['ask'] != None and i != self._self_bare_jid:
-                self._level_contact_add(itera, i)
-                itera = self._division_get_iter('ask')
-                self._level_contact_set(itera, i, **data)
-
-            else:
-                self._level_contact_remove(itera, i)
-
-            itera = self._division_get_iter('self')
-
-            if i == self._self_bare_jid:
-                self._level_contact_add(itera, i)
-                itera = self._division_get_iter('self')
-                self._level_contact_set(itera, i, **data)
-
-            else:
-                self._level_contact_remove(itera, i)
-
-        return
-
-    def _sync_treeview_with_data(self, data):
-        self._sync_treeview_with_data_contacts(data)
-        self._sync_treeview_with_data_contacts_resources(data)
-
-        while Gtk.events_pending():
-            Gtk.main_iteration_do(False)
-
-        return
-
-    def set_self(self, self_bare_jid):
-        self._self_bare_jid = self_bare_jid
-
-    def set_storage_connection(self, roster_storage):
-
-        if not isinstance(
-            roster_storage,
-            org.wayround.pyabber.roster_storage.RosterStorage
-            ):
-            raise ValueError(
-                "`roster_storage' must be "
-                "org.wayround.pyabber.roster_storage.RosterStorage"
-                )
-
-        if self._roster_storage:
-            self._roster_storage.disconnect_signal(self._storage_waiter)
-
         self._roster_storage = roster_storage
 
-        self._roster_storage.connect_signal(True, self._storage_waiter)
+        b = Gtk.Box()
+        b.set_orientation(Gtk.Orientation.VERTICAL)
+
+        roster_tools_box = Gtk.Box()
+        roster_tools_box.set_orientation(Gtk.Orientation.HORIZONTAL)
+
+        jid_box = Gtk.Box()
+        self._jid_box = jid_box
+        jid_box.set_orientation(Gtk.Orientation.VERTICAL)
+        jid_box.set_spacing(5)
+        jid_box.set_margin_top(5)
+        jid_box.set_margin_left(5)
+        jid_box.set_margin_right(5)
+        jid_box.set_margin_bottom(5)
+
+        jid_box_frame = Gtk.Frame()
+        jid_box_sw = Gtk.ScrolledWindow()
+        jid_box_frame.add(jid_box_sw)
+        jid_box_sw.add(jid_box)
+
+        groups_model = Gtk.ListStore(str, str)  # name, title
+
+        groups_combobox = Gtk.ComboBox()
+        self._groups_combobox = groups_combobox
+        renderer_text = Gtk.CellRendererText()
+        groups_combobox.pack_start(renderer_text, True)
+        groups_combobox.add_attribute(renderer_text, "text", 1)
+
+        groups_combobox.set_model(groups_model)
+        roster_tools_box.pack_start(groups_combobox, False, False, 0)
+
+        b.pack_start(roster_tools_box, False, False, 0)
+        b.pack_start(jid_box_frame, True, True, 0)
+
+        self._reloading_list = False
+        self._main_widget = b
+
+        self._lock = threading.Lock()
+        self._list = []
+
+        self._groups_combobox.set_no_show_all(True)
+
+        b.show_all()
+
+        self.set_mode(mode)
+
+        self._roster_storage.connect_signal(
+            True,
+            self._roster_storage_listener
+            )
 
         return
 
-    def _storage_waiter(self, event, storage, bare_jid, data, jid_data):
-        self._lock.acquire()
-        self._sync_treeview_with_data(data)
-        self._lock.release()
-
-    def _on_treeview_buttonpress(self, widget, event):
-
-        if event.button == Gdk.BUTTON_SECONDARY:
-
-            self._lock.acquire()
-
-            sel = widget.get_selection()
-
-            selec = sel.get_selected_rows()
-
-            model = selec[0]
-            rows = selec[1]
-
-            if len(rows) != 0:
-
-                pat = Gtk.TreeRowReference.new(model, rows[0])
-
-                row = model[rows[0]]
-                row_t = row[ROW_CELL_CELL_TYPE]
-                bj = row[ROW_CELL_BARE_JID]
-                res = row[ROW_CELL_RESOURCE]
-
-                if row_t in ['contact', 'resource']:
-
-                    if row_t == 'contact':
-                        bare_jid = bj
-                        resource = ''
-
-                        jid = org.wayround.xmpp.core.JID.new_from_str(bare_jid)
-
-                        if jid:
-                            self._contact_popup_menu.set(jid.bare())
-                            self._contact_popup_menu.show()
-
-                    if row_t == 'resource':
-                        resource = res
-                        itrap = pat.get_path()
-                        if itrap:
-                            path_iter = model.get_iter(itrap)
-
-                            if path_iter:
-                                parent = model.iter_parent(
-                                    path_iter
-                                    )
-                                if parent:
-                                    parent_row = model[parent]
-                                    bare_jid = parent_row[ROW_CELL_BARE_JID]
-
-                                    jid = org.wayround.xmpp.core.\
-                                        JID.new_from_str(
-                                            bare_jid + '/' + resource
-                                            )
-
-                                    if jid:
-                                        self._contact_popup_menu.set(
-                                            jid.full()
-                                            )
-                                        self._contact_popup_menu.show()
-
-            self._lock.release()
+    def destroy(self):
+        self._clear_list()
+        self.get_widget().destroy()
 
     def get_widget(self):
-        return self._root_widget
+        return self._main_widget
+
+    def set_mode(self, name):
+
+        if not name in ROSTER_WIDGET_MODE_LIST:
+            raise ValueError("Invalid Mode")
+
+        self._mode = name
+        self._groups_combobox.set_visible(name == 'grouped')
+        self._reload_list()
+
+    def _reload_list(self):
+
+        self._lock.acquire()
+
+        data = self._roster_storage.get_data()
+
+        own_jid = self._controller.jid.bare()
+
+        for i in list(data.keys()):
+
+            j = org.wayround.xmpp.core.JID.new_from_str(i)
+
+            self._add_or_remove(
+                i,
+                i != own_jid
+                and
+                (
+                 self._mode == 'all'
+                 and
+                 not j.is_domain()
+                 )
+                 or
+                (
+                 self._mode == 'grouped'
+                 and
+                 not j.is_domain()
+                 )
+                or
+                (
+                 self._mode == 'services'
+                 and
+                 j.is_domain()
+                 )
+                or
+                (
+                 self._mode == 'to'
+                 and
+                 data[i]['bare']['subscription'] == 'to'
+                 )
+                or
+                (
+                 self._mode == 'from'
+                 and
+                 data[i]['bare']['subscription'] == 'from'
+                 )
+                or
+                (
+                 self._mode == 'not_in_roster_soft'
+                 and
+                 data[i]['bare']['subscription'] == 'none'
+                 )
+                or
+                (
+                 self._mode == 'not_in_roster_hard'
+                 and
+                 data[i]['bare']['not_in_roster'] == True
+                 )
+                )
+
+        self._lock.release()
+
+        return
+
+    def _clear_list(self):
+
+        for i in self._list[:]:
+            i.destroy()
+            self._list.remove(i)
+
+    def _roster_storage_listener(
+        self,
+        event, roster_storage,
+        bare_jid, data, jid_data
+        ):
+
+        self._reload_list()
+
+    def _add_or_remove(self, bare_jid, add=False):
+        if add:
+            self._add_jid_widget(bare_jid)
+        else:
+            self._remove_jid_widget(bare_jid)
+
+    def _add_jid_widget(self, bare_jid):
+
+        if not self._is_in_roster(bare_jid):
+
+            jw = org.wayround.pyabber.jid_widget.JIDWidget(
+                controller=self._controller,
+                roster_storage=self._roster_storage,
+                bare_jid=bare_jid
+                )
+            self._list.append(jw)
+            self._jid_box.pack_start(jw.get_widget(), False, False, 0)
+
+    def _remove_jid_widget(self, bare_jid):
+        for i in self._list[:]:
+            if i.get_jid() == bare_jid:
+                i.destroy()
+                self._list.remove(i)
+
+        return
+
+    def _is_in_roster(self, bare_jid):
+        found = False
+        for j in self._list:
+            if j.get_jid() == bare_jid:
+                found = True
+                break
+        return found

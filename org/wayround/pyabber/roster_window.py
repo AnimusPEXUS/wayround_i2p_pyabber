@@ -38,12 +38,6 @@ class RosterWindow:
         roster_tools_box = Gtk.Toolbar()
         roster_tools_box.set_orientation(Gtk.Orientation.HORIZONTAL)
 
-        self.roster_widget = org.wayround.pyabber.roster_widget.RosterWidget(
-            self._controller
-            )
-
-        roster_treeview_widg = self.roster_widget.get_widget()
-
         roster_toolbar_add_contact_button = Gtk.ToolButton()
         roster_toolbar_initial_presence_button = Gtk.ToolButton()
         roster_toolbar_change_presence_button = Gtk.ToolButton()
@@ -124,16 +118,74 @@ class RosterWindow:
         roster_tools_box.insert(Gtk.SeparatorToolItem(), -1)
         roster_tools_box.insert(roster_toolbar_show_disco_button, -1)
 
+        jid_widget = org.wayround.pyabber.jid_widget.JIDWidget(
+            controller,
+            controller.roster_storage,
+            controller.jid.bare()
+            )
+        self._jid_widget = jid_widget
+
+        server_jid_widget = org.wayround.pyabber.jid_widget.JIDWidget(
+            controller,
+            controller.roster_storage,
+            controller.jid.domain
+            )
+        self._server_jid_widget = server_jid_widget
+
+        roster_notebook = Gtk.Notebook()
+        roster_notebook.set_tab_pos(Gtk.PositionType.LEFT)
+
+        self._roster_widgets = []
+
+        for i in [
+            ('all', "All"),
+            ('grouped', "Grouped"),
+            ('ungrouped', "Ungrouped"),
+            ('transports', "Transports"),
+            ('services', "Services"),
+            ('ask', "Asking"),
+            ('to', "Only To"),
+            ('from', "Only From"),
+            ('not_in_roster_soft', "Not in Server Roster"),
+            ('not_in_roster_hard', "Not in Roster Totally")
+            ]:
+            _rw = org.wayround.pyabber.roster_widget.\
+                RosterWidget(
+                    self._controller,
+                    self._controller.roster_storage,
+                    i[0]
+                    )
+            self._roster_widgets.append(_rw)
+
+            _t = _rw.get_widget()
+            _t.set_margin_left(5)
+            _t.set_margin_right(5)
+            _t.set_margin_top(5)
+            _t.set_margin_bottom(5)
+            _l = Gtk.Label(i[1])
+#            _l.set_angle(90)
+
+            roster_notebook.append_page(_t, _l)
+
+        exp1 = Gtk.Expander()
+        exp1.add(jid_widget.get_widget())
+        exp1.set_label("Own JID")
+        exp1.set_expanded(False)
+
+        exp2 = Gtk.Expander()
+        exp2.add(server_jid_widget.get_widget())
+        exp2.set_label("Domain JID")
+        exp2.set_expanded(False)
+
         b.pack_start(roster_tools_box, False, False, 0)
-        b.pack_start(roster_treeview_widg, True, True, 0)
+        b.pack_start(exp2, False, False, 0)
+        b.pack_start(exp1, False, False, 0)
+        b.pack_start(roster_notebook, True, True, 0)
 
         window = Gtk.Window()
 
         window.add(b)
         window.connect('destroy', self._on_destroy)
-
-        self.roster_widget.set_self(self._own_jid.bare())
-        self.roster_widget.set_storage_connection(self._roster_storage)
 
         self._window = window
 
@@ -150,8 +202,11 @@ class RosterWindow:
         self._window.show_all()
 
     def destroy(self):
+        self._jid_widget.destroy()
+        self._server_jid_widget.destroy()
+        for i in self._roster_widgets:
+            i.destroy()
         self._iterated_loop.stop()
-        self.roster_widget.destroy()
 
     def _on_destroy(self, window):
         self.destroy()

@@ -41,14 +41,14 @@ class ConnectionMgrWindow:
         _r = Gtk.CellRendererText()
         _c.pack_start(_r, False)
         _c.add_attribute(_r, 'text', 0)
-        _c.set_title('Pst Nm')
+        _c.set_title('Preset Name')
         conn_table.append_column(_c)
 
         _c = Gtk.TreeViewColumn()
         _r = Gtk.CellRendererText()
         _c.pack_start(_r, False)
         _c.add_attribute(_r, 'text', 1)
-        _c.set_title('Usr Nm')
+        _c.set_title('Username')
         conn_table.append_column(_c)
 
         _c = Gtk.TreeViewColumn()
@@ -62,21 +62,21 @@ class ConnectionMgrWindow:
         _r = Gtk.CellRendererText()
         _c.pack_start(_r, False)
         _c.add_attribute(_r, 'text', 3)
-        _c.set_title('Res Md')
+        _c.set_title('Resource\nMode')
         conn_table.append_column(_c)
 
         _c = Gtk.TreeViewColumn()
         _r = Gtk.CellRendererText()
         _c.pack_start(_r, False)
         _c.add_attribute(_r, 'text', 4)
-        _c.set_title('Resours')
+        _c.set_title('Resource')
         conn_table.append_column(_c)
 
         _c = Gtk.TreeViewColumn()
         _r = Gtk.CellRendererText()
         _c.pack_start(_r, False)
         _c.add_attribute(_r, 'text', 5)
-        _c.set_title('Mnl H/P?')
+        _c.set_title('Manual\nHost\nand\nPort?')
         conn_table.append_column(_c)
 
         _c = Gtk.TreeViewColumn()
@@ -97,21 +97,21 @@ class ConnectionMgrWindow:
         _r = Gtk.CellRendererText()
         _c.pack_start(_r, False)
         _c.add_attribute(_r, 'text', 8)
-        _c.set_title('A SF?')
+        _c.set_title('Automatic\nlogin\nprocess?')
         conn_table.append_column(_c)
 
         _c = Gtk.TreeViewColumn()
         _r = Gtk.CellRendererText()
         _c.pack_start(_r, False)
         _c.add_attribute(_r, 'text', 9)
-        _c.set_title('S.TLS')
+        _c.set_title('STARTTLS')
         conn_table.append_column(_c)
 
         _c = Gtk.TreeViewColumn()
         _r = Gtk.CellRendererText()
         _c.pack_start(_r, False)
         _c.add_attribute(_r, 'text', 10)
-        _c.set_title('Necess')
+        _c.set_title('STARTTLS\nNecessarity')
         conn_table.append_column(_c)
 
         _c = Gtk.TreeViewColumn()
@@ -125,14 +125,14 @@ class ConnectionMgrWindow:
         _r = Gtk.CellRendererText()
         _c.pack_start(_r, False)
         _c.add_attribute(_r, 'text', 12)
-        _c.set_title('Reg')
+        _c.set_title('Register\non\nnext\nsession')
         conn_table.append_column(_c)
 
         _c = Gtk.TreeViewColumn()
         _r = Gtk.CellRendererText()
         _c.pack_start(_r, False)
         _c.add_attribute(_r, 'text', 13)
-        _c.set_title('Log')
+        _c.set_title('SASL\nLogin')
         conn_table.append_column(_c)
 
         _c = Gtk.TreeViewColumn()
@@ -146,7 +146,7 @@ class ConnectionMgrWindow:
         _r = Gtk.CellRendererText()
         _c.pack_start(_r, False)
         _c.add_attribute(_r, 'text', 15)
-        _c.set_title('Sess')
+        _c.set_title('Establish\nSession')
         conn_table.append_column(_c)
 
         conn_table_f = Gtk.Frame()
@@ -689,6 +689,7 @@ class ConnectionPresetWindow:
         manual_routines_label = Gtk.Label(
             "After connect, you'll be brought to Stream Features"
             " tab to manually press the buttons :)"
+            " (Not implemented)"
             )
         manual_routines_label.set_line_wrap(True)
         manual_routines_label.set_line_wrap_mode(Pango.WrapMode.WORD)
