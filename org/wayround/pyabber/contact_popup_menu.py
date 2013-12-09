@@ -160,7 +160,7 @@ class ContactPopupMenu:
         self._controller.roster_client.set(
             self._jid.bare(),
             subscription='remove',
-            to_jid=self._jid.bare(),
+            to_jid=self._controller.jid.bare(),
             )
 
     def _forget_activate(self, menuitem):
