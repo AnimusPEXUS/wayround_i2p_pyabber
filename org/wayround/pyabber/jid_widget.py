@@ -102,6 +102,9 @@ class JIDWidget:
     def get_jid(self):
         return self._bare_jid
 
+    def get_title(self):
+        return self._title_label.get_text()
+
     def _set_jid_data(self, jid_data):
         self._set_ask(jid_data['bare']['ask'])
         self._set_approved(jid_data['bare']['approved'])
@@ -181,6 +184,8 @@ class JIDWidget:
             org.wayround.pyabber.icondb.get('show_{}'.format(value))
             )
 
+        self._show_i.set_tooltip_text(value)
+
     def _set_subscription(self, value):
         if value == None:
             value = 'none'
@@ -188,6 +193,8 @@ class JIDWidget:
         self._subscription_i.set_from_pixbuf(
             org.wayround.pyabber.icondb.get('subscription_{}'.format(value))
             )
+
+        self._subscription_i.set_tooltip_text(value)
 
     def destroy(self):
         self.get_widget().destroy()

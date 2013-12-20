@@ -183,16 +183,9 @@ class ContactPopupMenu:
 
     def _start_chat_activate(self, menuitem):
 
-        page = org.wayround.pyabber.chat_pager.Chat(
-            self,
-            controller=self._controller,
-            contact_bare_jid=self._jid.bare(),
-            thread_id=None
-            )
-
         chat_window = self._controller.get_chat_window()
         if chat_window == None:
             self._controller.show_chat_window()
             chat_window = self._controller.get_chat_window()
 
-        chat_window.chat_pager.add_page(page)
+        chat_window.chat_pager.add_chat(self._jid, None)

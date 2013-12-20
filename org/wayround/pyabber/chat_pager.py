@@ -12,48 +12,11 @@ import org.wayround.pyabber.message_edit_widget
 import org.wayround.pyabber.jid_widget
 
 
-class ChatPage:
-
-    """
-    Chat page interface
-
-    This is interface for creating page classes which can be used and
-    interacted in cooperation with ChatPager.
-    """
-
-    # this attributes must be changed by __init__
-    contact_bare_jid = 'none'
-    # resource is needed in MUC conversations
-    contact_resource = None
-    thread_id = '0'
-
-    def __init__(self, pager, controller, contact_bare_jid, thread_id):
-        pass
-
-    def get_tab_title_widget(self):
-        pass
-
-    def get_page_widget(self):
-        pass
-
-    def set_visible(self, value):
-        pass
-
-    def destroy(self):
-        pass
-
-    def close(self):
-        self.destroy()
-
-
-class Chat(ChatPage):
-    """
-    This is for single chat, not for MUCs
-    """
+class Chat:
 
     def __init__(
         self, pager, controller,
-        contact_bare_jid, thread_id
+        contact_bare_jid, contact_resource, thread_id
         ):
 
         self._unread = False
@@ -64,6 +27,7 @@ class Chat(ChatPage):
         self._controller = controller
 
         self.contact_bare_jid = contact_bare_jid
+        self.contact_resource = contact_resource
         self.thread_id = thread_id
 
         self._log = org.wayround.pyabber.chat_log_widget.ChatLogWidget(
@@ -219,6 +183,145 @@ class Chat(ChatPage):
         return
 
 
+class MUCChatPager:
+
+    def __init__(
+        self,
+        pager, controller,
+        contact_bare_jid
+        ):
+
+        self.contact_bare_jid = 'none'
+        self.contact_resource = None
+        self.thread_id = None
+
+        self._controller = controller
+
+        self.pages = []
+
+        b = Gtk.Box()
+        b.set_orientation(Gtk.VERTICAL)
+
+        self._notebook = Gtk.Notebook()
+        self._notebook.set_tab_pos(Gtk.PositionType.TOP)
+
+        paned = Gtk.Paned()
+
+        paned.add1(self._notebook)
+
+        b.pack_start(paned, True, True, 0)
+
+        self._root_widget = paned
+
+        self._controller.storage.connect_signal(
+            'history_update', self.history_update_listener
+            )
+
+        return
+
+    def get_widget(self):
+        return self._root_widget
+
+    def _search_page(self, resource):
+
+        contact_resource = resource
+
+        ret = []
+
+        for i in self.pages:
+
+            if (i.contact_resource != None and contact_resource != None
+                and i.contact_resource != contact_resource):
+                continue
+
+            ret.append(i)
+
+        return ret
+
+    def add_chat(self, jid_obj):
+
+        res = self._search_page(jid_obj.resource)
+
+        ret = None
+
+        if len(res) == 0:
+            p = Chat(
+                pager=self,
+                controller=self._controller,
+                contact_bare_jid=jid_obj.bare(),
+                contact_resource=None,
+                thread_id=None
+                )
+            self.add_page(p)
+            ret = p
+
+        return ret
+
+    def add_page(self, page):
+
+        """
+        :param ChatPage page:
+        """
+
+        if not page in self.pages:
+            self.pages.append(page)
+
+        self._sync_pages_with_list()
+
+        return
+
+    def _get_all_notebook_pages(self):
+        n = self._notebook.get_n_pages()
+        l = []
+        for i in range(n):
+            l.append(self._notebook.get_nth_page(i))
+
+        return l
+
+    def _get_all_list_pages(self):
+        l = []
+        for i in self.pages:
+            l.append(i.get_page_widget())
+
+        return l
+
+    def _sync_pages_with_list(self):
+
+        _notebook_pages = self._get_all_notebook_pages()
+        _list_pages = self._get_all_list_pages()
+
+        for i in self.pages:
+            p = i.get_page_widget()
+            pp = i.get_tab_title_widget()
+            if not i.get_page_widget() in _notebook_pages:
+                self._notebook.append_page(p, pp)
+                p.show_all()
+                pp.show_all()
+
+        for i in _notebook_pages:
+            if not i in _list_pages:
+                page_n = self._notebook.page_num(i)
+                self._notebook.remove_page(page_n)
+
+        return
+
+    def history_update_listener(
+        self, event, storage,
+        date, incomming, connection_jid_obj, jid_obj, type_,
+        parent_thread_id, thread_id, subject, plain, xhtml
+        ):
+
+        if event == 'history_update':
+
+            if type_ in ['message_chat', 'message_groupchat']:
+
+                if jid_obj.bare() == self.contact_bare_jid:
+
+                    self.add_chat(jid_obj)
+
+        return
+
+
 class ChatPager:
 
     def __init__(self, controller):
@@ -239,14 +342,45 @@ class ChatPager:
     def get_widget(self):
         return self._root_widget
 
+    def add_chat(self, jid_obj, thread_id):
+        res = self._search_page(jid_obj, thread_id, Chat)
+
+        ret = None
+
+        if len(res) == 0:
+            p = Chat(
+                pager=self,
+                controller=self._controller,
+                contact_bare_jid=jid_obj.bare(),
+                contact_resource=None,
+                thread_id=thread_id
+                )
+            self.add_page(p)
+            ret = p
+
+        return ret
+
+    def add_groupchat(self, jid_obj):
+        res = self._search_page(jid_obj, MUCChatPager)
+
+        ret = None
+
+        if len(res) == 0:
+            p = MUCChatPager(
+                pager=self,
+                controller=self._controller,
+                contact_bare_jid=jid_obj.bare()
+                )
+            self.add_page(p)
+            ret = p
+
+        return ret
+
     def add_page(self, page):
 
         """
         :param ChatPage page:
         """
-
-        if not isinstance(page, ChatPage):
-            raise TypeError("`page' must be the instance of ChatPage")
 
         if not page in self.pages:
             self.pages.append(page)
@@ -303,65 +437,13 @@ class ChatPager:
 
         return
 
-    def feed_stanza(self, stanza):
-
-        if not isinstance(stanza, org.wayround.xmpp.core.Stanza):
-            raise TypeError(
-                "`stanza' must be of type org.wayround.xmpp.core.Stanza"
-                )
-
-        if stanza.tag != '{jabber:client}message':
-            # do nothing
-            pass
-        else:
-
-            jid = org.wayround.xmpp.core.JID.new_from_str(stanza.from_jid)
-            thread = None
-            thread_e = stanza.get_element().find('{jabber:client}thread')
-            if thread_e != None:
-                thread = thread_e.text
-
-            body = None
-            body_e = stanza.get_element().find('{jabber:client}body')
-            if body_e != None:
-                body = body_e.text
-
-            res = self.search_page(
-                contact_bare_jid=jid.bare(),
-                thread_id=thread,
-                type_=Chat
-                )
-
-            page = None
-
-            if len(res) == 0:
-
-                page = Chat(
-                    self,
-                    controller=self._controller,
-                    contact_bare_jid=jid.bare(),
-                    contact_resource=None,  # TODO: really?
-                    thread_id=thread
-                    )
-
-                self.add_page(page)
-            else:
-
-                page = res[0]
-
-            if page:
-
-                page.add_message(body, str(jid))
-
-        return
-
-    def search_page(self, jid_obj, thread_id=None, type_=None):
+    def _search_page(self, jid_obj, thread_id=None, type_=None):
 
         if not isinstance(jid_obj, org.wayround.xmpp.core.JID):
             raise ValueError("`jid_obj' must be org.wayround.xmpp.core.JID")
 
-        if type_ != None and not issubclass(type_, ChatPage):
-            raise ValueError("`type_' must be subclass of ChatPage")
+        if type_ != None and not type_ in [Chat, MUCChatPager]:
+            raise ValueError("`type_' must be in [Chat, MUCChatPager]")
 
         contact_bare_jid = jid_obj.bare()
         contact_resource = jid_obj.resource
@@ -400,23 +482,12 @@ class ChatPager:
 
             if type_ in ['message_chat', 'message_groupchat']:
 
-                typ_ = None
-
                 if type_ == 'message_chat':
-                    typ_ = Chat
+                    self.add_chat(jid_obj, thread_id)
 
                 if type_ == 'message_groupchat':
-                    typ_ = Chat
-
-                res = self.search_page(jid_obj, thread_id, typ_)
-                if len(res) == 0:
-                    p = Chat(
-                        self,
-                        self._controller,
-                        jid_obj.bare(),
-                        thread_id
-                        )
-                    self.add_page(p)
-                    res.append(p)
+                    p = self.add_groupchat(jid_obj)
+                    if jid_obj.resource != None:
+                        p.add_chat(jid_obj)
 
         return

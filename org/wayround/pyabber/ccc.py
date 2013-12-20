@@ -15,12 +15,15 @@ import org.wayround.pyabber.disco
 import org.wayround.pyabber.main
 import org.wayround.pyabber.muc
 import org.wayround.pyabber.presence_control_window
-import org.wayround.pyabber.single_message_window
+import org.wayround.pyabber.registration
 import org.wayround.pyabber.roster_storage
 import org.wayround.pyabber.roster_window
+import org.wayround.pyabber.single_message_window
+import org.wayround.utils.gtk
 import org.wayround.utils.signal
 import org.wayround.xmpp.client
 import org.wayround.xmpp.core
+import org.wayround.xmpp.disco
 import org.wayround.xmpp.muc
 import org.wayround.xmpp.privacy
 
@@ -39,6 +42,8 @@ SUBWINDOWS = [
     ('muc_identity_editor_window', False, True),
     ('muc_jid_entry_dialog', False, False),
     ('presence_control_window', False, True),
+    ('registration_window', False, False),
+    ('registration_window_threaded', False, True),
     ('roster_window', True, True),
     ('single_message_window', False, True)
     ]
@@ -176,6 +181,22 @@ self._rel_win_ctl.set_constructor_cb(
     )
 """.format(i=i[0], s=i[1]))
 
+        self.self_disco_info = org.wayround.xmpp.disco.IQDisco(mode='info')
+
+        self.self_disco_info.set_identity(
+            [
+             org.wayround.xmpp.disco.IQDiscoIdentity(
+                'client', 'pc', 'pyabber'
+                )
+             ]
+            )
+
+#        self.self_disco_info.set_feature(
+#            [
+#             'http://jabber.org/protocol/xhtml-im'
+#             ]
+#            )
+
         self.clear(init=True)
 
     def __del__(self):
@@ -226,14 +247,22 @@ self._rel_win_ctl.set_constructor_cb(
             self
             )
 
+    def _registration_window_constructor(self):
+        return org.wayround.pyabber.registration.RegistrationWindow(self)
+
+    def _registration_window_threaded_constructor(self):
+        return org.wayround.pyabber.registration.RegistrationWindow(self)
+
     for i in SUBWINDOWS:
         exec(
             """\
 def show_{i}(self, *args, **kwargs):
+    ret = None
     if {threaded}:
         self._rel_win_ctl.show_threaded('{i}', *args, **kwargs)
     else:
-        self._rel_win_ctl.show('{i}', *args, **kwargs)
+        ret = self._rel_win_ctl.show('{i}', *args, **kwargs)
+    return ret
 
 def get_{i}(self):
     return self._rel_win_ctl.get_window('{i}')
@@ -396,8 +425,25 @@ def get_{i}(self):
             if (not self._disconnection_flag.is_set()
                 and self.preset_data['register']
                 and ret == 0):
-                # TODO: registration need to be done
-                pass
+
+                if (
+                    last_features.find(
+                        '{http://jabber.org/features/iq-register}register'
+                        )
+                    != None
+                    ):
+
+                    res = self.show_registration_window(
+                        get_reg_form=True,
+                        pred_username=self.preset_data['username'],
+                        pred_password=self.preset_data['password']
+                        )
+
+                    if res != 'REGISTERED':
+                        ret = 6
+
+                else:
+                    ret = 10
 
             if (not self._disconnection_flag.is_set()
                 and self.preset_data['login']
@@ -485,6 +531,13 @@ def get_{i}(self):
 
                 self.message_client.connect_signal(
                     ['message'], self._on_message
+                    )
+
+                self.disco_service = org.wayround.xmpp.disco.DiscoService(
+                    self.client.stanza_processor,
+                    self.jid,
+                    info=self.self_disco_info,
+                    items=None
                     )
 
         self.is_driven = False

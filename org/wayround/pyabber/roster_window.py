@@ -138,16 +138,15 @@ class RosterWindow:
         self._roster_widgets = []
 
         for i in [
-            ('all', "All"),
             ('grouped', "Grouped"),
             ('ungrouped', "Ungrouped"),
-            ('transports', "Transports"),
-            ('services', "Services"),
+            ('services', 'Services'),
+            ('all', "All"),
             ('ask', "Asking"),
             ('to', "Only To"),
             ('from', "Only From"),
-            ('not_in_roster_soft', "Not in Server Roster"),
-            ('not_in_roster_hard', "Not in Roster Totally")
+            ('none', "None"),
+            ('unknown', "Unknown")
             ]:
             _rw = org.wayround.pyabber.roster_widget.\
                 RosterWidget(

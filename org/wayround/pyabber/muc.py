@@ -1,19 +1,64 @@
 
-import sys
 import json
+import sys
 
 from gi.repository import Gtk, Pango
 
 import lxml.etree
-
+import org.wayround.pyabber.misc
+import org.wayround.pyabber.xdata
 import org.wayround.utils.error
 import org.wayround.utils.gtk
-
+import org.wayround.utils.gtk
 import org.wayround.xmpp.muc
 import org.wayround.xmpp.xdata
 
-import org.wayround.pyabber.xdata
-import org.wayround.pyabber.misc
+
+class MUCJoinDialog:
+
+    def __init__(self, controller):
+
+        b = Gtk.Box()
+        b.set_orientation(Gtk.Orientation.VERTICAL)
+
+        bb = Gtk.ButtonBox()
+        bb.set_orientation(Gtk.Orientation.HORIZONTAL)
+
+        entry = Gtk.Entry()
+
+        b.pack_start(entry, False, False, 0)
+        b.pack_start(bb, False, False, 0)
+
+        ok_button = Gtk.Button("Join")
+        cancel_button = Gtk.Button("Cancel")
+
+        bb.pack_start(ok_button, False, False, 0)
+        bb.pack_start(cancel_button, False, False, 0)
+
+        window = Gtk.Window()
+        window.connect('destroy', self._on_destroy)
+        self._window = window
+
+        self._iterated_loop = org.wayround.utils.gtk.GtkIteratedLoop()
+
+        return
+
+    def run(self, room_jid):
+
+        self._window.set_title("Joining room `{}'. Provide Password")
+
+        return
+
+    def show(self):
+        self._window.show_all()
+
+    def destroy(self):
+        self._window.destroy()
+        self._iterated_loop.stop()
+
+    def _on_destroy(self, window):
+        self.destroy()
+
 
 
 class MUCJIDEntryDialog:
@@ -432,7 +477,10 @@ class MUCPopupMenu:
 
         menu = Gtk.Menu()
 
-        new_muc_inst_mi = Gtk.MenuItem("New Instant..")
+        join_muc_mi = Gtk.MenuItem("Join..")
+        voice_request_muc_mi = Gtk.MenuItem("Request Voice..")
+
+        new_muc_inst_mi = Gtk.MenuItem("New Instantly..")
         new_muc_conf_mi = Gtk.MenuItem("New Configuring..")
 
         configure_muc_mi = Gtk.MenuItem("Configure..")
@@ -446,6 +494,8 @@ class MUCPopupMenu:
         edit_ban_list_muc_mi = Gtk.MenuItem("Ban List..")
 
         destroy_muc_mi = Gtk.MenuItem("Destroy..")
+
+        join_muc_mi.connect('activate', self._on_join_muc_mi_activated)
 
         new_muc_inst_mi.connect('activate', self._on_new_muc_inst_mi_activated)
         new_muc_conf_mi.connect('activate', self._on_new_muc_conf_mi_activated)
@@ -479,6 +529,9 @@ class MUCPopupMenu:
 
         destroy_muc_mi.connect('activate', self._on_delete_muc_mi_activated)
 
+        menu.append(join_muc_mi)
+        menu.append(voice_request_muc_mi)
+        menu.append(Gtk.SeparatorMenuItem())
         menu.append(new_muc_inst_mi)
         menu.append(new_muc_conf_mi)
         menu.append(Gtk.SeparatorMenuItem())
@@ -729,6 +782,9 @@ class MUCPopupMenu:
                 )
 
         return
+
+    def _on_join_muc_mi_activated(self, mi):
+        pass
 
 
 class MUCIdentityEditorWindow:

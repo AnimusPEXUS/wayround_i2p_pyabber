@@ -55,10 +55,14 @@ class ChatLogTableRow:
         text_label.set_justify(Gtk.Justification.LEFT)
 
         mode_switch = Gtk.ComboBox()
+        mode_switch.set_no_show_all(True)
+        mode_switch.hide()
         self._mode_switch = mode_switch
         mode_switch.set_model(CHAT_LOG_TABLE_ROW_MODE_ITEMS)
 
         language_switch = Gtk.ComboBox()
+        language_switch.set_no_show_all(True)
+        language_switch.hide()
         self._language_switch = language_switch
 
         renderer_text = Gtk.CellRendererText()
@@ -104,6 +108,8 @@ class ChatLogTableRow:
         self.set_mode(default_mode)
         self.set_language(default_language)
 
+        language_switch.connect('changed', self._on_lang_switch_chenged)
+
         b.show_all()
 
         return
@@ -112,6 +118,8 @@ class ChatLogTableRow:
         return self._widget
 
     def destroy(self):
+        self._plain_language_switch_model.destroy()
+        self._xhtml_language_switch_model.destroy()
         self.get_widget().destroy()
 
     def _update_text(self):
@@ -137,10 +145,10 @@ class ChatLogTableRow:
 
         if mode == 'plain':
             self._language_switch.set_model(self._plain_language_switch_model)
-            self._mode_switch.set_active(0)
+#            self._mode_switch.set_active(0)
         else:
             self._language_switch.set_model(self._xhtml_language_switch_model)
-            self._mode_switch.set_active(1)
+#            self._mode_switch.set_active(1)
 
         self.set_language(language)
 
@@ -185,8 +193,8 @@ class ChatLogTableRow:
 
         return
 
-    def _on_mode_switch_changed(self):
-        pass
+    def _on_lang_switch_chenged(self, widget):
+        self._update_text()
 
 
 class ChatLogWidget:
@@ -289,8 +297,11 @@ class ChatLogWidget:
         self._lock.release()
 
     def destroy(self):
-        self._looped_timer.stop()
+        # NOTE: not needed - read the docs
+        #        for i in self._size_groups:
+        #            i.destroy()
         self.get_widget().destroy()
+        self._looped_timer.stop()
 
     def history_update_listener(
         self, event, storage,

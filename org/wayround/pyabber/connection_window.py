@@ -199,6 +199,8 @@ class ConnectionMgrWindow:
 
         window = Gtk.Window()
         window.connect('destroy', self._on_destroy)
+        window.set_default_size(400, 300)
+        window.set_position(Gtk.WindowPosition.CENTER)
 
         window.add(b)
 

@@ -1,16 +1,18 @@
 
-import logging
-import lxml.etree
 import copy
 import json
+import logging
 
+from gi.repository import Gtk
+
+import lxml.etree
 import org.wayround.utils.list
 import org.wayround.xmpp.core
 import org.wayround.xmpp.xdata
 
-from gi.repository import Gtk
 
 EXPENDABLE_WIDGETS = ['list-multi', 'list-single', 'jid-multi', 'text-multi']
+
 
 class XDataFormWidgetController:
 
@@ -129,6 +131,7 @@ class XDataFormWidgetController:
 
         return ret
 
+
 def field_widget(field_data):
 
     if not isinstance(field_data, org.wayround.xmpp.xdata.XDataField):
@@ -160,19 +163,23 @@ def field_widget(field_data):
         specific_field_widget_controller = FieldList(field_data, False)
 
     elif ft == 'fixed':
-        specific_field_widget_controller = FieldTextArea(field_data, False, True)
+        specific_field_widget_controller = \
+            FieldTextArea(field_data, False, True)
 
     elif ft == 'jid-multi':
-        specific_field_widget_controller = FieldTextArea(field_data, True, False)
+        specific_field_widget_controller = \
+            FieldTextArea(field_data, True, False)
 
     elif ft == 'text-multi':
-        specific_field_widget_controller = FieldTextArea(field_data, False, False)
+        specific_field_widget_controller = \
+            FieldTextArea(field_data, False, False)
 
     elif ft == 'jid-single':
         specific_field_widget_controller = FieldText(field_data, True, False)
 
     elif ft == 'text-single':
-        specific_field_widget_controller = FieldTextArea(field_data, False, False, True)
+        specific_field_widget_controller = \
+            FieldTextArea(field_data, False, False, True)
 
     elif ft == 'text-private':
         specific_field_widget_controller = FieldText(field_data, False, True)
@@ -208,7 +215,8 @@ def field_widget(field_data):
         f.add(b)
         ret_widg = f
 
-    return {'controller':specific_field_widget_controller, 'widget':ret_widg}
+    return {'controller': specific_field_widget_controller, 'widget': ret_widg}
+
 
 class FieldBoolean:
 
@@ -248,6 +256,7 @@ class FieldBoolean:
     def has_errors(self):
         return False
 
+
 class FieldHidden:
 
     def __init__(self, field_data):
@@ -271,6 +280,7 @@ class FieldHidden:
 
     def has_errors(self):
         return False
+
 
 class FieldList:
 
@@ -364,9 +374,12 @@ class FieldList:
     def has_errors(self):
         return False
 
+
 class FieldTextArea:
 
-    def __init__(self, field_data, jid_mode=False, fixed=False, single_mode=False):
+    def __init__(
+        self, field_data, jid_mode=False, fixed=False, single_mode=False
+        ):
 
         if not isinstance(field_data, org.wayround.xmpp.xdata.XDataField):
             raise TypeError(
@@ -414,7 +427,8 @@ class FieldTextArea:
         if self._is_jid_mode:
 
             lines = org.wayround.utils.list.list_lower(lines)
-            lines = org.wayround.utils.list.list_strip_remove_empty_remove_duplicated_lines(lines)
+            lines = org.wayround.utils.list.\
+                list_strip_remove_empty_remove_duplicated_lines(lines)
 
             lines2 = []
 
@@ -447,7 +461,9 @@ class FieldTextArea:
                 res = None
                 err = False
                 try:
-                    res = org.wayround.xmpp.core.JID.new_from_str(i.get_value())
+                    res = org.wayround.xmpp.core.JID.new_from_str(
+                        i.get_value()
+                        )
                 except:
                     logging.exception("Can't convert string to JID")
                     err = True
@@ -456,6 +472,7 @@ class FieldTextArea:
                     ret = True
 
         return ret
+
 
 class FieldText:
 
@@ -480,7 +497,6 @@ class FieldText:
 
         entry.set_text(value)
         entry.set_visibility(not private)
-
 
     def get_values(self):
 
@@ -524,7 +540,6 @@ class ReportWidget:
             raise TypeError(
                 "`field_data' must be org.wayround.xmpp.xdata.XData"
                 )
-
 
         frame = Gtk.Frame()
         self._widget = frame
@@ -574,9 +589,3 @@ class ReportWidget:
 
     def get_widget(self):
         return self._widget
-
-
-
-
-
-

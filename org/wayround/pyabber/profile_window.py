@@ -89,6 +89,8 @@ class ProfileMgrWindow:
 #        window.set_type_hint(Gdk.WindowTypeHint.DIALOG)
 
         window.add(b)
+        window.set_default_size(400, 300)
+        window.set_position(Gtk.WindowPosition.CENTER)
 
         window.connect('destroy', self._on_destroy)
         icon_view.connect(

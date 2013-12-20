@@ -1,21 +1,16 @@
 
 import threading
 
-from gi.repository import Gdk
-from gi.repository import GdkPixbuf
-from gi.repository import Gtk
-from gi.repository import Pango
-
-import org.wayround.utils.gtk
-
-import org.wayround.xmpp.core
-import org.wayround.xmpp.disco
-import org.wayround.xmpp.muc
-import org.wayround.xmpp.xdata
+from gi.repository import Gdk, GdkPixbuf, Gtk, Pango
 
 import org.wayround.pyabber.adhoc
 import org.wayround.pyabber.muc
 import org.wayround.pyabber.privacy
+import org.wayround.utils.gtk
+import org.wayround.xmpp.core
+import org.wayround.xmpp.disco
+import org.wayround.xmpp.muc
+import org.wayround.xmpp.xdata
 
 
 class DiscoMenu:
@@ -43,6 +38,7 @@ class DiscoMenu:
         commands_mi = Gtk.MenuItem("Commands")
         muc_mi = Gtk.MenuItem("MUC")
         privacy_mi = Gtk.MenuItem("Privacy..")
+        registration_mi = Gtk.MenuItem("Registration..")
 
         menu.append(addr_mi)
         menu.append(Gtk.SeparatorMenuItem())
@@ -51,6 +47,7 @@ class DiscoMenu:
         menu.append(commands_mi)
         menu.append(muc_mi)
         menu.append(privacy_mi)
+        menu.append(registration_mi)
 
         addr_submenu = Gtk.Menu()
         addr_mi.set_submenu(addr_submenu)
@@ -73,6 +70,7 @@ class DiscoMenu:
         addr_open_mi.connect('activate', self._on_addr_open_activated)
         commands_mi.connect('activate', self._on_commands_mi_activated)
         privacy_mi.connect('activate', self._on_privacy_mi_activated)
+        registration_mi.connect('activate', self._on_registration_mi_activated)
 
         self._addr_mi = addr_mi
         self._commands_mi = commands_mi
@@ -80,6 +78,7 @@ class DiscoMenu:
         self._menu = menu
         self._muc_mi = muc_mi
         self._mucmenu = mucmenu
+        self._registration_mi = registration_mi
 
         return
 
@@ -108,6 +107,7 @@ class DiscoMenu:
         self._commands_mi.set_sensitive(False)
         self._error_mi.set_sensitive(False)
         self._muc_mi.set_sensitive(False)
+        self._registration_mi.set_sensitive(False)
 
 #        privacy_mi.set_sensitive(False)
 
@@ -127,6 +127,10 @@ class DiscoMenu:
 
             self._muc_mi.set_sensitive(
                 q.has_feature('http://jabber.org/protocol/muc')
+                )
+
+            self._registration_mi.set_sensitive(
+                q.has_feature('jabber:iq:register')
                 )
 
             #            self._privacy_mi.set_sensitive(
@@ -176,6 +180,21 @@ class DiscoMenu:
             )
 
         w.show()
+
+        return
+
+    def _on_registration_mi_activated(self, menuitem):
+
+        self._controller.show_registration_window_threaded(
+            target_jid_obj=org.wayround.xmpp.core.JID.new_from_str(
+                self._target_jid_str
+                ),
+            from_jid_obj=self._controller.jid,
+            get_reg_form=True,
+            predefined_form=None,
+            pred_username=None,
+            pred_password=None
+            )
 
         return
 
@@ -326,16 +345,6 @@ class Disco:
         self._work_node = None
 
         return
-
-    def __del__(self):
-        print(
-            "Deleting Disco: {}, {}, {}, {}".format(
-                self._target_jid_str,
-                self._node,
-                self._work_jid,
-                self._work_node
-                )
-            )
 
     def run(self, target_jid_str=None, node=None):
 

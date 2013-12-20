@@ -5,12 +5,36 @@ from gi.repository import Gtk
 
 import org.wayround.pyabber.jid_widget
 import org.wayround.xmpp.core
+import org.wayround.xmpp.disco
 
 
 ROSTER_WIDGET_MODE_LIST = [
-    'all', 'grouped', 'ungrouped', 'transports', 'services',
-    'ask', 'to', 'from', 'none', 'not_in_roster_soft', 'not_in_roster_hard'
+    'grouped',
+    'ungrouped',
+    'all',
+    'ask',
+    'to',
+    'from',
+    'none',
+    'services',
+    'unknown'
     ]
+
+ROSTER_WIDGET_MODE_LIST_TITLES = {
+    'grouped': 'Grouped',
+    'ungrouped': 'Ungrouped',
+    'all': 'All',
+    'ask': 'Asking',
+    'to': 'Only To',
+    'from': 'Only From',
+    'none': 'Not in Roster',
+    'services': 'Services',
+    'unknown': 'Unknown'
+    }
+
+JID_ORDERING_MODEL = Gtk.ListStore(str, str)
+JID_ORDERING_MODEL.append(['jid', 'By JID'])
+JID_ORDERING_MODEL.append(['title', 'By Title'])
 
 
 class RosterWidget:
@@ -40,7 +64,16 @@ class RosterWidget:
         jid_box_frame.add(jid_box_sw)
         jid_box_sw.add(jid_box)
 
+        order_combobox = Gtk.ComboBox()
+        self._order_combobox = order_combobox
+        renderer_text = Gtk.CellRendererText()
+        order_combobox.pack_start(renderer_text, True)
+        order_combobox.add_attribute(renderer_text, "text", 1)
+        order_combobox.set_model(JID_ORDERING_MODEL)
+        order_combobox.set_active(0)
+
         groups_model = Gtk.ListStore(str, str)  # name, title
+        self._groups_model = groups_model
 
         groups_combobox = Gtk.ComboBox()
         self._groups_combobox = groups_combobox
@@ -49,7 +82,9 @@ class RosterWidget:
         groups_combobox.add_attribute(renderer_text, "text", 1)
 
         groups_combobox.set_model(groups_model)
+        groups_combobox.set_active(0)
         roster_tools_box.pack_start(groups_combobox, False, False, 0)
+        roster_tools_box.pack_start(order_combobox, False, False, 0)
 
         b.pack_start(roster_tools_box, False, False, 0)
         b.pack_start(jid_box_frame, True, True, 0)
@@ -58,13 +93,19 @@ class RosterWidget:
         self._main_widget = b
 
         self._lock = threading.Lock()
+#        self._addlock = threading.Lock()
         self._list = []
 
         self._groups_combobox.set_no_show_all(True)
 
         b.show_all()
 
+        self._set_cb_signal()
+
         self.set_mode(mode)
+        self.set_group('')
+
+        order_combobox.connect('changed', self._on_order_combobox_changed)
 
         self._roster_storage.connect_signal(
             True,
@@ -85,70 +126,173 @@ class RosterWidget:
         if not name in ROSTER_WIDGET_MODE_LIST:
             raise ValueError("Invalid Mode")
 
+        self._lock.acquire()
         self._mode = name
         self._groups_combobox.set_visible(name == 'grouped')
         self._reload_list()
+        self._lock.release()
+
+    def get_group(self):
+        self._lock.acquire()
+        ret = self._get_group()
+        self._lock.release()
+        return ret
+
+    def _get_group(self):
+        ret = None
+        x = self._groups_combobox.get_active()
+        if x in range(len(self._groups_model)):
+            ret = self._groups_model[x][0]
+        return ret
+
+    def set_group(self, name):
+        self._lock.acquire()
+        self._set_group(name)
+        self._reload_list()
+        self._lock.release()
+
+    def _set_groups(self, lst):
+        lst.sort()
+        while len(self._groups_model) != 0:
+            del self._groups_model[0]
+
+        self._groups_model.append(['', ''])
+
+        for i in lst:
+            self._groups_model.append([i, i])
+
+    def _set_group(self, name):
+        x = -1
+        for i in range(len(self._groups_model)):
+            if self._groups_model[i][0] == name:
+                x = i
+                break
+        self._groups_combobox.set_active(x)
+        return
+
+    def _is_service(self, subject_jid_object):
+        return subject_jid_object.is_domain()
+
+    def _is_in_current_group(self, subject_jid_object, data):
+        g = self._get_group()
+        return (
+            g == ''
+            or
+            self._is_in_group(subject_jid_object, g, data)
+            )
+
+    def _is_in_group(self, subject_jid_object, group_name, data):
+        return (
+            group_name in data[subject_jid_object.bare()]['bare']['groups']
+            )
+
+    def _is_ungrouped(self, subject_jid_object, data):
+        return len(data[subject_jid_object.bare()]['bare']['groups']) == 0
+
+    def _is_self(self, subject_jid_object):
+        return subject_jid_object.bare() == self._controller.jid.bare()
+
+    def _is_normal_contact(self, subject_jid_object):
+        return (
+            not self._is_self(subject_jid_object)
+            and
+            not self._is_service(subject_jid_object)
+            )
+
+    def reload_list(self):
+        self._lock.acquire()
+        self._reload_list()
+        self._lock.release()
 
     def _reload_list(self):
 
-        self._lock.acquire()
-
         data = self._roster_storage.get_data()
-
-        own_jid = self._controller.jid.bare()
 
         for i in list(data.keys()):
 
-            j = org.wayround.xmpp.core.JID.new_from_str(i)
+            subject_jid_object = org.wayround.xmpp.core.JID.new_from_str(i)
 
             self._add_or_remove(
                 i,
-                i != own_jid
-                and
+                not self._is_self(subject_jid_object) and
                 (
-                 self._mode == 'all'
-                 and
-                 not j.is_domain()
-                 )
+                 (self._mode == 'all')
                  or
-                (
-                 self._mode == 'grouped'
-                 and
-                 not j.is_domain()
-                 )
-                or
-                (
-                 self._mode == 'services'
-                 and
-                 j.is_domain()
-                 )
-                or
-                (
-                 self._mode == 'to'
-                 and
-                 data[i]['bare']['subscription'] == 'to'
-                 )
-                or
-                (
-                 self._mode == 'from'
-                 and
-                 data[i]['bare']['subscription'] == 'from'
-                 )
-                or
-                (
-                 self._mode == 'not_in_roster_soft'
-                 and
-                 data[i]['bare']['subscription'] == 'none'
-                 )
-                or
-                (
-                 self._mode == 'not_in_roster_hard'
-                 and
-                 data[i]['bare']['not_in_roster'] == True
+                 (
+                  self._mode == 'grouped'
+                  and
+                  self._is_in_current_group(subject_jid_object, data)
+                  and
+                  self._is_normal_contact(subject_jid_object)
+                  and
+                  data[i]['bare']['subscription'] == 'both'
+                  )
+                 or
+                 (
+                  self._mode == 'ungrouped'
+                  and
+                  self._is_ungrouped(subject_jid_object, data)
+                  and
+                  self._is_normal_contact(subject_jid_object)
+                  and
+                  data[i]['bare']['subscription'] == 'both'
+                  )
+                 or
+                 (
+                  self._mode == 'services'
+                  and
+                  self._is_service(subject_jid_object)
+                  )
+                 or
+                 (
+                  self._mode == 'ask'
+                  and
+                  data[i]['bare']['ask'] == True
+                  )
+                 or
+                 (
+                  self._mode == 'to'
+                  and
+                  data[i]['bare']['subscription'] == 'to'
+                  )
+                 or
+                 (
+                  self._mode == 'from'
+                  and
+                  data[i]['bare']['subscription'] == 'from'
+                  )
+                 or
+                 (
+                  self._mode == 'none'
+                  and
+                  data[i]['bare']['subscription'] == 'none'
+                  )
                  )
                 )
 
-        self._lock.release()
+        ordering_name = \
+            JID_ORDERING_MODEL[self._order_combobox.get_active()][0]
+
+        ol = []
+        od = {}
+        for i in self._list:
+            _t = ''
+            if ordering_name == 'jid':
+                _t = i.get_jid()
+            elif ordering_name == 'title':
+                _t = i.get_title()
+
+            ol.append(_t)
+            if not _t in od:
+                od[_t] = []
+            od[_t].append(i)
+
+        ol.sort()
+#        x = 0
+        for i in ol:
+            for j in od[i]:
+                self._jid_box.reorder_child(j.get_widget(), -1)
+#                x = 1
 
         return
 
@@ -158,13 +302,45 @@ class RosterWidget:
             i.destroy()
             self._list.remove(i)
 
+    def _remove_cb_signal(self):
+        try:
+            self._groups_combobox.disconnect_by_func(
+                self._on_groups_combobox_changed
+                )
+        except:
+            pass
+
+    def _set_cb_signal(self):
+        self._remove_cb_signal()
+        self._groups_combobox.connect(
+            'changed',
+            self._on_groups_combobox_changed
+            )
+
     def _roster_storage_listener(
         self,
         event, roster_storage,
         bare_jid, data, jid_data
         ):
 
+        self._lock.acquire()
+
+        if self._mode == 'grouped':
+            self._remove_cb_signal()
+            group = self._get_group()
+
+            groups = self._roster_storage.get_groups()
+            self._set_groups(groups)
+
+            self._set_group(group)
+            if self._groups_combobox.get_active() == -1:
+                self._groups_combobox.set_active(0)
+            self._set_cb_signal()
+
         self._reload_list()
+
+        self._lock.release()
+
 
     def _add_or_remove(self, bare_jid, add=False):
         if add:
@@ -173,6 +349,8 @@ class RosterWidget:
             self._remove_jid_widget(bare_jid)
 
     def _add_jid_widget(self, bare_jid):
+
+#        self._addlock.acquire()
 
         if not self._is_in_roster(bare_jid):
 
@@ -183,6 +361,8 @@ class RosterWidget:
                 )
             self._list.append(jw)
             self._jid_box.pack_start(jw.get_widget(), False, False, 0)
+
+#        self._addlock.release()
 
     def _remove_jid_widget(self, bare_jid):
         for i in self._list[:]:
@@ -199,3 +379,13 @@ class RosterWidget:
                 found = True
                 break
         return found
+
+    def _on_groups_combobox_changed(self, widget):
+        self._lock.acquire()
+        self._reload_list()
+        self._lock.release()
+
+    def _on_order_combobox_changed(self, widget):
+        self._lock.acquire()
+        self._reload_list()
+        self._lock.release()
