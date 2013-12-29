@@ -150,7 +150,7 @@ class MUCConfigWindow:
             org.wayround.pyabber.ccc.ClientConnectionController
             ):
             raise ValueError(
-                "`controller' must be org.wayround.xmpp.client.XMPPC2SClient"
+                "`controller' must be org.wayround.xmpp.above.client.XMPPC2SClient"
                 )
 
         self._controller = controller
@@ -329,7 +329,7 @@ class MUCDestructionDialog:
             org.wayround.pyabber.ccc.ClientConnectionController
             ):
             raise ValueError(
-                "`controller' must be org.wayround.xmpp.client.XMPPC2SClient"
+                "`controller' must be org.wayround.xmpp.above.client.XMPPC2SClient"
                 )
 
         self._controller = controller
@@ -467,7 +467,7 @@ class MUCPopupMenu:
             org.wayround.pyabber.ccc.ClientConnectionController
             ):
             raise ValueError(
-                "`controller' must be org.wayround.xmpp.client.XMPPC2SClient"
+                "`controller' must be org.wayround.xmpp.above.client.XMPPC2SClient"
                 )
 
         self._controller = controller
@@ -796,7 +796,7 @@ class MUCIdentityEditorWindow:
             org.wayround.pyabber.ccc.ClientConnectionController
             ):
             raise ValueError(
-                "`controller' must be org.wayround.xmpp.client.XMPPC2SClient"
+                "`controller' must be org.wayround.xmpp.above.client.XMPPC2SClient"
                 )
 
         self._controller = controller

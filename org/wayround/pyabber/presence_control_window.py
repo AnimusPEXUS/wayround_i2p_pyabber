@@ -2,7 +2,7 @@
 from gi.repository import Gtk
 from gi.repository import Gdk
 
-import org.wayround.xmpp.client
+import org.wayround.xmpp.above.client
 
 
 class PresenceControlWindow:
@@ -14,7 +14,7 @@ class PresenceControlWindow:
             org.wayround.pyabber.ccc.ClientConnectionController
             ):
             raise ValueError(
-                "`controller' must be org.wayround.xmpp.client.XMPPC2SClient"
+                "`controller' must be org.wayround.xmpp.above.client.XMPPC2SClient"
                 )
 
         self._controller = controller

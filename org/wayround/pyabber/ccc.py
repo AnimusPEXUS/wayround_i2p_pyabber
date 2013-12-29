@@ -16,12 +16,12 @@ import org.wayround.pyabber.main
 import org.wayround.pyabber.muc
 import org.wayround.pyabber.presence_control_window
 import org.wayround.pyabber.registration
-import org.wayround.pyabber.roster_storage
+import org.wayround.xmpp.above.roster_storage
 import org.wayround.pyabber.roster_window
 import org.wayround.pyabber.single_message_window
 import org.wayround.utils.gtk
 import org.wayround.utils.signal
-import org.wayround.xmpp.client
+import org.wayround.xmpp.above.client
 import org.wayround.xmpp.core
 import org.wayround.xmpp.disco
 import org.wayround.xmpp.muc
@@ -314,9 +314,6 @@ def get_{i}(self):
 
         self.auth_info.password = self.preset_data['password']
 
-        self.roster_storage = \
-            org.wayround.pyabber.roster_storage.RosterStorage()
-
         self.sock = socket.create_connection(
             (
              self.connection_info.host,
@@ -326,21 +323,21 @@ def get_{i}(self):
 
         self.sock.settimeout(0)
 
-        self.client = org.wayround.xmpp.client.XMPPC2SClient(
+        self.client = org.wayround.xmpp.above.client.XMPPC2SClient(
             self.sock
             )
 
-        self.roster_client = org.wayround.xmpp.client.Roster(
+        self.roster_client = org.wayround.xmpp.above.client.Roster(
             self.client,
             self.jid
             )
 
-        self.presence_client = org.wayround.xmpp.client.Presence(
+        self.presence_client = org.wayround.xmpp.above.client.Presence(
             self.client,
             self.jid
             )
 
-        self.message_client = org.wayround.xmpp.client.Message(
+        self.message_client = org.wayround.xmpp.above.client.Message(
             self.client,
             self.jid
             )
@@ -407,7 +404,7 @@ def get_{i}(self):
 
                 logging.debug("Starting TLS")
 
-                res = org.wayround.xmpp.client.drive_starttls(
+                res = org.wayround.xmpp.above.client.drive_starttls(
                     self.client,
                     last_features,
                     self.jid.bare(),
@@ -465,7 +462,7 @@ def get_{i}(self):
                         )
                     )
 
-                res = org.wayround.xmpp.client.drive_sasl(
+                res = org.wayround.xmpp.above.client.drive_sasl(
                     self.client,
                     last_features,
                     self.jid.bare(),
@@ -486,7 +483,7 @@ def get_{i}(self):
                 and self.preset_data['bind']
                 and ret == 0):
 
-                res = org.wayround.xmpp.client.bind(
+                res = org.wayround.xmpp.above.client.bind(
                     self.client,
                     self.jid.resource
                     )
@@ -507,7 +504,7 @@ def get_{i}(self):
 
                 logging.debug("Starting session")
 
-                res = org.wayround.xmpp.client.session(
+                res = org.wayround.xmpp.above.client.session(
                     self.client,
                     self.jid.domain
                     )
@@ -521,13 +518,13 @@ def get_{i}(self):
 
             if (not self._disconnection_flag.is_set()
                 and ret == 0):
-                self.roster_client.connect_signal(
-                    ['push'], self._on_roster_push
-                    )
 
-                self.presence_client.connect_signal(
-                    ['presence'], self._on_presence
-                    )
+                self.roster_storage = \
+                    org.wayround.xmpp.above.roster_storage.RosterStorage(
+                        self.jid,
+                        self.roster_client,
+                        self.presence_client
+                        )
 
                 self.message_client.connect_signal(
                     ['message'], self._on_message
@@ -579,6 +576,57 @@ def get_{i}(self):
                         )
 
             self.clear()
+
+    def load_roster_from_server(
+        self,
+        display_errors=False, parent_window=None
+        ):
+
+        ret, res = self.roster_storage.load_from_server()
+
+        if ret == 'wrong_answer':
+
+            if display_errors:
+                d = org.wayround.utils.gtk.MessageDialog(
+                    parent_window,
+                    Gtk.DialogFlags.MODAL
+                    | Gtk.DialogFlags.DESTROY_WITH_PARENT,
+                    Gtk.MessageType.ERROR,
+                    Gtk.ButtonsType.OK,
+                    "Roster retrieval attempt returned not a stanza"
+                    )
+                d.run()
+                d.destroy()
+
+        if ret == 'invalid_value_returned':
+
+            if display_errors:
+                d = org.wayround.utils.gtk.MessageDialog(
+                    parent_window,
+                    Gtk.DialogFlags.MODAL
+                    | Gtk.DialogFlags.DESTROY_WITH_PARENT,
+                    Gtk.MessageType.ERROR,
+                    Gtk.ButtonsType.OK,
+                    "Unexpected return value:\n{}".format(res)
+                    )
+                d.run()
+                d.destroy()
+
+        if ret == 'error':
+            if display_errors:
+                err = res.gen_error()
+                d = org.wayround.utils.gtk.MessageDialog(
+                    parent_window,
+                    Gtk.DialogFlags.MODAL
+                    | Gtk.DialogFlags.DESTROY_WITH_PARENT,
+                    Gtk.MessageType.ERROR,
+                    Gtk.ButtonsType.OK,
+                    "Error getting roster:\n{}".format(repr(err))
+                    )
+                d.run()
+                d.destroy()
+
+        return
 
     def _on_connection_event(self, event, streamer, sock):
 
@@ -806,96 +854,5 @@ def get_{i}(self):
                 plain=stanza.get_body_dict(),
                 xhtml=None
                 )
-
-        return
-
-    def _on_roster_push(self, event, roster_obj, stanza_data):
-
-        if event != 'push':
-            pass
-        else:
-
-            jid = list(stanza_data.keys())[0]
-            data = stanza_data[jid]
-
-            not_in_roster = data.get_subscription() == 'remove'
-
-            self.roster_storage.set_bare(
-                name_or_title=data.get_name(),
-                bare_jid=jid,
-                groups=data.get_group(),
-                approved=data.get_approved(),
-                ask=data.get_ask(),
-                subscription=data.get_subscription(),
-                not_in_roster=not_in_roster
-                )
-
-        return
-
-    def _on_presence(self, event, presence_obj, from_jid, to_jid, stanza):
-
-        if event == 'presence':
-
-            if not stanza.get_typ() in [
-                'unsubscribe', 'subscribed', 'unsubscribed'
-                ]:
-
-                f_jid = None
-
-                if from_jid:
-                    f_jid = org.wayround.xmpp.core.JID.new_from_str(from_jid)
-                else:
-                    f_jid = self.jid.copy()
-                    f_jid.user = None
-
-                not_in_roster = None
-                if stanza.get_typ() == 'remove':
-                    not_in_roster = True
-
-                if (not f_jid.bare() in
-                    self.roster_storage.get_data()):
-                    not_in_roster = True
-
-                status = None
-                s = stanza.get_status()
-                if len(s) != 0:
-                    status = s[0].get_text()
-                else:
-                    status = ''
-
-                show = stanza.get_show()
-                if show:
-                    show = show.get_text()
-                else:
-                    show = 'available'
-                    if stanza.get_typ() == 'unavailable':
-                        show = 'unavailable'
-
-                if f_jid.is_full():
-                    self.roster_storage.set_resource(
-                        bare_jid=f_jid.bare(),
-                        resource=f_jid.resource,
-                        available=stanza.get_typ() != 'unavailable',
-                        show=show,
-                        status=status,
-                        not_in_roster=not_in_roster
-                        )
-                elif f_jid.is_bare():
-                    self.roster_storage.set_bare(
-                        bare_jid=f_jid.bare(),
-                        available=stanza.get_typ() != 'unavailable',
-                        show=show,
-                        status=status,
-                        not_in_roster=not_in_roster
-                        )
-                else:
-                    logging.error("Don't know what to do")
-
-            else:
-                logging.warning(
-                    "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stanza.typ is {}".format(
-                        stanza.get_typ()
-                        )
-                    )
 
         return

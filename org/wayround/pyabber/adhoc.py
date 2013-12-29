@@ -8,7 +8,7 @@ import org.wayround.utils.gtk
 
 import org.wayround.xmpp.adhoc
 import org.wayround.xmpp.core
-import org.wayround.xmpp.client
+import org.wayround.xmpp.above.client
 import org.wayround.xmpp.xdata
 
 import org.wayround.pyabber.xdata
@@ -23,7 +23,7 @@ class AD_HOC_Window:
             org.wayround.pyabber.ccc.ClientConnectionController
             ):
             raise ValueError(
-                "`controller' must be org.wayround.xmpp.client.XMPPC2SClient"
+                "`controller' must be org.wayround.xmpp.above.client.XMPPC2SClient"
                 )
 
         self._controller = controller
@@ -174,7 +174,7 @@ class AD_HOC_Response_Window:
             org.wayround.pyabber.ccc.ClientConnectionController
             ):
             raise ValueError(
-                "`controller' must be org.wayround.xmpp.client.XMPPC2SClient"
+                "`controller' must be org.wayround.xmpp.above.client.XMPPC2SClient"
                 )
 
         self._controller = controller
@@ -467,7 +467,7 @@ def adhoc_window_for_jid_and_node(to_jid, controller):
         org.wayround.pyabber.ccc.ClientConnectionController
         ):
         raise ValueError(
-            "`controller' must be org.wayround.xmpp.client.XMPPC2SClient"
+            "`controller' must be org.wayround.xmpp.above.client.XMPPC2SClient"
             )
 
     own_jid = controller.jid
@@ -504,7 +504,7 @@ def process_command_stanza_result(res, controller):
         org.wayround.pyabber.ccc.ClientConnectionController
         ):
         raise ValueError(
-            "`controller' must be org.wayround.xmpp.client.XMPPC2SClient"
+            "`controller' must be org.wayround.xmpp.above.client.XMPPC2SClient"
             )
 
     if not isinstance(res, org.wayround.xmpp.core.Stanza):

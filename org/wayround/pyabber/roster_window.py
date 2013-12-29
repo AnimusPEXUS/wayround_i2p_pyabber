@@ -16,7 +16,7 @@ class RosterWindow:
             org.wayround.pyabber.ccc.ClientConnectionController
             ):
             raise ValueError(
-                "`controller' must be org.wayround.xmpp.client.XMPPC2SClient"
+                "`controller' must be org.wayround.xmpp.above.client.XMPPC2SClient"
                 )
 
         self._controller = controller
@@ -212,10 +212,7 @@ class RosterWindow:
 
     def _on_get_roster_button_clicked(self, button):
 
-        self._roster_storage.load_from_server(
-            self._own_jid,
-            self._roster_client, True, self._window
-            )
+        self._controller.load_roster_from_server(True, self._window)
 
         return
 
