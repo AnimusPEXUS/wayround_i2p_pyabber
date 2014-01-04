@@ -2,7 +2,7 @@
 from gi.repository import Gtk
 from gi.repository import Gdk
 
-import org.wayround.xmpp.above.client
+import org.wayround.xmpp.client
 
 
 class PresenceControlWindow:
@@ -14,7 +14,7 @@ class PresenceControlWindow:
             org.wayround.pyabber.ccc.ClientConnectionController
             ):
             raise ValueError(
-                "`controller' must be org.wayround.xmpp.above.client.XMPPC2SClient"
+                "`controller' must be org.wayround.xmpp.client.XMPPC2SClient"
                 )
 
         self._controller = controller
@@ -105,13 +105,13 @@ class PresenceControlWindow:
         self._to_cb = to_cb
         self._window = window
 
-#        ok_button.set_can_default(True)
-#        window.set_default(ok_button)
-#
-#        ok_button.connect('clicked', self._ok)
-#        cancel_button.connect('clicked', self._cancel)
+        return
 
-    def run(self):
+    def run(self, to_=None):
+
+        if to_ != None:
+            self._to.set_text(to_)
+            self._to_cb.set_active(True)
 
         self.show()
 
@@ -121,7 +121,6 @@ class PresenceControlWindow:
         self._window.show_all()
 
     def destroy(self):
-        self._window.hide()
         self._window.destroy()
         self._iterated_loop.stop()
 

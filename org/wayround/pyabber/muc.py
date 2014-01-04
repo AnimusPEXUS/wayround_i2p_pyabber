@@ -9,7 +9,6 @@ import org.wayround.pyabber.misc
 import org.wayround.pyabber.xdata
 import org.wayround.utils.error
 import org.wayround.utils.gtk
-import org.wayround.utils.gtk
 import org.wayround.xmpp.muc
 import org.wayround.xmpp.xdata
 
@@ -18,22 +17,44 @@ class MUCJoinDialog:
 
     def __init__(self, controller):
 
+        self._controller = controller
+
         b = Gtk.Box()
         b.set_orientation(Gtk.Orientation.VERTICAL)
+        b.set_margin_top(5)
+        b.set_margin_left(5)
+        b.set_margin_right(5)
+        b.set_margin_bottom(5)
+        b.set_spacing(5)
 
         bb = Gtk.ButtonBox()
         bb.set_orientation(Gtk.Orientation.HORIZONTAL)
 
+        bb2 = Gtk.ButtonBox()
+        bb2.set_orientation(Gtk.Orientation.HORIZONTAL)
+
         entry = Gtk.Entry()
+        self._entry = entry
 
-        b.pack_start(entry, False, False, 0)
+        e_f = Gtk.Frame()
+        e_f.set_label("Complete MUC Room JID (resource is for nickname)")
+        e_f.add(entry)
+
+        entry.set_margin_top(5)
+        entry.set_margin_left(5)
+        entry.set_margin_right(5)
+        entry.set_margin_bottom(5)
+
+        b.pack_start(e_f, False, False, 0)
         b.pack_start(bb, False, False, 0)
+        b.pack_start(bb2, False, False, 0)
 
-        ok_button = Gtk.Button("Join")
+        join_button = Gtk.Button("Join")
         cancel_button = Gtk.Button("Cancel")
 
-        bb.pack_start(ok_button, False, False, 0)
-        bb.pack_start(cancel_button, False, False, 0)
+        bb.pack_start(join_button, False, False, 0)
+
+        bb2.pack_start(cancel_button, False, False, 0)
 
         window = Gtk.Window()
         window.connect('destroy', self._on_destroy)
@@ -41,11 +62,23 @@ class MUCJoinDialog:
 
         self._iterated_loop = org.wayround.utils.gtk.GtkIteratedLoop()
 
+        window.add(b)
+
+        cancel_button.connect('clicked', self._on_cancel_clicked)
+        join_button.connect('clicked', self._on_join_clicked)
+
         return
 
     def run(self, room_jid):
 
-        self._window.set_title("Joining room `{}'. Provide Password")
+        self._window.set_title(
+            "Joining room `{}'".format(room_jid)
+            )
+        self._entry.set_text(room_jid + '/')
+
+        self.show()
+
+        self._iterated_loop.wait()
 
         return
 
@@ -59,6 +92,29 @@ class MUCJoinDialog:
     def _on_destroy(self, window):
         self.destroy()
 
+    def _on_cancel_clicked(self, button):
+        self.destroy()
+
+    def _on_join_clicked(self, button):
+        w = self._controller.get_chat_window()
+        o = org.wayround.xmpp.core.JID.new_from_str(self._entry.get_text())
+
+        if not o.is_full():
+            d = org.wayround.utils.gtk.MessageDialog(
+                self._window,
+                0,
+                Gtk.MessageType.ERROR,
+                Gtk.ButtonsType.OK,
+                "Please supply full JID (including resource)!"
+                )
+            d.run()
+            d.destroy()
+        else:
+
+            w.chat_pager.add_groupchat(o)
+            self.destroy()
+
+        return
 
 
 class MUCJIDEntryDialog:
@@ -150,7 +206,7 @@ class MUCConfigWindow:
             org.wayround.pyabber.ccc.ClientConnectionController
             ):
             raise ValueError(
-                "`controller' must be org.wayround.xmpp.above.client.XMPPC2SClient"
+                "`controller' must be org.wayround.xmpp.client.XMPPC2SClient"
                 )
 
         self._controller = controller
@@ -329,7 +385,7 @@ class MUCDestructionDialog:
             org.wayround.pyabber.ccc.ClientConnectionController
             ):
             raise ValueError(
-                "`controller' must be org.wayround.xmpp.above.client.XMPPC2SClient"
+                "`controller' must be org.wayround.xmpp.client.XMPPC2SClient"
                 )
 
         self._controller = controller
@@ -467,7 +523,7 @@ class MUCPopupMenu:
             org.wayround.pyabber.ccc.ClientConnectionController
             ):
             raise ValueError(
-                "`controller' must be org.wayround.xmpp.above.client.XMPPC2SClient"
+                "`controller' must be org.wayround.xmpp.client.XMPPC2SClient"
                 )
 
         self._controller = controller
@@ -784,7 +840,7 @@ class MUCPopupMenu:
         return
 
     def _on_join_muc_mi_activated(self, mi):
-        pass
+        self._controller.show_muc_join_dialog(self._muc_jid)
 
 
 class MUCIdentityEditorWindow:
@@ -796,7 +852,7 @@ class MUCIdentityEditorWindow:
             org.wayround.pyabber.ccc.ClientConnectionController
             ):
             raise ValueError(
-                "`controller' must be org.wayround.xmpp.above.client.XMPPC2SClient"
+                "`controller' must be org.wayround.xmpp.client.XMPPC2SClient"
                 )
 
         self._controller = controller

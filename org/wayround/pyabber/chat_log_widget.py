@@ -1,10 +1,6 @@
 
 import json
-import logging
-import sched
 import threading
-import time
-import weakref
 
 from gi.repository import Gtk, Pango
 
@@ -24,7 +20,8 @@ class ChatLogTableRow:
 
     def __init__(
         self,
-        date, jid_to_display, plain, xhtml,
+        date, jid_to_display,
+        plain, xhtml,
         default_language, default_mode,
         column_size_groups
         ):
@@ -118,8 +115,6 @@ class ChatLogTableRow:
         return self._widget
 
     def destroy(self):
-        self._plain_language_switch_model.destroy()
-        self._xhtml_language_switch_model.destroy()
         self.get_widget().destroy()
 
     def _update_text(self):
@@ -197,23 +192,26 @@ class ChatLogTableRow:
         self._update_text()
 
 
+# TODO: make not dependent from Chat
 class ChatLogWidget:
 
-    def __init__(self, controller, chat):
+    def __init__(self, controller, chat, operation_mode='chat'):
 
         if not isinstance(
             controller,
             org.wayround.pyabber.ccc.ClientConnectionController
             ):
             raise ValueError(
-                "`controller' must be org.wayround.xmpp.above.client.XMPPC2SClient"
+                "`controller' must be org.wayround.xmpp.client.XMPPC2SClient"
                 )
 
-        if not isinstance(chat, org.wayround.pyabber.chat_pager.ChatPage):
+        if not isinstance(chat, org.wayround.pyabber.chat_pager.Chat):
             raise TypeError(
                 "`page' must be the instance of "
-                "org.wayround.pyabber.chat_pager.ChatPage"
+                "org.wayround.pyabber.chat_pager.Chat"
                 )
+
+        self._operation_mode = None
 
         self._size_groups = []
         for i in range(5):
@@ -258,11 +256,23 @@ class ChatLogWidget:
 
         self._last_scroll_date = None
 
+        self.set_operation_mode(operation_mode)
+
         self.update()
 
         self._looped_timer.start()
 
         return
+
+    def set_operation_mode(self, value):
+        if not value in ['chat', 'groupchat', 'private']:
+            raise ValueError(
+                "`operation_mode' must be in ['chat', 'groupchat', 'private']"
+                )
+        self._operation_mode = value
+
+    def get_operation_mode(self):
+        return self._operation_mode
 
     def get_widget(self):
         return self._root_widget
@@ -310,7 +320,15 @@ class ChatLogWidget:
         ):
 
         if event == 'history_update':
-            if type_ == 'message_chat':
+            if type_ in ['message_chat', 'message_groupchat']:
+
+                # TODO: implement this trashhold
+
+#                if type_ == 'message_chat'
+#
+#                if (self._chat.contact_bare_jid == jid_obj.bare()
+#                    and (self._chat.contact_resource == jid_obj.resource)):
+
                 self.update()
 
         return
@@ -319,20 +337,28 @@ class ChatLogWidget:
 
         records = []
 
+        jid_resource = None
+        if self._operation_mode == 'private':
+            jid_resource = self._chat.jid.resource
+
+        types_to_load = ['message_chat']
+        if self._operation_mode == 'groupchat':
+            types_to_load = ['message_groupchat']
+
         if self._last_date == None:
 
             records = self._controller.storage.get_history_records(
                 connection_bare_jid=self._controller.jid.bare(),
                 connection_jid_resource=None,
                 bare_jid=self._chat.contact_bare_jid,
-                jid_resource=None,
+                jid_resource=jid_resource,
                 starting_from_date=None,
                 starting_includingly=True,
                 ending_with_date=None,
                 ending_includingly=True,
                 limit=100,
                 offset=None,
-                types=['message_chat']
+                types=types_to_load
                 )
 
         else:
@@ -341,22 +367,25 @@ class ChatLogWidget:
                 connection_bare_jid=self._controller.jid.bare(),
                 connection_jid_resource=None,
                 bare_jid=self._chat.contact_bare_jid,
-                jid_resource=None,
+                jid_resource=jid_resource,
                 starting_from_date=self._last_date,
                 starting_includingly=False,
                 ending_with_date=None,
                 ending_includingly=True,
                 limit=None,
                 offset=None,
-                types=['message_chat']
+                types=types_to_load
                 )
 
         for i in records:
-            jid = '??JID??'
-            if i['incomming']:
-                jid = '-->'
+            jid = ''
+            if self._operation_mode == 'groupchat':
+                jid = i['jid_resource']
             else:
-                jid = '<--'
+                if i['incomming']:
+                    jid = '-->'
+                else:
+                    jid = '<--'
 
             plain = None
             xhtml = None

@@ -16,12 +16,12 @@ import org.wayround.pyabber.main
 import org.wayround.pyabber.muc
 import org.wayround.pyabber.presence_control_window
 import org.wayround.pyabber.registration
-import org.wayround.xmpp.above.roster_storage
+import org.wayround.pyabber.roster_storage
 import org.wayround.pyabber.roster_window
 import org.wayround.pyabber.single_message_window
 import org.wayround.utils.gtk
 import org.wayround.utils.signal
-import org.wayround.xmpp.above.client
+import org.wayround.xmpp.client
 import org.wayround.xmpp.core
 import org.wayround.xmpp.disco
 import org.wayround.xmpp.muc
@@ -41,6 +41,7 @@ SUBWINDOWS = [
     ('muc_destruction_dialog', False, True),
     ('muc_identity_editor_window', False, True),
     ('muc_jid_entry_dialog', False, False),
+    ('muc_join_dialog', False, True),
     ('presence_control_window', False, True),
     ('registration_window', False, False),
     ('registration_window_threaded', False, True),
@@ -239,6 +240,9 @@ self._rel_win_ctl.set_constructor_cb(
     def _muc_identity_editor_window_constructor(self):
         return org.wayround.pyabber.muc.MUCIdentityEditorWindow(self)
 
+    def _muc_join_dialog_constructor(self):
+        return org.wayround.pyabber.muc.MUCJoinDialog(self)
+
     def _chat_window_constructor(self):
         return org.wayround.pyabber.chat_window.ChatWindow(self)
 
@@ -256,6 +260,13 @@ self._rel_win_ctl.set_constructor_cb(
     for i in SUBWINDOWS:
         exec(
             """\
+def get_{i}(self):
+    ret = self._rel_win_ctl.get_window('{i}')
+    if ret == None:
+        self.show_{i}()
+    ret = self._rel_win_ctl.get_window('{i}')
+    return ret
+
 def show_{i}(self, *args, **kwargs):
     ret = None
     if {threaded}:
@@ -263,9 +274,6 @@ def show_{i}(self, *args, **kwargs):
     else:
         ret = self._rel_win_ctl.show('{i}', *args, **kwargs)
     return ret
-
-def get_{i}(self):
-    return self._rel_win_ctl.get_window('{i}')
 
 """.format(i=i[0], threaded=i[2]))
 
@@ -323,21 +331,21 @@ def get_{i}(self):
 
         self.sock.settimeout(0)
 
-        self.client = org.wayround.xmpp.above.client.XMPPC2SClient(
+        self.client = org.wayround.xmpp.client.XMPPC2SClient(
             self.sock
             )
 
-        self.roster_client = org.wayround.xmpp.above.client.Roster(
+        self.roster_client = org.wayround.xmpp.client.Roster(
             self.client,
             self.jid
             )
 
-        self.presence_client = org.wayround.xmpp.above.client.Presence(
+        self.presence_client = org.wayround.xmpp.client.Presence(
             self.client,
             self.jid
             )
 
-        self.message_client = org.wayround.xmpp.above.client.Message(
+        self.message_client = org.wayround.xmpp.client.Message(
             self.client,
             self.jid
             )
@@ -404,7 +412,7 @@ def get_{i}(self):
 
                 logging.debug("Starting TLS")
 
-                res = org.wayround.xmpp.above.client.drive_starttls(
+                res = org.wayround.xmpp.client.drive_starttls(
                     self.client,
                     last_features,
                     self.jid.bare(),
@@ -462,7 +470,7 @@ def get_{i}(self):
                         )
                     )
 
-                res = org.wayround.xmpp.above.client.drive_sasl(
+                res = org.wayround.xmpp.client.drive_sasl(
                     self.client,
                     last_features,
                     self.jid.bare(),
@@ -483,7 +491,7 @@ def get_{i}(self):
                 and self.preset_data['bind']
                 and ret == 0):
 
-                res = org.wayround.xmpp.above.client.bind(
+                res = org.wayround.xmpp.client.bind(
                     self.client,
                     self.jid.resource
                     )
@@ -504,7 +512,7 @@ def get_{i}(self):
 
                 logging.debug("Starting session")
 
-                res = org.wayround.xmpp.above.client.session(
+                res = org.wayround.xmpp.client.session(
                     self.client,
                     self.jid.domain
                     )
@@ -520,7 +528,7 @@ def get_{i}(self):
                 and ret == 0):
 
                 self.roster_storage = \
-                    org.wayround.xmpp.above.roster_storage.RosterStorage(
+                    org.wayround.pyabber.roster_storage.RosterStorage(
                         self.jid,
                         self.roster_client,
                         self.presence_client

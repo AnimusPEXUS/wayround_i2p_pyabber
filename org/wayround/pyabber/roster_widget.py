@@ -320,7 +320,7 @@ class RosterWidget:
     def _roster_storage_listener(
         self,
         event, roster_storage,
-        bare_jid, data, jid_data
+        bare_jid, resource, data, jid_data
         ):
 
         self._lock.acquire()
@@ -341,6 +341,7 @@ class RosterWidget:
 
         self._lock.release()
 
+        return
 
     def _add_or_remove(self, bare_jid, add=False):
         if add:

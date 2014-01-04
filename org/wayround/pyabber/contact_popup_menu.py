@@ -18,7 +18,7 @@ class ContactPopupMenu:
             org.wayround.pyabber.ccc.ClientConnectionController
             ):
             raise ValueError(
-                "`controller' must be org.wayround.xmpp.above.client.XMPPC2SClient"
+                "`controller' must be org.wayround.xmpp.client.XMPPC2SClient"
                 )
 
         self._controller = controller
@@ -46,7 +46,7 @@ class ContactPopupMenu:
 
         commands_mi = Gtk.MenuItem.new_with_label("Commands")
         send_custom_presence_mi = Gtk.MenuItem.new_with_label(
-            "Send Custom Presence"
+            "Send Custom Presence.."
             )
         vcard_mi = Gtk.MenuItem.new_with_label("vCard")
         send_users_mi = Gtk.MenuItem.new_with_label("Send Users")
@@ -120,6 +120,11 @@ class ContactPopupMenu:
         send_message_mi.connect('activate', self._send_message_activate)
         start_chat_mi.connect('activate', self._start_chat_activate)
 
+        send_custom_presence_mi.connect(
+            'activate',
+            self._send_custom_presence_activate
+            )
+
         self._menu.show_all()
 
     def set(self, bare_or_full_jid):
@@ -189,3 +194,7 @@ class ContactPopupMenu:
             chat_window = self._controller.get_chat_window()
 
         chat_window.chat_pager.add_chat(self._jid, None)
+
+    def _send_custom_presence_activate(self, mi):
+
+        self._controller.show_presence_control_window(to_=str(self._jid))

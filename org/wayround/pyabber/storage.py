@@ -1,4 +1,6 @@
 
+import logging
+import threading
 import datetime
 import json
 
@@ -293,6 +295,8 @@ class Storage(org.wayround.utils.signal.Signal):
              ]
             )
         self._db = StorageDB(*args, **kwargs)
+
+        self._lock = threading.Lock()
         return
 
     def create(self):
@@ -363,11 +367,20 @@ class Storage(org.wayround.utils.signal.Signal):
         connection_jid_obj, jid_obj
         ):
 
-        ret = None
+        self._lock.acquire()
 
-        res = self._get_message_last_read_date(connection_jid_obj, jid_obj)
-        if res != None:
-            ret = res.date
+        try:
+
+            ret = None
+
+            res = self._get_message_last_read_date(connection_jid_obj, jid_obj)
+            if res != None:
+                ret = res.date
+
+        except:
+            logging.exception("Error getting last read date")
+
+        self._lock.release()
 
         return ret
 
@@ -377,11 +390,18 @@ class Storage(org.wayround.utils.signal.Signal):
         date
         ):
 
-        res = self._get_message_last_read_date(connection_jid_obj, jid_obj)
-        res.date = date
+        self._lock.acquire()
 
-        self._db.commit()
+        try:
+            res = self._get_message_last_read_date(connection_jid_obj, jid_obj)
+            res.date = date
 
+            self._db.commit()
+
+        except:
+            logging.exception("Error setting last read date")
+
+        self._lock.release()
         return
 
     def add_history_record(
@@ -390,41 +410,50 @@ class Storage(org.wayround.utils.signal.Signal):
         parent_thread_id, thread_id, subject, plain, xhtml
         ):
 
-        subject_dj = None
-        if subject is not None:
-            subject_dj = json.dumps(subject)
+        self._lock.acquire()
 
-        plain_dj = None
-        if plain is not None:
-            plain_dj = json.dumps(plain)
+        try:
 
-        xhtml_dj = None
-        if xhtml is not None:
-            xhtml_dj = json.dumps(xhtml)
+            subject_dj = None
+            if subject is not None:
+                subject_dj = json.dumps(subject)
 
-        h = self._db.History()
-        h.date = date
-        h.incomming = incomming
-        h.connection_bare_jid = connection_jid_obj.bare()
-        h.connection_jid_resource = connection_jid_obj.resource
-        h.bare_jid = jid_obj.bare()
-        h.jid_resource = jid_obj.resource
-        h.type_ = type_
-        h.thread_id = thread_id
-        h.parent_thread_id = parent_thread_id
-        h.subject = subject_dj
-        h.plain = plain_dj
-        h.xhtml = xhtml_dj
+            plain_dj = None
+            if plain is not None:
+                plain_dj = json.dumps(plain)
 
-        self._db.session.add(h)
+            xhtml_dj = None
+            if xhtml is not None:
+                xhtml_dj = json.dumps(xhtml)
 
-        self._db.session.commit()
+            h = self._db.History()
+            h.date = date
+            h.incomming = incomming
+            h.connection_bare_jid = connection_jid_obj.bare()
+            h.connection_jid_resource = connection_jid_obj.resource
+            h.bare_jid = jid_obj.bare()
+            h.jid_resource = jid_obj.resource
+            h.type_ = type_
+            h.thread_id = thread_id
+            h.parent_thread_id = parent_thread_id
+            h.subject = subject_dj
+            h.plain = plain_dj
+            h.xhtml = xhtml_dj
 
-        self.emit_signal(
-            'history_update', self,
-            date, incomming, connection_jid_obj, jid_obj, type_,
-            parent_thread_id, thread_id, subject, plain, xhtml
-            )
+            self._db.session.add(h)
+
+            self._db.session.commit()
+
+            self.emit_signal(
+                'history_update', self,
+                date, incomming, connection_jid_obj, jid_obj, type_,
+                parent_thread_id, thread_id, subject, plain, xhtml
+                )
+
+        except:
+            logging.exception("Error adding history record")
+
+        self._lock.release()
 
         return
 
@@ -439,95 +468,126 @@ class Storage(org.wayround.utils.signal.Signal):
         types=None
         ):
 
-        if types == None:
-            types = []
+        self._lock.acquire()
 
-        q = self._db.session.query(self._db.History)
+        try:
 
-        q = q.filter(
-            self._db.History.connection_bare_jid
-                == connection_bare_jid,
-            self._db.History.bare_jid == bare_jid
-            )
+            if types == None:
+                types = []
 
-        if connection_jid_resource != None:
+            q = self._db.session.query(self._db.History)
+
             q = q.filter(
-                self._db.History.connection_jid_resource
-                    == connection_jid_resource
+                self._db.History.connection_bare_jid
+                    == connection_bare_jid,
+                self._db.History.bare_jid == bare_jid
                 )
 
-        if jid_resource != None:
-            q = q.filter(
-                self._db.History.jid_resource
-                    == jid_resource
-                )
+            if connection_jid_resource != None:
+                q = q.filter(
+                    self._db.History.connection_jid_resource
+                        == connection_jid_resource
+                    )
 
-        if starting_from_date != None:
+            if jid_resource != None:
+                q = q.filter(
+                    self._db.History.jid_resource
+                        == jid_resource
+                    )
 
-            if starting_includingly:
-                q = q.filter(self._db.History.date >= starting_from_date)
-            else:
-                q = q.filter(self._db.History.date > starting_from_date)
+            if starting_from_date != None:
 
-        if ending_with_date != None:
+                if starting_includingly:
+                    q = q.filter(self._db.History.date >= starting_from_date)
+                else:
+                    q = q.filter(self._db.History.date > starting_from_date)
 
-            if ending_includingly:
-                q = q.filter(self._db.History.date <= ending_with_date)
-            else:
-                q = q.filter(self._db.History.date < ending_with_date)
+            if ending_with_date != None:
 
-        if len(types) != 0:
-            q = q.filter(self._db.History.type_.in_(types))
+                if ending_includingly:
+                    q = q.filter(self._db.History.date <= ending_with_date)
+                else:
+                    q = q.filter(self._db.History.date < ending_with_date)
 
-        q = q.order_by(self._db.History.date.desc())
+            if len(types) != 0:
+                q = q.filter(self._db.History.type_.in_(types))
 
-        if limit != None:
-            q = q.limit(limit)
+            q = q.order_by(self._db.History.date.desc())
 
-        if offset != None:
-            q = q.offset(offset)
+            if limit != None:
+                q = q.limit(limit)
 
-        q = q.from_self()
+            if offset != None:
+                q = q.offset(offset)
 
-        q = q.order_by(self._db.History.date)
+            q = q.from_self()
+
+            q = q.order_by(self._db.History.date)
+
+        except:
+            logging.exception("Error getting history record")
+
+        self._lock.release()
 
         return yield_history_query_result_list(q.all())
 
     def get_connection_presets_count(self):
-        return self._db.session.query(self.ConnectionPreset).count()
+        ret = None
+        self._lock.acquire()
+
+        try:
+            ret = self._db.session.query(self.ConnectionPreset).count()
+        except:
+            logging.exception("Error getting connection presets count")
+
+        self._lock.release()
+        return ret
 
     def get_connection_presets_list(self):
-        res = self._db.session.query(self._db.ConnectionPreset).\
-            add_columns(self._db.ConnectionPreset.name).\
-            all()
         ret = []
-        for i in res:
-            ret.append(i.name)
+
+        self._lock.acquire()
+        try:
+            res = self._db.session.query(self._db.ConnectionPreset).\
+                add_columns(self._db.ConnectionPreset.name).\
+                all()
+            for i in res:
+                ret.append(i.name)
+        except:
+            logging.exception("Error connection presets list")
+
+        self._lock.release()
         return ret
 
     def get_connection_preset_by_name(self, name):
         ret = None
 
-        res = self._db.session.query(self._db.ConnectionPreset).\
-            filter(self._db.ConnectionPreset.name == name).\
-            all()
+        self._lock.acquire()
+        try:
+            res = self._db.session.query(self._db.ConnectionPreset).\
+                filter(self._db.ConnectionPreset.name == name).\
+                all()
 
-        if len(res) != 0:
-            ret = res[0]
+            if len(res) != 0:
+                ret = res[0]
 
-        if len(res) > 1:
+            if len(res) > 1:
 
-            for i in res[1:]:
-                self._db.session.delete(i)
+                for i in res[1:]:
+                    self._db.session.delete(i)
 
-            self._db.commit()
+                self._db.commit()
 
-        if ret != None:
-            res = {}
-            org.wayround.utils.types.attrs_object_to_dict(
-                ret, res, CONNECTION_PRESET_FIELDS
-                )
-            ret = res
+            if ret != None:
+                res = {}
+                org.wayround.utils.types.attrs_object_to_dict(
+                    ret, res, CONNECTION_PRESET_FIELDS
+                    )
+                ret = res
+        except:
+            logging.exception("Error getting connection preset by name")
+
+        self._lock.release()
 
         return ret
 
@@ -536,22 +596,39 @@ class Storage(org.wayround.utils.signal.Signal):
         if p != None:
             self.del_connection_preset(name)
 
-        new_preset = self._db.ConnectionPreset()
+        self._lock.acquire()
+        try:
 
-        org.wayround.utils.types.attrs_dict_to_object(
-            preset, new_preset, CONNECTION_PRESET_FIELDS
-            )
+            new_preset = self._db.ConnectionPreset()
 
-        self._db.session.add(new_preset)
-        self._db.commit()
+            org.wayround.utils.types.attrs_dict_to_object(
+                preset, new_preset, CONNECTION_PRESET_FIELDS
+                )
+
+            self._db.session.add(new_preset)
+            self._db.commit()
+        except:
+            logging.exception("Error setting connection preset")
+
+        self._lock.release()
+
+        return
 
     def del_connection_preset(self, name):
-        p = self._db.session.query(self._db.ConnectionPreset).\
-            filter(self._db.ConnectionPreset.name == name).\
-            all()
-        for i in p:
-            self._db.session.delete(i)
-        self._db.commit()
+        self._lock.acquire()
+        try:
+            p = self._db.session.query(self._db.ConnectionPreset).\
+                filter(self._db.ConnectionPreset.name == name).\
+                all()
+            for i in p:
+                self._db.session.delete(i)
+            self._db.commit()
+        except:
+            logging.exception("Error deleting connection preset")
+
+        self._lock.release()
+
+        return
 
 
 def yield_history_query_result_list(lst):
