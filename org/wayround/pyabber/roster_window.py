@@ -133,6 +133,7 @@ class RosterWindow:
         self._server_jid_widget = server_jid_widget
 
         roster_notebook = Gtk.Notebook()
+        roster_notebook.set_scrollable(True)
         roster_notebook.set_tab_pos(Gtk.PositionType.LEFT)
 
         self._roster_widgets = []
@@ -162,23 +163,24 @@ class RosterWindow:
             _t.set_margin_top(5)
             _t.set_margin_bottom(5)
             _l = Gtk.Label(i[1])
-#            _l.set_angle(90)
 
             roster_notebook.append_page(_t, _l)
 
-        exp1 = Gtk.Expander()
-        exp1.add(jid_widget.get_widget())
-        exp1.set_label("Own JID")
-        exp1.set_expanded(False)
+        own_contacts_box = Gtk.Box()
+        own_contacts_box.set_orientation(Gtk.Orientation.HORIZONTAL)
+        own_contacts_box.set_spacing(5)
 
-        exp2 = Gtk.Expander()
-        exp2.add(server_jid_widget.get_widget())
-        exp2.set_label("Domain JID")
-        exp2.set_expanded(False)
+        own_contacts_box_sep = Gtk.Separator()
+        own_contacts_box_sep.set_orientation(Gtk.Orientation.VERTICAL)
+
+        own_contacts_box.pack_start(jid_widget.get_widget(), True, True, 0)
+        own_contacts_box.pack_start(own_contacts_box_sep, False, False, 0)
+        own_contacts_box.pack_start(
+            server_jid_widget.get_widget(), True, True, 0
+            )
 
         b.pack_start(roster_tools_box, False, False, 0)
-        b.pack_start(exp2, False, False, 0)
-        b.pack_start(exp1, False, False, 0)
+        b.pack_start(own_contacts_box, False, False, 0)
         b.pack_start(roster_notebook, True, True, 0)
 
         window = Gtk.Window()
@@ -203,8 +205,11 @@ class RosterWindow:
     def destroy(self):
         self._jid_widget.destroy()
         self._server_jid_widget.destroy()
-        for i in self._roster_widgets:
+        for i in self._roster_widgets[:]:
             i.destroy()
+            self._roster_widgets.remove(i)
+
+        self._window.destroy()
         self._iterated_loop.stop()
 
     def _on_destroy(self, window):

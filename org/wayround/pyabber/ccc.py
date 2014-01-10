@@ -13,6 +13,7 @@ import org.wayround.pyabber.chat_window
 import org.wayround.pyabber.contact_editor
 import org.wayround.pyabber.disco
 import org.wayround.pyabber.main
+import org.wayround.pyabber.message_relay
 import org.wayround.pyabber.muc
 import org.wayround.pyabber.presence_control_window
 import org.wayround.pyabber.registration
@@ -331,6 +332,10 @@ def show_{i}(self, *args, **kwargs):
 
         self.sock.settimeout(0)
 
+        self.message_relay = org.wayround.pyabber.message_relay.MessageRelay(
+            self
+            )
+
         self.client = org.wayround.xmpp.client.XMPPC2SClient(
             self.sock
             )
@@ -535,7 +540,7 @@ def show_{i}(self, *args, **kwargs):
                         )
 
                 self.message_client.connect_signal(
-                    ['message'], self._on_message
+                    ['message'], self.message_relay.on_message
                     )
 
                 self.disco_service = org.wayround.xmpp.disco.DiscoService(
@@ -558,6 +563,9 @@ def show_{i}(self, *args, **kwargs):
     def disconnect(self):
         if not self._disconnection_flag.is_set():
             self._disconnection_flag.set()
+
+            if self._rel_win_ctl != None:
+                self._rel_win_ctl.destroy_windows()
 
             if self.client != None:
 
@@ -830,37 +838,3 @@ def show_{i}(self, *args, **kwargs):
             ret = 1
 
         return ret
-
-    def _on_message(self, event, message_obj, stanza):
-
-        if event == 'message':
-
-            type_ = 'message_normal'
-            typ = stanza.get_typ()
-            if typ != None and typ != 'normal':
-                type_ = 'message_{}'.format(typ)
-
-            thread = None
-            parent = None
-
-            _t = stanza.get_thread()
-            if _t:
-                thread = _t.get_thread()
-                parent = _t.get_parent()
-
-            self.profile.data.add_history_record(
-                date=datetime.datetime.utcnow(),
-                incomming=True,
-                connection_jid_obj=self.jid,
-                jid_obj=org.wayround.xmpp.core.JID.new_from_str(
-                    stanza.get_from_jid()
-                    ),
-                type_=type_,
-                parent_thread_id=parent,
-                thread_id=thread,
-                subject=stanza.get_subject_dict(),
-                plain=stanza.get_body_dict(),
-                xhtml=None
-                )
-
-        return

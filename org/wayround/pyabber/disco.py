@@ -113,6 +113,8 @@ class DiscoMenu:
 
         if stanza.is_error():
             self._error_mi.set_label(stanza.gen_error().gen_text().strip())
+        else:
+            self._error_mi.set_label("No errors")
 
         t = self._target_jid_str
         if node:

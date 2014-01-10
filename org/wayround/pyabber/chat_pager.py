@@ -1,6 +1,7 @@
 
 import datetime
 import logging
+import threading
 import uuid
 
 from gi.repository import Gdk, Gtk
@@ -10,6 +11,8 @@ import org.wayround.pyabber.jid_widget
 import org.wayround.pyabber.message_edit_widget
 import org.wayround.pyabber.muc_roster_storage
 import org.wayround.pyabber.muc_roster_widget
+import org.wayround.pyabber.subject_widget
+import org.wayround.pyabber.thread_widget
 import org.wayround.xmpp.core
 
 
@@ -42,8 +45,9 @@ class Chat:
 
         self._unread = False
 
-        if thread_id == None:
-            thread_id = uuid.uuid4().hex
+        # do not do this automatically
+        #        if thread_id == None:
+        #            thread_id = uuid.uuid4().hex
 
         self._controller = controller
 
@@ -95,8 +99,7 @@ class Chat:
             jid_widget = org.wayround.pyabber.jid_widget.JIDWidget(
                 controller,
                 controller.roster_storage,
-                contact_bare_jid,
-                None
+                contact_bare_jid
                 )
         else:
             jid_widget = org.wayround.pyabber.jid_widget.MUCRosterJIDWidget(
@@ -110,6 +113,18 @@ class Chat:
 
         self._title_label = jid_widget.get_widget()
 
+        self._subject_widget = \
+            org.wayround.pyabber.subject_widget.SubjectWidget(
+                controller, contact_bare_jid, contact_resource, mode
+                )
+
+        self._thread_widget = \
+            org.wayround.pyabber.thread_widget.ThreadWidget(
+                controller, contact_bare_jid, contact_resource, mode
+                )
+
+        b.pack_start(self._subject_widget.get_widget(), False, False, 0)
+        b.pack_start(self._thread_widget.get_widget(), False, False, 0)
         b.pack_start(main_paned, True, True, 0)
 
         self._root_widget = b
@@ -119,14 +134,16 @@ class Chat:
 
         self._update_jid_widget()
 
-        self._controller.storage.connect_signal(
-            'history_update', self.history_update_listener
+        self._controller.message_relay.connect_signal(
+            'new_message', self.history_update_listener
             )
 
         return
 
     def set_resource(self, value):
         self.contact_resource = value
+        self._subject_widget.set_resource(value)
+        self._thread_widget.set_resource(value)
         self._update_jid_widget()
 
     def get_resource(self, value):
@@ -144,9 +161,12 @@ class Chat:
 
     def destroy(self):
         self._jid_widget.destroy()
-        self._title_label.destroy()
-        self._editor.destroy()
+        self._subject_widget.destroy()
+        self._thread_widget.destroy()
         self._log.destroy()
+        self._editor.destroy()
+        self._title_label.destroy()
+        self.get_page_widget().destroy()
         return
 
     def add_message(self, txt, from_jid, date=None):
@@ -215,8 +235,13 @@ class Chat:
                 )
             jid_obj.resource = self.contact_resource
 
-            self._controller.storage.add_history_record(
-                date=datetime.datetime.utcnow(),
+            d = datetime.datetime.utcnow()
+
+            self._controller.message_relay.manual_addition(
+                date=d,
+                receive_date=d,
+                delay_from=None,
+                delay_message=None,
                 incomming=False,
                 connection_jid_obj=self._controller.jid,
                 jid_obj=jid_obj,
@@ -225,7 +250,7 @@ class Chat:
                 thread_id=self.thread_id,
                 subject=None,
                 plain={'': txt},
-                xhtml=None
+                xhtml={}
                 )
 
     def set_unread(self, value):
@@ -235,12 +260,14 @@ class Chat:
         self._unread = value
 
     def history_update_listener(
-        self, event, storage,
-        date, incomming, connection_jid_obj, jid_obj, type_,
-        parent_thread_id, thread_id, subject, plain, xhtml
+        self,
+        event, storage,
+        date, receive_date, delay_from, delay_message, incomming,
+        connection_jid_obj, jid_obj, type_, parent_thread_id, thread_id,
+        subject, plain, xhtml
         ):
 
-        if event == 'history_update':
+        if event == 'new_message':
             if type_ == 'message_chat':
                 self.set_unread(True)
 
@@ -256,12 +283,13 @@ class ChatPager:
         self.pages = []
 
         self._notebook = Gtk.Notebook()
+        self._notebook.set_scrollable(True)
         self._notebook.set_tab_pos(Gtk.PositionType.LEFT)
 
         self._root_widget = self._notebook
 
-        self._controller.storage.connect_signal(
-            'history_update', self.history_update_listener
+        self._controller.message_relay.connect_signal(
+            'new_message', self.history_update_listener
             )
 
     def get_widget(self):
@@ -401,12 +429,14 @@ class ChatPager:
         return ret
 
     def history_update_listener(
-        self, event, storage,
-        date, incomming, connection_jid_obj, jid_obj, type_,
-        parent_thread_id, thread_id, subject, plain, xhtml
+        self,
+        event, storage,
+        date, receive_date, delay_from, delay_message, incomming,
+        connection_jid_obj, jid_obj, type_, parent_thread_id, thread_id,
+        subject, plain, xhtml
         ):
 
-        if event == 'history_update':
+        if event == 'new_message':
 
             if type_ in ['message_chat', 'message_groupchat']:
 
@@ -454,6 +484,11 @@ class GroupChat:
 
         b = Gtk.Box()
         b.set_orientation(Gtk.Orientation.VERTICAL)
+        b.set_margin_top(5)
+        b.set_margin_left(5)
+        b.set_margin_right(5)
+        b.set_margin_bottom(5)
+        b.set_spacing(5)
 
         self._storage = org.wayround.pyabber.muc_roster_storage.Storage(
             self._room_bare_jid_obj,
@@ -478,6 +513,7 @@ class GroupChat:
             )
 
         self._notebook = Gtk.Notebook()
+        self._notebook.set_scrollable(True)
         self._notebook.set_tab_pos(Gtk.PositionType.TOP)
         self._notebook.append_page(
             main_chat_page.get_page_widget(),
@@ -486,8 +522,13 @@ class GroupChat:
 
         paned = Gtk.Paned()
 
+        rw_f = Gtk.Frame()
+        rw_sw = Gtk.ScrolledWindow()
+        rw_f.add(rw_sw)
+        rw_sw.add(self._roster_widget.get_widget())
+
         paned.add1(self._notebook)
-        paned.add2(self._roster_widget.get_widget())
+        paned.add2(rw_f)
 
         b.pack_start(paned, True, True, 0)
 
@@ -508,8 +549,8 @@ class GroupChat:
 
         self._root_widget.show_all()
 
-        self._controller.storage.connect_signal(
-            'history_update', self.history_update_listener
+        self._controller.message_relay.connect_signal(
+            'new_message', self.history_update_listener
             )
 
         self.set_own_resource(own_resource)
@@ -582,8 +623,9 @@ class GroupChat:
                 contact_bare_jid=jid_obj.bare(),
                 contact_resource=jid_obj.resource,
                 thread_id=None,
-                parrent_groupchat=parrent_groupchat,
-                mode='private'
+                mode='private',
+                muc_roster_storage=self._storage,
+                parrent_groupchat=parrent_groupchat
                 )
             self.add_page(p)
             ret = p
@@ -591,12 +633,14 @@ class GroupChat:
         return ret
 
     def history_update_listener(
-        self, event, storage,
-        date, incomming, connection_jid_obj, jid_obj, type_,
-        parent_thread_id, thread_id, subject, plain, xhtml
+        self,
+        event, storage,
+        date, receive_date, delay_from, delay_message, incomming,
+        connection_jid_obj, jid_obj, type_, parent_thread_id, thread_id,
+        subject, plain, xhtml
         ):
 
-        if event == 'history_update':
+        if event == 'new_message':
 
             if type_ == 'message_chat':
 

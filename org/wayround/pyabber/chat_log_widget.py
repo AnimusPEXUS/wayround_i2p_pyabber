@@ -1,11 +1,13 @@
 
 import json
+import queue
 import threading
 
 from gi.repository import Gtk, Pango
 
 import org.wayround.pyabber.ccc
 import org.wayround.pyabber.chat_pager
+import org.wayround.pyabber.message_filter
 import org.wayround.utils.gtk
 import org.wayround.utils.timer
 import org.wayround.xmpp.core
@@ -23,18 +25,17 @@ class ChatLogTableRow:
         date, jid_to_display,
         plain, xhtml,
         default_language, default_mode,
-        column_size_groups
+        column_size_groups,
+        delay_from,
+        delay_message
         ):
 
         self._plain = plain
         self._xhtml = xhtml
+        self._date = date
 
         b = Gtk.Box()
         b.set_orientation(Gtk.Orientation.HORIZONTAL)
-        b.set_margin_top(5)
-        b.set_margin_left(5)
-        b.set_margin_right(5)
-        b.set_margin_bottom(5)
         b.set_spacing(5)
 
         date_label = Gtk.Label(date)
@@ -43,6 +44,21 @@ class ChatLogTableRow:
         jid_label = Gtk.Label(jid_to_display)
         jid_label.set_alignment(0.0, 0.0)
 
+        delayed_text = ''
+
+        delay_label = Gtk.Label()
+        delay_label.set_alignment(0.0, 0.0)
+
+        if delay_from != None and delay_from != '':
+            delayed_text += "Delay From: {}".format(delay_from)
+
+        if delay_message != None and delay_message != '':
+            if delayed_text != '':
+                delayed_text += '\n'
+            delayed_text += "Delay Message: {}".format(delay_message)
+
+        delay_label.set_text(delayed_text)
+
         text_label = Gtk.Label()
         self._text_label = text_label
         text_label.set_alignment(0.0, 0.0)
@@ -50,6 +66,10 @@ class ChatLogTableRow:
         text_label.set_line_wrap_mode(Pango.WrapMode.WORD)
         text_label.set_selectable(True)
         text_label.set_justify(Gtk.Justification.LEFT)
+        text_label.set_margin_left(10)
+        text_label.set_margin_top(10)
+        text_label.set_margin_right(10)
+        text_label.set_margin_bottom(10)
 
         mode_switch = Gtk.ComboBox()
         mode_switch.set_no_show_all(True)
@@ -88,26 +108,36 @@ class ChatLogTableRow:
             xhtml_language_switch_model.append([i])
         self._xhtml_language_switch_model = xhtml_language_switch_model
 
-        b.pack_start(date_label, False, False, 0)
         b.pack_start(jid_label, False, False, 0)
-        b.pack_start(text_label, True, True, 0)
+        b.pack_start(date_label, False, False, 0)
         b.pack_start(mode_switch, False, False, 0)
         b.pack_start(language_switch, False, False, 0)
+        b.pack_start(delay_label, False, False, 0)
 
-        column_size_groups[0].add_widget(date_label)
-        column_size_groups[1].add_widget(jid_label)
-        column_size_groups[2].add_widget(text_label)
-        column_size_groups[3].add_widget(mode_switch)
-        column_size_groups[4].add_widget(language_switch)
+        column_size_groups[0].add_widget(jid_label)
+        column_size_groups[1].add_widget(date_label)
+        column_size_groups[2].add_widget(mode_switch)
+        column_size_groups[3].add_widget(language_switch)
+        column_size_groups[4].add_widget(delay_label)
 
-        self._widget = b
+        b2 = Gtk.Box()
+        b2.set_margin_top(5)
+        b2.set_margin_left(5)
+        b2.set_margin_right(5)
+        b2.set_margin_bottom(5)
+        b2.set_spacing(5)
+        b2.set_orientation(Gtk.Orientation.VERTICAL)
+
+        b2.pack_start(b, False, False, 0)
+        b2.pack_start(text_label, True, True, 0)
+
+        self._widget = b2
+        self._widget.show_all()
 
         self.set_mode(default_mode)
         self.set_language(default_language)
 
         language_switch.connect('changed', self._on_lang_switch_chenged)
-
-        b.show_all()
 
         return
 
@@ -125,12 +155,18 @@ class ChatLogTableRow:
         if mode == 'plain':
             self._text_label.set_markup('')
             self._text_label.set_use_markup(False)
-            self._text_label.set_text(self._plain[language])
+            if language in self._plain:
+                self._text_label.set_text(self._plain[language])
+            else:
+                self._text_label.set_text("")
 
         else:
             self._text_label.set_text('')
             self._text_label.set_use_markup(True)
-            self._text_label.set_markup(self._xhtml[language])
+            if language in self._xhtml:
+                self._text_label.set_markup(self._xhtml[language])
+            else:
+                self._text_label.set_markup("")
 
         return
 
@@ -161,12 +197,13 @@ class ChatLogTableRow:
 
         r = self._language_switch.get_active()
 
-        mode = self.get_mode()
+        if r != -1:
+            mode = self.get_mode()
 
-        if mode == 'plain':
-            ret = self._plain_language_switch_model[r][0]
-        else:
-            ret = self._xhtml_language_switch_model[r][0]
+            if mode == 'plain':
+                ret = self._plain_language_switch_model[r][0]
+            else:
+                ret = self._xhtml_language_switch_model[r][0]
 
         return ret
 
@@ -187,6 +224,9 @@ class ChatLogTableRow:
         self._update_text()
 
         return
+
+    def get_date(self):
+        return self._date
 
     def _on_lang_switch_chenged(self, widget):
         self._update_text()
@@ -243,8 +283,11 @@ class ChatLogWidget:
         self._rows = []
         self._lock = threading.Lock()
 
-        self._controller.storage.connect_signal(
-            'history_update', self.history_update_listener
+        self._incomming_messages_lock = threading.Lock()
+        self._incomming_messages_lock.acquire()
+
+        self._controller.message_relay.connect_signal(
+            'new_message', self.history_update_listener
             )
 
         self._looped_timer = org.wayround.utils.timer.LoopedTimer(
@@ -258,7 +301,9 @@ class ChatLogWidget:
 
         self.set_operation_mode(operation_mode)
 
-        self.update()
+        self.load_history()
+
+        self._incomming_messages_lock.release()
 
         self._looped_timer.start()
 
@@ -277,32 +322,70 @@ class ChatLogWidget:
     def get_widget(self):
         return self._root_widget
 
-    def add_record(self, date, jid, plain, xhtml):
+    def add_record(
+        self,
+        date, jid, plain, xhtml, delay_from, delay_message
+        ):
 
         self._lock.acquire()
 
-        clt = ChatLogTableRow(
-            date,
-            jid,
-            plain,
-            xhtml,
-            default_language='',
-            default_mode='plain',
-            column_size_groups=self._size_groups
-            )
+        found = False
 
-        self._rows.append(clt)
+        for i in self._rows:
+            if i.get_date() == date:
+                found = True
 
-        self._log_box.pack_start(clt.get_widget(), False, False, 0)
+        if not found:
 
-        if len(self._rows) > 100:
-            del_list = self._rows[:-100]
-            self._rows = self._rows[100:]
+            clt = ChatLogTableRow(
+                date,
+                jid,
+                plain,
+                xhtml,
+                default_language='',
+                default_mode='plain',
+                column_size_groups=self._size_groups,
+                delay_from=delay_from,
+                delay_message=delay_message
+                )
 
-            for i in del_list:
-                i.destroy()
+            newer = None
 
-            del del_list
+            for i in self._rows:
+                if type(i) == ChatLogTableRow:
+                    if i.get_date() > date:
+                        newer = self._rows.index(i)
+
+            self._log_box.pack_start(clt.get_widget(), False, False, 0)
+
+            if newer == None:
+
+                self._rows.append(clt)
+
+#                if len(self._rows) != 0:
+#                    sep = Gtk.Separator()
+#                    sep.set_orientation(Gtk.Orientation.HORIZONTAL)
+#                    self._rows.append(sep)
+#                    self._log_box.pack_start(sep, False, False, 0)
+#                    sep.show()
+
+                if len(self._rows) > 100:
+                    del_list = self._rows[:-100]
+                    self._rows = self._rows[100:]
+
+                    for i in del_list:
+                        i.destroy()
+
+                    del del_list
+
+            else:
+                self._rows.insert(newer, clt)
+
+            for i in self._rows:
+                self._log_box.reorder_child(i.get_widget(), -1)
+
+            if self._last_date == None or date > self._last_date:
+                self._last_date = date
 
         self._lock.release()
 
@@ -314,36 +397,52 @@ class ChatLogWidget:
         self._looped_timer.stop()
 
     def history_update_listener(
-        self, event, storage,
-        date, incomming, connection_jid_obj, jid_obj, type_,
-        parent_thread_id, thread_id, subject, plain, xhtml
+        self,
+        event, storage,
+        date, receive_date, delay_from, delay_message, incomming,
+        connection_jid_obj, jid_obj, type_, parent_thread_id, thread_id,
+        subject, plain, xhtml
         ):
 
-        if event == 'history_update':
+        if event == 'new_message':
             if type_ in ['message_chat', 'message_groupchat']:
 
-                # TODO: implement this trashhold
+                if org.wayround.pyabber.message_filter.is_message_acceptable(
+                    operation_mode=self._operation_mode,
+                    contact_bare_jid=self._chat.contact_bare_jid,
+                    contact_resource=self._chat.contact_resource,
+                    active_bare_jid=jid_obj.bare(),
+                    active_resource=jid_obj.resource
+                    ):
 
-#                if type_ == 'message_chat'
-#
-#                if (self._chat.contact_bare_jid == jid_obj.bare()
-#                    and (self._chat.contact_resource == jid_obj.resource)):
+                    self._incomming_messages_lock.acquire()
 
-                self.update()
+                    if plain != {} or xhtml != {}:
+
+                        self.add_record(
+                            date,
+                            self._jid(jid_obj.resource, incomming),
+                            plain,
+                            xhtml,
+                            delay_from,
+                            delay_message
+                            )
+
+                    self._incomming_messages_lock.release()
 
         return
 
-    def update(self):
+    def load_history(self):
 
         records = []
 
-        jid_resource = None
-        if self._operation_mode == 'private':
-            jid_resource = self._chat.jid.resource
-
-        types_to_load = ['message_chat']
-        if self._operation_mode == 'groupchat':
-            types_to_load = ['message_groupchat']
+        jid_resource, types_to_load = \
+            org.wayround.pyabber.message_filter.\
+                gen_get_history_records_parameters(
+                    operation_mode=self._operation_mode,
+                    contact_bare_jid=self._chat.contact_bare_jid,
+                    contact_resource=self._chat.contact_resource
+                    )
 
         if self._last_date == None:
 
@@ -378,34 +477,48 @@ class ChatLogWidget:
                 )
 
         for i in records:
-            jid = ''
-            if self._operation_mode == 'groupchat':
-                jid = i['jid_resource']
-            else:
-                if i['incomming']:
-                    jid = '-->'
-                else:
-                    jid = '<--'
 
-            plain = None
-            xhtml = None
-
-            if i['plain'] != None:
-                plain = json.loads(i['plain'])
-
-            if i['xhtml'] != None:
-                xhtml = json.loads(i['xhtml'])
+            d, jid, plain, xhtml, delay_from, delay_message = \
+                self._convert_record(i)
 
             self.add_record(
-                i['date'],
+                d,
                 jid,
                 plain,
-                xhtml
+                xhtml,
+                delay_from,
+                delay_message
                 )
 
-            self._last_date = i['date']
-
         return
+
+    def _jid(self, resource, is_incomming):
+        jid = ''
+        if self._operation_mode == 'groupchat':
+            jid = resource
+        else:
+            if is_incomming:
+                jid = '-->'
+            else:
+                jid = '<--'
+
+        return jid
+
+    def _convert_record(self, rec):
+        jid = self._jid(rec['jid_resource'], rec['incomming'])
+
+        plain = None
+        xhtml = None
+
+        if rec['plain'] != None:
+            plain = json.loads(rec['plain'])
+
+        if rec['xhtml'] != None:
+            xhtml = json.loads(rec['xhtml'])
+
+        d = rec['date']
+
+        return d, jid, plain, xhtml, rec['delay_from'], rec['delay_message']
 
     def scroll_down(self):
         if self._last_scroll_date != self._last_date:

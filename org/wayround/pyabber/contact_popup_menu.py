@@ -127,6 +127,10 @@ class ContactPopupMenu:
 
         self._menu.show_all()
 
+    def destroy(self):
+        self._disco_menu.destroy()
+        self._menu.destroy()
+
     def set(self, bare_or_full_jid):
 
         self._disco_menu.set(bare_or_full_jid, node=None)

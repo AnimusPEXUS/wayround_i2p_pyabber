@@ -46,9 +46,11 @@ class RosterWidget:
 
         b = Gtk.Box()
         b.set_orientation(Gtk.Orientation.VERTICAL)
+        b.set_spacing(5)
 
         roster_tools_box = Gtk.Box()
         roster_tools_box.set_orientation(Gtk.Orientation.HORIZONTAL)
+        roster_tools_box.set_spacing(5)
 
         jid_box = Gtk.Box()
         self._jid_box = jid_box

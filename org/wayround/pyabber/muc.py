@@ -527,6 +527,7 @@ class MUCPopupMenu:
                 )
 
         self._controller = controller
+        self._stanza_processor = controller.client.stanza_processor
 
         self._own_jid = self._controller.jid
         self._client = self._controller.client
@@ -1141,7 +1142,7 @@ List of dictionaries. Add to dictionaties only changes (delta)
 
                     stanza = org.wayround.xmpp.core.Stanza('iq')
 
-                    stanza.set_from_jid(self._own_jid)
+                    stanza.set_from_jid(str(self._own_jid))
                     stanza.set_to_jid(self._target_jid)
                     stanza.set_typ('get')
 
@@ -1313,7 +1314,7 @@ List of dictionaries. Add to dictionaties only changes (delta)
 
                     stanza = org.wayround.xmpp.core.Stanza('iq')
 
-                    stanza.set_from_jid(self._own_jid)
+                    stanza.set_from_jid(str(self._own_jid))
                     stanza.set_to_jid(self._target_jid)
                     stanza.set_typ('set')
 

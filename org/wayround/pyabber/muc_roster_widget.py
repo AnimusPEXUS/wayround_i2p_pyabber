@@ -1,4 +1,6 @@
 
+import threading
+
 from gi.repository import Gtk
 
 import org.wayround.pyabber.jid_widget
@@ -11,6 +13,8 @@ class MUCRosterWidget:
         self._room_jid_obj = room_jid_obj
         self._controller = controller
         self._muc_roster_storage = muc_roster_storage
+
+        self._lock = threading.Lock()
 
         self._list = []
 
@@ -66,7 +70,9 @@ class MUCRosterWidget:
             self._list.remove(i)
 
     def _on_muc_roster_storage_event(self, event, storage, nick, item):
-        self.sync_with_storage()
+        self._lock.acquire()
+        self._sync_with_storage()
+        self._lock.release()
 
     def _get_nicks_in_list(self):
 
@@ -86,7 +92,7 @@ class MUCRosterWidget:
 
         return list(set(ret))
 
-    def sync_with_storage(self):
+    def _sync_with_storage(self):
 
         items = self._muc_roster_storage.get_items()
 

@@ -66,7 +66,7 @@ class JIDWidget:
 
         main_box.pack_start(main_horizontal_box, True, True, 0)
 
-        self._popu_menu = \
+        self._menu = \
             org.wayround.pyabber.contact_popup_menu.ContactPopupMenu(
                 controller
                 )
@@ -94,7 +94,7 @@ class JIDWidget:
 
     def _on_popup(self, box):
 
-        self._popu_menu.show()
+        self._menu.show()
 
         return
 
@@ -209,6 +209,7 @@ class JIDWidget:
         self._subscription_i.set_tooltip_text(value)
 
     def destroy(self):
+        self._menu.destroy()
         self.get_widget().destroy()
 
     def _on_widget_right_button(self, widget, event):
@@ -217,8 +218,65 @@ class JIDWidget:
 
             l = self._bare_jid
 
-            self._popu_menu.set(l)
-            self._popu_menu.show()
+            self._menu.set(l)
+            self._menu.show()
+
+        return
+
+
+class MUCRosterJIDWidgetMenu:
+
+    def __init__(self, controller):
+
+        if not isinstance(
+            controller,
+            org.wayround.pyabber.ccc.ClientConnectionController
+            ):
+            raise ValueError(
+                "`controller' must be org.wayround.xmpp.client.XMPPC2SClient"
+                )
+
+        self._controller = controller
+        self._bare_or_full_jid = None
+
+        menu = Gtk.Menu()
+        self._menu = menu
+
+        contact_submenu_mi = Gtk.MenuItem("Contact")
+
+        menu.append(contact_submenu_mi)
+
+        menu.show_all()
+
+        self._contact_menu = \
+            org.wayround.pyabber.contact_popup_menu.ContactPopupMenu(
+                controller
+                )
+
+        contact_submenu_mi.set_submenu(self._contact_menu.get_widget())
+
+        return
+
+    def destroy(self):
+        self._contact_menu.destroy()
+        self._menu.destroy()
+
+    def set(self, bare_or_full_jid):
+
+        self._bare_or_full_jid = bare_or_full_jid
+
+        self._contact_menu.set(bare_or_full_jid)
+
+    def show(self):
+
+        self._menu.popup(
+            None,
+            None,
+            None,
+            None,
+            0,
+            Gtk.get_current_event_time()
+            )
 
         return
 
@@ -238,24 +296,11 @@ class MUCRosterJIDWidget:
         user_pic = Gtk.Image()
         self._user_pic = user_pic
 
-        b2 = Gtk.Box()
-        b2.set_orientation(Gtk.Orientation.VERTICAL)
-
         title_label = Gtk.Label(nick)
         self._title_label = title_label
 
         b3 = Gtk.Box()
         b3.set_orientation(Gtk.Orientation.HORIZONTAL)
-
-        b.pack_start(user_pic, False, False, 0)
-        b.pack_start(b2, True, True, 0)
-
-        status_label = Gtk.Label()
-        self._status_label = status_label
-
-        b2.pack_start(title_label, False, False, 0)
-        b2.pack_start(b3, False, False, 0)
-        b2.pack_start(status_label, True, True, 0)
 
         online_icon = Gtk.Image()
         self._online_icon = online_icon
@@ -269,18 +314,20 @@ class MUCRosterJIDWidget:
         role_icon = Gtk.Image()
         self._role_icon = role_icon
 
+        b3.pack_start(user_pic, False, False, 0)
         b3.pack_start(affiliation_icon, False, False, 0)
         b3.pack_start(role_icon, False, False, 0)
         b3.pack_start(online_icon, False, False, 0)
         b3.pack_start(show_icon, False, False, 0)
+        b3.pack_start(title_label, False, False, 0)
 
-        self._popu_menu = \
-            org.wayround.pyabber.contact_popup_menu.ContactPopupMenu(
+        self._menu = \
+            MUCRosterJIDWidgetMenu(
                 controller
                 )
 
         event_box = Gtk.EventBox()
-        event_box.add(b)
+        event_box.add(b3)
 
         event_box.show_all()
 
@@ -312,12 +359,30 @@ class MUCRosterJIDWidget:
         if item == None:
             item = self._muc_roster_storage.get_item(self.get_nick())
 
+        self._user_pic.set_from_pixbuf(
+            org.wayround.pyabber.icondb.get('q_10x10')
+            )
+        self._affiliation_icon.set_from_pixbuf(
+            org.wayround.pyabber.icondb.get('q_10x10')
+            )
+        self._role_icon.set_from_pixbuf(
+            org.wayround.pyabber.icondb.get('q_10x10')
+            )
+
         if item != None:
 
             if item.get_nick() == self.get_nick():
                 self._set_available(item.get_available())
                 self._set_show(item.get_show())
-                self._status_label.set_text(item.get_status())
+                self._main_widget.set_tooltip_text(
+"""Status text: {}""".format(item.get_status())
+                    )
+
+        else:
+                self._set_available(False)
+                self._set_show('unknown')
+                self._main_widget.set_tooltip_text("No status")
+
 
         return
 
@@ -347,6 +412,7 @@ class MUCRosterJIDWidget:
         return self._main_widget
 
     def destroy(self):
+        self._menu.destroy()
         self.get_widget().destroy()
 
     def _on_storage_actions(self, event, storage, nick, item):
@@ -357,14 +423,18 @@ class MUCRosterJIDWidget:
 
     def _on_widget_right_button(self, widget, event):
 
+        ret = None
+
         if event.button == Gdk.BUTTON_SECONDARY:
 
             l = self._room_bare_jid + '/' + self._nick
 
-            self._popu_menu.set(l)
-            self._popu_menu.show()
+            self._menu.set(l)
+            self._menu.show()
 
-        return
+            ret = True
+
+        return ret
 
 
 class GroupChatTabWidget:
@@ -392,15 +462,29 @@ class GroupChatTabWidget:
             muc_roster_storage
             )
         self._title_label = Gtk.Label()
+        self._title_label.set_alignment(0.0, 0.0)
 
         b.pack_start(self._title_label, False, False, 0)
         b.pack_start(self._mrjw.get_widget(), False, False, 0)
 
+        self._menu = \
+            org.wayround.pyabber.muc.MUCPopupMenu(
+                controller
+                )
+
+        event_box = Gtk.EventBox()
+        event_box.add(b)
+
+        event_box.show_all()
+
+        self._main_widget = event_box
+
         self.set_own_resource(own_resource)
 
-        b.show_all()
-
-        self._main_widget = b
+        event_box.connect(
+            'button-press-event',
+            self._on_widget_right_button
+            )
 
         return
 
@@ -408,12 +492,25 @@ class GroupChatTabWidget:
         return self._main_widget
 
     def destroy(self):
+        self._mrjw.destroy()
+        self._menu.destroy()
+        self._title_label.destroy()
         self.get_widget().destroy()
 
     def set_own_resource(self, value):
         self._own_resource = value
         self._mrjw.set_nick(value)
+        self._menu.set(self._room_bare_jid)
         self._title_label.set_text('MUC: {}'.format(self._room_bare_jid))
 
     def get_own_resource(self):
         return self._own_resource
+
+    def _on_widget_right_button(self, widget, event):
+
+        if event.button == Gdk.BUTTON_SECONDARY:
+
+            self._menu.set(self._room_bare_jid)
+            self._menu.show()
+
+        return

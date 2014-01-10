@@ -10,49 +10,7 @@ import sqlalchemy.orm
 import org.wayround.utils.db
 import org.wayround.utils.signal
 import org.wayround.utils.types
-
-
-CONNECTION_PRESET_FIELDS = \
-    org.wayround.utils.types.attrs_dict_to_object_same_names(
-        [
-        'name',
-        'username',
-        'server',
-        'resource_mode',
-        'resource',
-        'password',
-        'password2',
-        'manual_host_and_port',
-        'host',
-        'port',
-        'stream_features_handling',
-        'starttls',
-        'starttls_necessarity_mode',
-        'cert_verification_mode',
-        'register',
-        'login',
-        'bind',
-        'session'
-         ]
-        )
-
-HISTORY_RECORD_FIELDS = \
-    org.wayround.utils.types.attrs_dict_to_object_same_names(
-        [
-        'date',
-        'incomming',
-        'connection_bare_jid',
-        'connection_jid_resource',
-        'bare_jid',
-        'jid_resource',
-        'type_',
-        'parent_thread_id',
-        'thread_id',
-        'subject',
-        'plain',
-        'xhtml',
-         ]
-        )
+import org.wayround.utils.sqlalchemy
 
 
 class StorageDB(org.wayround.utils.db.BasicDB):
@@ -111,6 +69,25 @@ class StorageDB(org.wayround.utils.db.BasicDB):
             type_=sqlalchemy.DateTime,
             nullable=False,
             default=datetime.datetime(1, 1, 1),
+            index=True
+            )
+
+        receive_date = sqlalchemy.Column(
+            type_=sqlalchemy.DateTime,
+            nullable=False,
+            default=datetime.datetime(1, 1, 1),
+            index=True
+            )
+
+        delay_from = sqlalchemy.Column(
+            type_=sqlalchemy.UnicodeText,
+            nullable=True,
+            index=True
+            )
+
+        delay_message = sqlalchemy.Column(
+            type_=sqlalchemy.UnicodeText,
+            nullable=True,
             index=True
             )
 
@@ -286,6 +263,41 @@ class StorageDB(org.wayround.utils.db.BasicDB):
             )
 
 
+CONNECTION_PRESET_FIELDS = \
+    org.wayround.utils.types.attrs_dict_to_object_same_names(
+        org.wayround.utils.sqlalchemy.get_column_names(
+            StorageDB.Base.metadata,
+            'connection_presets'
+            )
+        )
+
+HISTORY_RECORD_FIELDS = \
+    org.wayround.utils.types.attrs_dict_to_object_same_names(
+        org.wayround.utils.sqlalchemy.get_column_names(
+            StorageDB.Base.metadata,
+            'history'
+            )
+        )
+
+#print(repr(HISTORY_RECORD_FIELDS))
+##print(StorageDB.Base.metadata.tables['history'].columns)
+#print(repr(dir(StorageDB.Base.metadata.tables['history'].columns['id'])))
+#print(repr(StorageDB.Base.metadata.tables['history'].columns['id'].name))
+
+for i in HISTORY_RECORD_FIELDS[:]:
+    if i[0] == 'id':
+        HISTORY_RECORD_FIELDS.remove(i)
+        HISTORY_RECORD_FIELDS.append(('id_', 'id_',))
+
+    if i[0] == 'type':
+        HISTORY_RECORD_FIELDS.remove(i)
+        HISTORY_RECORD_FIELDS.append(('type_', 'type_',))
+
+del i
+
+#print(repr(HISTORY_RECORD_FIELDS))
+
+
 class Storage(org.wayround.utils.signal.Signal):
 
     def __init__(self, *args, **kwargs):
@@ -406,49 +418,71 @@ class Storage(org.wayround.utils.signal.Signal):
 
     def add_history_record(
         self,
-        date, incomming, connection_jid_obj, jid_obj, type_,
-        parent_thread_id, thread_id, subject, plain, xhtml
+        date, receive_date, delay_from, delay_message, incomming,
+        connection_jid_obj, jid_obj, type_, parent_thread_id, thread_id,
+        subject, plain, xhtml
         ):
 
         self._lock.acquire()
 
         try:
 
-            subject_dj = None
-            if subject is not None:
-                subject_dj = json.dumps(subject)
+            connection_bare_jid = connection_jid_obj.bare()
+            connection_jid_resource = connection_jid_obj.resource
+            bare_jid = jid_obj.bare()
+            jid_resource = jid_obj.resource
 
-            plain_dj = None
-            if plain is not None:
-                plain_dj = json.dumps(plain)
+            if self._is_history_record_already_in(
+                date,
+                connection_bare_jid, connection_jid_resource,
+                bare_jid, jid_resource
+                ):
+                logging.debug(
+                    "Message dated {} assumed to be already in DB".format(
+                        date
+                        )
+                    )
+            else:
+                subject_dj = None
+                if subject is not None:
+                    subject_dj = json.dumps(subject)
 
-            xhtml_dj = None
-            if xhtml is not None:
-                xhtml_dj = json.dumps(xhtml)
+                plain_dj = None
+                if plain is not None:
+                    plain_dj = json.dumps(plain)
 
-            h = self._db.History()
-            h.date = date
-            h.incomming = incomming
-            h.connection_bare_jid = connection_jid_obj.bare()
-            h.connection_jid_resource = connection_jid_obj.resource
-            h.bare_jid = jid_obj.bare()
-            h.jid_resource = jid_obj.resource
-            h.type_ = type_
-            h.thread_id = thread_id
-            h.parent_thread_id = parent_thread_id
-            h.subject = subject_dj
-            h.plain = plain_dj
-            h.xhtml = xhtml_dj
+                xhtml_dj = None
+                if xhtml is not None:
+                    xhtml_dj = json.dumps(xhtml)
 
-            self._db.session.add(h)
+                h = self._db.History()
+                h.date = date
+                h.receive_date = receive_date
+                h.delay_from = delay_from
+                h.delay_message = delay_message
+                h.incomming = incomming
+                h.connection_bare_jid = connection_bare_jid
+                h.connection_jid_resource = connection_jid_resource
+                h.bare_jid = bare_jid
+                h.jid_resource = jid_resource
+                h.type_ = type_
+                h.thread_id = thread_id
+                h.parent_thread_id = parent_thread_id
+                h.subject = subject_dj
+                h.plain = plain_dj
+                h.xhtml = xhtml_dj
 
-            self._db.session.commit()
+                self._db.session.add(h)
 
-            self.emit_signal(
-                'history_update', self,
-                date, incomming, connection_jid_obj, jid_obj, type_,
-                parent_thread_id, thread_id, subject, plain, xhtml
-                )
+                self._db.session.commit()
+
+                self.emit_signal(
+                    'history_update',
+                    self,
+                    date, receive_date, delay_from, delay_message, incomming,
+                    connection_jid_obj, jid_obj, type_, parent_thread_id,
+                    thread_id, subject, plain, xhtml
+                    )
 
         except:
             logging.exception("Error adding history record")
@@ -456,6 +490,42 @@ class Storage(org.wayround.utils.signal.Signal):
         self._lock.release()
 
         return
+
+    def _is_history_record_already_in(
+        self,
+        date,
+        connection_bare_jid, connection_jid_resource,
+        bare_jid, jid_resource
+        ):
+
+        # TODO: probably the more deep check must be done, because date check
+        #       can be to wide
+
+        q = self._db.session.query(self._db.History)
+
+        q = q.filter(
+            self._db.History.date
+                == date,
+            self._db.History.connection_bare_jid
+                == connection_bare_jid,
+            self._db.History.bare_jid == bare_jid
+            )
+
+#        if connection_jid_resource != None:
+#            q = q.filter(
+#                self._db.History.connection_jid_resource
+#                    == connection_jid_resource
+#                )
+
+        if jid_resource != None:
+            q = q.filter(
+                self._db.History.jid_resource
+                    == jid_resource
+                )
+
+        res = q.all()
+
+        return len(res) != 0
 
     def get_history_records(
         self,
@@ -527,9 +597,11 @@ class Storage(org.wayround.utils.signal.Signal):
         except:
             logging.exception("Error getting history record")
 
+        ret = convert_history_query_result_list(q.all())
+
         self._lock.release()
 
-        return yield_history_query_result_list(q.all())
+        return ret
 
     def get_connection_presets_count(self):
         ret = None
@@ -631,7 +703,9 @@ class Storage(org.wayround.utils.signal.Signal):
         return
 
 
-def yield_history_query_result_list(lst):
+def convert_history_query_result_list(lst):
+
+    ret = []
 
     for i in lst:
 
@@ -641,6 +715,6 @@ def yield_history_query_result_list(lst):
             i, d, HISTORY_RECORD_FIELDS
             )
 
-        yield d
+        ret.append(d)
 
-    return
+    return ret
