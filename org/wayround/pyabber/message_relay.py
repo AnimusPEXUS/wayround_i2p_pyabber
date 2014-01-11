@@ -82,12 +82,21 @@ class MessageRelay(org.wayround.utils.signal.Signal):
         subject, plain, xhtml
         ):
 
+        if not isinstance(subject, dict):
+            raise TypeError("`subject' must be dict")
+
+        if not isinstance(plain, dict):
+            raise TypeError("`plain' must be dict")
+
+        if not isinstance(xhtml, dict):
+            raise TypeError("`xhtml' must be dict")
+
         t = threading.Thread(
             target=self._controller.profile.data.add_history_record,
             args=(
                 date, receive_date, delay_from, delay_message, incomming,
-                connection_jid_obj, jid_obj, type_, parent_thread_id, thread_id,
-                subject, plain, xhtml,
+                connection_jid_obj, jid_obj, type_, parent_thread_id,
+                thread_id, subject, plain, xhtml,
                 )
             )
         t.start()

@@ -2,6 +2,7 @@
 
 def is_message_acceptable(
     operation_mode,
+    message_type,
     contact_bare_jid, contact_resource,
     active_bare_jid, active_resource
     ):
@@ -13,16 +14,24 @@ def is_message_acceptable(
 
     ret = False
 
-    jid_resource = None
-    if operation_mode == 'private':
-        jid_resource = contact_resource
+    if operation_mode == 'chat':
 
-    if (contact_bare_jid == active_bare_jid and
-        (jid_resource == None
-         or (jid_resource != None
-             and jid_resource == active_resource))
-        ):
-        ret = True
+        ret = (contact_bare_jid == active_bare_jid
+               and message_type == 'message_chat')
+
+    elif operation_mode == 'groupchat':
+
+        ret = (contact_bare_jid == active_bare_jid
+               and message_type == 'message_groupchat')
+
+    elif operation_mode == 'private':
+
+        ret = (contact_bare_jid == active_bare_jid
+               and contact_resource == active_resource
+               and message_type == 'message_chat')
+
+    else:
+        pass
 
     return ret
 

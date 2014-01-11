@@ -27,12 +27,14 @@ class ChatLogTableRow:
         default_language, default_mode,
         column_size_groups,
         delay_from,
-        delay_message
+        delay_message,
+        subject
         ):
 
         self._plain = plain
         self._xhtml = xhtml
         self._date = date
+        self._subject = subject
 
         b = Gtk.Box()
         b.set_orientation(Gtk.Orientation.HORIZONTAL)
@@ -44,10 +46,35 @@ class ChatLogTableRow:
         jid_label = Gtk.Label(jid_to_display)
         jid_label.set_alignment(0.0, 0.0)
 
-        delayed_text = ''
+        subject_label_separator = Gtk.Separator()
+        self._subject_label_separator = subject_label_separator
+        subject_label_separator.set_no_show_all(True)
+        subject_label_separator.set_margin_left(10)
+        subject_label_separator.set_margin_right(10)
+        subject_label_separator.hide()
+
+        subject_label = Gtk.Label()
+        self._subject_label = subject_label
+        subject_label.set_alignment(0.0, 0.0)
+        subject_label.set_no_show_all(True)
+        subject_label.set_margin_left(10)
+        subject_label.set_margin_right(10)
+        subject_label.hide()
+
+        if isinstance(subject, dict) and '' in subject:
+            if subject[''] in ['', None]:
+                subject_label.set_text("Subject Deleted")
+            else:
+                subject_label.set_text(
+                    "Changed Subject to: {}".format(subject[''])
+                    )
+            subject_label.show()
+            subject_label_separator.show()
 
         delay_label = Gtk.Label()
         delay_label.set_alignment(0.0, 0.0)
+
+        delayed_text = ''
 
         if delay_from != None and delay_from != '':
             delayed_text += "Delay From: {}".format(delay_from)
@@ -70,6 +97,7 @@ class ChatLogTableRow:
         text_label.set_margin_top(10)
         text_label.set_margin_right(10)
         text_label.set_margin_bottom(10)
+        text_label.set_no_show_all(True)
 
         mode_switch = Gtk.ComboBox()
         mode_switch.set_no_show_all(True)
@@ -129,7 +157,9 @@ class ChatLogTableRow:
         b2.set_orientation(Gtk.Orientation.VERTICAL)
 
         b2.pack_start(b, False, False, 0)
-        b2.pack_start(text_label, True, True, 0)
+        b2.pack_start(subject_label, False, False, 0)
+        b2.pack_start(subject_label_separator, False, False, 0)
+        b2.pack_start(text_label, False, False, 0)
 
         self._widget = b2
         self._widget.show_all()
@@ -160,6 +190,8 @@ class ChatLogTableRow:
             else:
                 self._text_label.set_text("")
 
+            self._text_label.set_visible(self._text_label.get_text() != '')
+
         else:
             self._text_label.set_text('')
             self._text_label.set_use_markup(True)
@@ -167,6 +199,13 @@ class ChatLogTableRow:
                 self._text_label.set_markup(self._xhtml[language])
             else:
                 self._text_label.set_markup("")
+
+            self._text_label.set_visible(self._text_label.get_markup() != '')
+
+        self._subject_label_separator.set_visible(
+            self._text_label.get_visible()
+            and self._subject_label.get_visible()
+            )
 
         return
 
@@ -228,6 +267,15 @@ class ChatLogTableRow:
     def get_date(self):
         return self._date
 
+    def get_plain(self):
+        return self._plain
+
+    def get_xhtml(self):
+        return self._xhtml
+
+    def get_subject(self):
+        return self._subject
+
     def _on_lang_switch_chenged(self, widget):
         self._update_text()
 
@@ -250,6 +298,9 @@ class ChatLogWidget:
                 "`page' must be the instance of "
                 "org.wayround.pyabber.chat_pager.Chat"
                 )
+
+        self._incomming_messages_lock = threading.Lock()
+        self._incomming_messages_lock.acquire()
 
         self._operation_mode = None
 
@@ -282,9 +333,6 @@ class ChatLogWidget:
         self._last_date = None
         self._rows = []
         self._lock = threading.Lock()
-
-        self._incomming_messages_lock = threading.Lock()
-        self._incomming_messages_lock.acquire()
 
         self._controller.message_relay.connect_signal(
             'new_message', self.history_update_listener
@@ -324,7 +372,7 @@ class ChatLogWidget:
 
     def add_record(
         self,
-        date, jid, plain, xhtml, delay_from, delay_message
+        date, jid, plain, xhtml, delay_from, delay_message, subject
         ):
 
         self._lock.acquire()
@@ -332,8 +380,13 @@ class ChatLogWidget:
         found = False
 
         for i in self._rows:
-            if i.get_date() == date:
+            if (i.get_date() == date
+                and i.get_plain() == plain
+                and i.get_xhtml() == xhtml
+                and i.get_subject() == subject
+                ):
                 found = True
+                break
 
         if not found:
 
@@ -346,7 +399,8 @@ class ChatLogWidget:
                 default_mode='plain',
                 column_size_groups=self._size_groups,
                 delay_from=delay_from,
-                delay_message=delay_message
+                delay_message=delay_message,
+                subject=subject
                 )
 
             newer = None
@@ -361,13 +415,6 @@ class ChatLogWidget:
             if newer == None:
 
                 self._rows.append(clt)
-
-#                if len(self._rows) != 0:
-#                    sep = Gtk.Separator()
-#                    sep.set_orientation(Gtk.Orientation.HORIZONTAL)
-#                    self._rows.append(sep)
-#                    self._log_box.pack_start(sep, False, False, 0)
-#                    sep.show()
 
                 if len(self._rows) > 100:
                     del_list = self._rows[:-100]
@@ -389,6 +436,8 @@ class ChatLogWidget:
 
         self._lock.release()
 
+        return
+
     def destroy(self):
         # NOTE: not needed - read the docs
         #        for i in self._size_groups:
@@ -409,6 +458,7 @@ class ChatLogWidget:
 
                 if org.wayround.pyabber.message_filter.is_message_acceptable(
                     operation_mode=self._operation_mode,
+                    message_type=type_,
                     contact_bare_jid=self._chat.contact_bare_jid,
                     contact_resource=self._chat.contact_resource,
                     active_bare_jid=jid_obj.bare(),
@@ -417,7 +467,7 @@ class ChatLogWidget:
 
                     self._incomming_messages_lock.acquire()
 
-                    if plain != {} or xhtml != {}:
+                    if plain != {} or xhtml != {} or subject != {}:
 
                         self.add_record(
                             date,
@@ -425,7 +475,8 @@ class ChatLogWidget:
                             plain,
                             xhtml,
                             delay_from,
-                            delay_message
+                            delay_message,
+                            subject
                             )
 
                     self._incomming_messages_lock.release()
@@ -478,7 +529,7 @@ class ChatLogWidget:
 
         for i in records:
 
-            d, jid, plain, xhtml, delay_from, delay_message = \
+            d, jid, plain, xhtml, delay_from, delay_message, subject = \
                 self._convert_record(i)
 
             self.add_record(
@@ -487,7 +538,8 @@ class ChatLogWidget:
                 plain,
                 xhtml,
                 delay_from,
-                delay_message
+                delay_message,
+                subject
                 )
 
         return
@@ -507,18 +559,23 @@ class ChatLogWidget:
     def _convert_record(self, rec):
         jid = self._jid(rec['jid_resource'], rec['incomming'])
 
-        plain = None
-        xhtml = None
+#        plain = None
+#        xhtml = None
+#
+#        if rec['plain'] != None:
+#            plain = json.loads(rec['plain'])
+#
+#        if rec['xhtml'] != None:
+#            xhtml = json.loads(rec['xhtml'])
 
-        if rec['plain'] != None:
-            plain = json.loads(rec['plain'])
-
-        if rec['xhtml'] != None:
-            xhtml = json.loads(rec['xhtml'])
-
-        d = rec['date']
-
-        return d, jid, plain, xhtml, rec['delay_from'], rec['delay_message']
+        return \
+            rec['date'], \
+            jid, \
+            rec['plain'], \
+            rec['xhtml'], \
+            rec['delay_from'], \
+            rec['delay_message'], \
+            rec['subject']
 
     def scroll_down(self):
         if self._last_scroll_date != self._last_date:

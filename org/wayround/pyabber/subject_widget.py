@@ -2,7 +2,7 @@
 import logging
 import threading
 
-from gi.repository import Gtk
+from gi.repository import Gtk, Pango
 
 import org.wayround.pyabber.misc
 import org.wayround.pyabber.message_filter
@@ -14,7 +14,7 @@ class SubjectWidget:
         self,
         controller,
         contact_bare_jid, contact_resource=None,
-        operation_mode='chat',
+        operation_mode='chat'
         ):
 
         if not operation_mode in ['chat', 'groupchat', 'private']:
@@ -28,14 +28,22 @@ class SubjectWidget:
         self._contact_resource = contact_resource
 
         self._incomming_messages_lock = threading.Lock()
+        self._incomming_messages_lock.acquire()
 
         self._data = {}
+
+        self._last_date = None
 
         b = Gtk.Box()
         b.set_orientation(Gtk.Orientation.HORIZONTAL)
         b.set_spacing(5)
 
         self._text = Gtk.Label()
+        self._text.set_alignment(0.0, 0.0)
+        self._text.set_line_wrap(True)
+        self._text.set_line_wrap_mode(Pango.WrapMode.WORD)
+        self._text.set_selectable(True)
+        self._text.set_justify(Gtk.Justification.LEFT)
 
         self._delete_button = Gtk.Button("Del")
         self._delete_button.connect('clicked', self._on_delete_button_clicked)
@@ -63,6 +71,10 @@ class SubjectWidget:
             'new_message', self.history_update_listener
             )
 
+        self.set_selected_language('')
+
+        self._incomming_messages_lock.release()
+
         return
 
     def get_widget(self):
@@ -79,34 +91,42 @@ class SubjectWidget:
 
     def set_data(self, data):
 
-        lang = self.get_selected_language()
+        if len(data.keys()) != 0:
 
-        self._data = data
+            lang = self.get_selected_language()
 
-        plain_langs = list(data.keys())
-        plain_langs.sort()
+            self._data = data
 
-        while len(self._languages_model) != 0:
-            del self._languages_model[0]
+            plain_langs = list(self._data.keys())
+            plain_langs.sort()
 
-        for i in plain_langs:
-            self._languages_model.append([i])
+            while len(self._languages_model) != 0:
+                del self._languages_model[0]
 
-        l = len(self._data.keys())
+            for i in plain_langs:
+                self._languages_model.append([i])
 
-        if l == 1:
-            self.set_selected_language(list(self._data.keys())[0])
-            self._lang_select_cb.set_sensitive(False)
+            l = len(self._data.keys())
 
-        elif l == 0:
-            self.set_selected_language('')
-            self._lang_select_cb.set_sensitive(False)
+            if l == 1:
+                self.set_selected_language(
+                    self._data[list(self._data.keys())[0]]
+                    )
+                self._lang_select_cb.set_sensitive(False)
 
-        else:
-            self.set_selected_language(lang)
-            self._lang_select_cb.set_sensitive(True)
+            elif l == 0:
+                self.set_selected_language('')
+                self._lang_select_cb.set_sensitive(False)
 
-        self._update_text()
+            else:
+                if lang in self._data:
+                    self.set_selected_language(lang)
+                else:
+                    self.set_selected_language('')
+
+                self._lang_select_cb.set_sensitive(True)
+
+            self._update_text()
 
         return
 
@@ -140,10 +160,12 @@ class SubjectWidget:
 
         lang = self.get_selected_language()
 
-        if not lang in self._data or self._data[lang] == None:
-            self._text.set_text("")
+        if self._data[lang] in ['', None]:
+            self._text.set_text('')
         else:
-            self._text.set_text(self._data[lang])
+            self._text.set_text(
+                self._data[lang]
+                )
 
         return
 
@@ -163,6 +185,7 @@ class SubjectWidget:
 
                 if org.wayround.pyabber.message_filter.is_message_acceptable(
                     operation_mode=self._operation_mode,
+                    message_type=type_,
                     contact_bare_jid=self._contact_bare_jid,
                     contact_resource=self._contact_resource,
                     active_bare_jid=jid_obj.bare(),
@@ -171,7 +194,9 @@ class SubjectWidget:
 
                     self._incomming_messages_lock.acquire()
 
-                    self.set_data(subject)
+                    if self._last_date == None or date > self._last_date:
+                        self.set_data(subject)
+                        self._last_date = date
 
                     self._incomming_messages_lock.release()
 
@@ -187,7 +212,11 @@ class SubjectWidget:
         else:
             s.set_typ('chat')
 
-        res = self._controller.client.stanza_processor.send(s, wait=True)
+        res = self._controller.client.stanza_processor.send(
+            s,
+            wait=True,
+            pass_new_stanza_anyway=True
+            )
         if res != None:
             if res.is_error():
                 org.wayround.pyabber.misc.stanza_error_error_message(

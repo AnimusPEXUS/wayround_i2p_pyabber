@@ -1,7 +1,7 @@
 
 import threading
 
-from gi.repository import Gtk
+from gi.repository import Gtk, Pango
 
 import org.wayround.pyabber.message_filter
 
@@ -25,6 +25,8 @@ class ThreadWidget:
         self._contact_bare_jid = contact_bare_jid
         self._contact_resource = contact_resource
 
+        self._last_date = None
+
         self._incomming_messages_lock = threading.Lock()
 
         self._data = {}
@@ -34,6 +36,11 @@ class ThreadWidget:
         b.set_spacing(5)
 
         self._text = Gtk.Label()
+        self._text.set_alignment(0.0, 0.0)
+        self._text.set_line_wrap(True)
+        self._text.set_line_wrap_mode(Pango.WrapMode.WORD)
+        self._text.set_selectable(True)
+        self._text.set_justify(Gtk.Justification.LEFT)
 
         b.pack_start(Gtk.Label("Thread:"), False, False, 0)
         b.pack_start(self._text, True, True, 0)
@@ -89,6 +96,7 @@ class ThreadWidget:
 
                 if org.wayround.pyabber.message_filter.is_message_acceptable(
                     operation_mode=self._operation_mode,
+                    message_type=type_,
                     contact_bare_jid=self._contact_bare_jid,
                     contact_resource=self._contact_resource,
                     active_bare_jid=jid_obj.bare(),
@@ -97,11 +105,15 @@ class ThreadWidget:
 
                     self._incomming_messages_lock.acquire()
 
-                    if thread_id != None:
-                        if thread_id != '':
-                            self.set_data(thread_id)
-                        else:
-                            self.set_data(None)
+                    if self._last_date == None or date > self._last_date:
+
+                        if thread_id != None:
+                            if thread_id != '':
+                                self.set_data(thread_id)
+                            else:
+                                self.set_data(None)
+
+                        self._last_date = date
 
                     self._incomming_messages_lock.release()
 

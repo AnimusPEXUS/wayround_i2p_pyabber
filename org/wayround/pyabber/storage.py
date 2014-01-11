@@ -139,18 +139,18 @@ class StorageDB(org.wayround.utils.db.BasicDB):
             )
 
         subject = sqlalchemy.Column(
-            type_=sqlalchemy.UnicodeText,
-            nullable=True
+            type_=sqlalchemy.PickleType,
+            nullable=False
             )
 
         plain = sqlalchemy.Column(
-            type_=sqlalchemy.UnicodeText,
-            nullable=True
+            type_=sqlalchemy.PickleType,
+            nullable=False
             )
 
         xhtml = sqlalchemy.Column(
-            type_=sqlalchemy.UnicodeText,
-            nullable=True
+            type_=sqlalchemy.PickleType,
+            nullable=False
             )
 
     class ConnectionPreset(Base):
@@ -435,7 +435,8 @@ class Storage(org.wayround.utils.signal.Signal):
             if self._is_history_record_already_in(
                 date,
                 connection_bare_jid, connection_jid_resource,
-                bare_jid, jid_resource
+                bare_jid, jid_resource,
+                subject, plain, xhtml
                 ):
                 logging.debug(
                     "Message dated {} assumed to be already in DB".format(
@@ -443,17 +444,6 @@ class Storage(org.wayround.utils.signal.Signal):
                         )
                     )
             else:
-                subject_dj = None
-                if subject is not None:
-                    subject_dj = json.dumps(subject)
-
-                plain_dj = None
-                if plain is not None:
-                    plain_dj = json.dumps(plain)
-
-                xhtml_dj = None
-                if xhtml is not None:
-                    xhtml_dj = json.dumps(xhtml)
 
                 h = self._db.History()
                 h.date = date
@@ -468,9 +458,9 @@ class Storage(org.wayround.utils.signal.Signal):
                 h.type_ = type_
                 h.thread_id = thread_id
                 h.parent_thread_id = parent_thread_id
-                h.subject = subject_dj
-                h.plain = plain_dj
-                h.xhtml = xhtml_dj
+                h.subject = subject
+                h.plain = plain
+                h.xhtml = xhtml
 
                 self._db.session.add(h)
 
@@ -495,11 +485,9 @@ class Storage(org.wayround.utils.signal.Signal):
         self,
         date,
         connection_bare_jid, connection_jid_resource,
-        bare_jid, jid_resource
+        bare_jid, jid_resource,
+        subject, plain, xhtml
         ):
-
-        # TODO: probably the more deep check must be done, because date check
-        #       can be to wide
 
         q = self._db.session.query(self._db.History)
 
@@ -508,7 +496,11 @@ class Storage(org.wayround.utils.signal.Signal):
                 == date,
             self._db.History.connection_bare_jid
                 == connection_bare_jid,
-            self._db.History.bare_jid == bare_jid
+            self._db.History.bare_jid == bare_jid,
+
+            self._db.History.subject == subject,
+            self._db.History.plain == plain,
+            self._db.History.xhtml == xhtml
             )
 
 #        if connection_jid_resource != None:
