@@ -107,6 +107,7 @@ class ProfileMgrWindow:
         return
 
     def run(self):
+        self.refresh_list()
         self.show()
         self._iterated_loop.wait()
         return self._result

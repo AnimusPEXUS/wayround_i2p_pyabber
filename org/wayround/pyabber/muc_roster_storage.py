@@ -17,7 +17,8 @@ class Item:
         self,
         nick,
         affiliation=None, role=None,
-        available=None, show=None, status=None
+        available=None, show=None, status=None,
+        jid=None
         ):
 
 #        super().__init__(['changed'])
@@ -28,10 +29,12 @@ class Item:
         self.set_available(available)
         self.set_show(show)
         self.set_status(status)
+        self.set_jid(jid)
 
     check_nick = org.wayround.xmpp.muc.Item.check_nick
     check_affiliation = org.wayround.xmpp.muc.Item.check_affiliation
     check_role = org.wayround.xmpp.muc.Item.check_role
+    check_jid = org.wayround.xmpp.muc.Item.check_jid
 
     def check_available(self, value):
         if value is not None and not isinstance(value, bool):
@@ -45,9 +48,23 @@ class Item:
         if value is not None and not isinstance(value, str):
             raise ValueError("`status' must be None or str")
 
+    def __repr__(self):
+        return \
+            ("MUCRosterItem: nick == {}, affiliation == {}, role == {},"
+             " available == {}, show == {}, status == {}, jid == {}".format(
+                self.get_nick(),
+                self.get_affiliation(),
+                self.get_role(),
+                self.get_available(),
+                self.get_show(),
+                self.get_status(),
+                self.get_jid()
+                )
+             )
+
 org.wayround.utils.factory.class_generate_attributes(
     Item,
-    ['nick', 'affiliation', 'role', 'available', 'show', 'status']
+    ['nick', 'affiliation', 'role', 'available', 'show', 'status', 'jid']
     )
 
 #org.wayround.utils.factory.class_generate_attributes(
@@ -90,6 +107,11 @@ class Storage(org.wayround.utils.signal.Signal):
             )
 
         return
+    
+    def destroy(self):
+        self._presence_client.disconnect_signal(
+            self._on_presence
+            )
 
     def _on_presence(self, event, presence_obj, from_jid, to_jid, stanza):
 
@@ -128,11 +150,15 @@ class Storage(org.wayround.utils.signal.Signal):
                     stanza.get_element()
                     )
 
+                logging.debug(
+                    "{}: found muc elements:\n{}".format(self, muc_elem_list)
+                    )
+
                 len_muc_elem_list = len(muc_elem_list)
 
                 if len_muc_elem_list == 1:
 
-                    e = muc_elem_list[1]
+                    e = muc_elem_list[0]
 
                     if e.tag == \
                         '{http://jabber.org/protocol/muc#user}x':
@@ -145,7 +171,8 @@ class Storage(org.wayround.utils.signal.Signal):
                             nick=fj.resource,
                             affiliation=item.get_affiliation(),
                             role=item.get_role(),
-                            new_nick=item.get_nick()
+                            new_nick=item.get_nick(),
+                            jid=item.get_jid()
                             )
 
                 elif len_muc_elem_list > 1:
@@ -162,7 +189,7 @@ class Storage(org.wayround.utils.signal.Signal):
         self,
         nick,
         affiliation=None, role=None, new_nick=None,
-        available=None, show=None, status=None
+        available=None, show=None, status=None, jid=None
         ):
 
         d = None
@@ -180,7 +207,8 @@ class Storage(org.wayround.utils.signal.Signal):
             'role',
             'available',
             'show',
-            'status'
+            'status',
+            'jid'
             ]:
             val = eval(i)
             if val != None:

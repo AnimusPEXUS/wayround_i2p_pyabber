@@ -1,5 +1,5 @@
 
-from gi.repository import Gtk, Gdk
+from gi.repository import Gtk, Gdk, Pango
 
 import org.wayround.pyabber.contact_popup_menu
 import org.wayround.pyabber.icondb
@@ -193,7 +193,7 @@ class JIDWidget:
             value = 'unknown'
 
         self._show_i.set_from_pixbuf(
-            org.wayround.pyabber.icondb.get('show_{}'.format(value))
+            org.wayround.pyabber.icondb.get('show_{}_10x10'.format(value))
             )
 
         self._show_i.set_tooltip_text(value)
@@ -209,6 +209,9 @@ class JIDWidget:
         self._subscription_i.set_tooltip_text(value)
 
     def destroy(self):
+        self._roster_storage.disconnect_signal(
+            self._roster_storage_listener
+            )
         self._menu.destroy()
         self.get_widget().destroy()
 
@@ -226,7 +229,7 @@ class JIDWidget:
 
 class MUCRosterJIDWidgetMenu:
 
-    def __init__(self, controller):
+    def __init__(self, controller, muc_roster_storage):
 
         if not isinstance(
             controller,
@@ -237,14 +240,20 @@ class MUCRosterJIDWidgetMenu:
                 )
 
         self._controller = controller
+        self._muc_roster_storage = muc_roster_storage
         self._bare_or_full_jid = None
 
         menu = Gtk.Menu()
         self._menu = menu
 
-        contact_submenu_mi = Gtk.MenuItem("Contact")
+        contact_submenu_mi = Gtk.MenuItem("MUC Roster Contact Menu")
+
+        edit_entity_mi = Gtk.MenuItem("Edit this entity..")
+        edit_entity_mi.connect('activate', self._on_edit_entity_activated)
 
         menu.append(contact_submenu_mi)
+        menu.append(Gtk.SeparatorMenuItem())
+        menu.append(edit_entity_mi)
 
         menu.show_all()
 
@@ -280,6 +289,19 @@ class MUCRosterJIDWidgetMenu:
 
         return
 
+    def _on_edit_entity_activated(self, mi):
+
+        jid = org.wayround.xmpp.core.JID.new_from_str(
+            self._bare_or_full_jid
+            )
+
+        self._controller.show_muc_identity_editor_window(
+            target_jid=jid.bare(),
+            editing_preset=self._muc_roster_storage.get_item(jid.resource)
+            )
+
+        return
+
 
 class MUCRosterJIDWidget:
 
@@ -297,10 +319,22 @@ class MUCRosterJIDWidget:
         self._user_pic = user_pic
 
         title_label = Gtk.Label(nick)
+        title_label.set_alignment(0.0, 0.0)
         self._title_label = title_label
 
         b3 = Gtk.Box()
         b3.set_orientation(Gtk.Orientation.HORIZONTAL)
+        b3.set_spacing(5)
+
+        event_box2 = Gtk.EventBox()
+
+        jid_label = Gtk.Label()
+        jid_label.set_alignment(0.0, 0.0)
+        jid_label.set_ellipsize(Pango.EllipsizeMode.END)
+        jid_label.set_no_show_all(True)
+        self._jid_label = jid_label
+
+        event_box2.add(jid_label)
 
         online_icon = Gtk.Image()
         self._online_icon = online_icon
@@ -314,15 +348,30 @@ class MUCRosterJIDWidget:
         role_icon = Gtk.Image()
         self._role_icon = role_icon
 
+        b4 = Gtk.Box()
+        b4.set_orientation(Gtk.Orientation.VERTICAL)
+
+        icon_grid = Gtk.Grid()
+        icon_grid.attach(online_icon, 0, 0, 1, 1)
+        icon_grid.attach(show_icon, 1, 0, 1, 1)
+        icon_grid.attach(affiliation_icon, 0, 1, 1, 1)
+        icon_grid.attach(role_icon, 1, 1, 1, 1)
+
+        b4.pack_start(title_label, True, True, 0)
+        b4.pack_start(event_box2, False, False, 0)
+
         b3.pack_start(user_pic, False, False, 0)
-        b3.pack_start(affiliation_icon, False, False, 0)
-        b3.pack_start(role_icon, False, False, 0)
-        b3.pack_start(online_icon, False, False, 0)
-        b3.pack_start(show_icon, False, False, 0)
-        b3.pack_start(title_label, False, False, 0)
+        b3.pack_start(icon_grid, False, False, 0)
+        b3.pack_start(b4, False, False, 0)
 
         self._menu = \
             MUCRosterJIDWidgetMenu(
+                controller,
+                muc_roster_storage
+                )
+
+        self._jid_menu = \
+            org.wayround.pyabber.contact_popup_menu.ContactPopupMenu(
                 controller
                 )
 
@@ -336,6 +385,11 @@ class MUCRosterJIDWidget:
         event_box.connect(
             'button-press-event',
             self._on_widget_right_button
+            )
+
+        event_box2.connect(
+            'button-press-event',
+            self._on_jid_right_button
             )
 
         muc_roster_storage.connect_signal(
@@ -374,6 +428,9 @@ class MUCRosterJIDWidget:
             if item.get_nick() == self.get_nick():
                 self._set_available(item.get_available())
                 self._set_show(item.get_show())
+                self._set_affiliation(item.get_affiliation())
+                self._set_role(item.get_role())
+                self._set_jid(item.get_jid())
                 self._main_widget.set_tooltip_text(
 """Status text: {}""".format(item.get_status())
                     )
@@ -383,7 +440,18 @@ class MUCRosterJIDWidget:
                 self._set_show('unknown')
                 self._main_widget.set_tooltip_text("No status")
 
+        return
 
+    def _set_jid(self, value):
+
+        if value == None:
+            self._jid_label.set_text('')
+            self._jid_label.hide()
+        else:
+            self._jid_label.set_text(value)
+            self._jid_label.set_tooltip_text(value)
+            self._jid_label.show()
+            self._jid_menu.set(value)
         return
 
     def _set_available(self, value):
@@ -403,16 +471,44 @@ class MUCRosterJIDWidget:
             value = 'unknown'
 
         self._show_icon.set_from_pixbuf(
-            org.wayround.pyabber.icondb.get('show_{}'.format(value))
+            org.wayround.pyabber.icondb.get('show_{}_10x10'.format(value))
             )
 
-        self._show_icon.set_tooltip_text(value)
+        self._show_icon.set_tooltip_text("Show: {}".format(value))
+
+    def _set_affiliation(self, value):
+
+        if value == None:
+            value = 'unknown'
+
+        self._affiliation_icon.set_from_pixbuf(
+            org.wayround.pyabber.icondb.get('aff_{}_10x10'.format(value))
+            )
+
+        self._affiliation_icon.set_tooltip_text(
+            "Affiliation: {}".format(value)
+            )
+
+    def _set_role(self, value):
+
+        if value == None:
+            value = 'unknown'
+
+        self._role_icon.set_from_pixbuf(
+            org.wayround.pyabber.icondb.get('role_{}_10x10'.format(value))
+            )
+
+        self._role_icon.set_tooltip_text("Role: {}".format(value))
 
     def get_widget(self):
         return self._main_widget
 
     def destroy(self):
+        self._muc_roster_storage.disconnect_signal(
+            self._on_storage_actions
+            )
         self._menu.destroy()
+        self._jid_menu.destroy()
         self.get_widget().destroy()
 
     def _on_storage_actions(self, event, storage, nick, item):
@@ -420,6 +516,18 @@ class MUCRosterJIDWidget:
             if nick == self.get_nick():
                 self.reload_data(item)
         return
+
+    def _on_jid_right_button(self, widget, event):
+
+        ret = None
+
+        if event.button == Gdk.BUTTON_SECONDARY:
+
+            self._jid_menu.show()
+
+            ret = True
+
+        return ret
 
     def _on_widget_right_button(self, widget, event):
 

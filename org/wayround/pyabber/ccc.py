@@ -14,12 +14,14 @@ import org.wayround.pyabber.contact_editor
 import org.wayround.pyabber.disco
 import org.wayround.pyabber.main
 import org.wayround.pyabber.message_relay
+import org.wayround.pyabber.message_edit_widget
 import org.wayround.pyabber.muc
 import org.wayround.pyabber.presence_control_window
 import org.wayround.pyabber.registration
 import org.wayround.pyabber.roster_storage
 import org.wayround.pyabber.roster_window
 import org.wayround.pyabber.single_message_window
+import org.wayround.pyabber.subject_widget
 import org.wayround.utils.gtk
 import org.wayround.utils.signal
 import org.wayround.xmpp.client
@@ -33,6 +35,7 @@ SUBWINDOWS = [
     # 1. registered window name;
     # 2. single?;
     # 3. threaded?.
+    ('add_mode_language_window', False, False),
     ('adhoc_response_window', False, True),
     ('adhoc_window', False, True,),
     ('chat_window', True, True),
@@ -47,7 +50,8 @@ SUBWINDOWS = [
     ('registration_window', False, False),
     ('registration_window_threaded', False, True),
     ('roster_window', True, True),
-    ('single_message_window', False, True)
+    ('single_message_window', False, True),
+    ('subject_edit_window', False, True)
     ]
 
 
@@ -214,6 +218,9 @@ self._rel_win_ctl.set_constructor_cb(
     def _disco_window_constructor(self):
         return org.wayround.pyabber.disco.Disco(self)
 
+    def _add_mode_language_window_constructor(self):
+        return org.wayround.pyabber.message_edit_widget.AddModeLang()
+
     def _adhoc_window_constructor(self):
         return org.wayround.pyabber.adhoc.AD_HOC_Window(self)
 
@@ -258,6 +265,9 @@ self._rel_win_ctl.set_constructor_cb(
     def _registration_window_threaded_constructor(self):
         return org.wayround.pyabber.registration.RegistrationWindow(self)
 
+    def _subject_edit_window_constructor(self):
+        return org.wayround.pyabber.subject_widget.SubjectEditor(self)
+
     for i in SUBWINDOWS:
         exec(
             """\
@@ -300,6 +310,8 @@ def show_{i}(self, *args, **kwargs):
             self._disconnection_flag.clear()
 
     def destroy(self):
+        chat_window = self.get_chat_window()
+        chat_window.destroy()
         self.disconnect()
         self._rel_win_ctl.destroy()
         self._menu.destroy()

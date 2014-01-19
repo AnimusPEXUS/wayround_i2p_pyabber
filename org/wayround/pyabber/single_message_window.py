@@ -128,7 +128,9 @@ class SingleMessageWindow:
         thread_frame.add(thread_box)
 
         msg_edit_widget = \
-            org.wayround.pyabber.message_edit_widget.MessageEdit()
+            org.wayround.pyabber.message_edit_widget.MessageEdit(
+                self._controller
+                )
         self.msg_edit_widget = msg_edit_widget
 
         body_message_editor = msg_edit_widget.get_widget()
@@ -209,7 +211,7 @@ class SingleMessageWindow:
             self.thread_entry.set_text(repr(thread)[1:-1])
 
         if body != None:
-            self.msg_edit_widget.set_text(body)
+            self.msg_edit_widget.set_data({'': body}, None)
 
         if mode == 'new':
             self.msg_edit_widget.set_cursor_to_end()
@@ -244,7 +246,7 @@ class SingleMessageWindow:
         if self.subject_frame_cb.get_active() == True:
             subject = self.subject_entry.get_text()
 
-        body = self.msg_edit_widget.get_text()
+        plain, xhtml = self.msg_edit_widget.get_data()
 
         self._controller.message_client.message(
             to_jid=self.to_entry.get_text(),
@@ -252,14 +254,15 @@ class SingleMessageWindow:
             typ='normal',
             thread=thread,
             subject=subject,
-            body=body,
+            body=plain,
+            xhtml=xhtml,
             wait=False
             )
 
         self._window.destroy()
 
     def _on_reply_button_clicked(self, button):
-        initial_text = self.msg_edit_widget.get_text()
+        initial_text = self.msg_edit_widget.get_data()[0]['']
 
         body = ''
         if len(initial_text) != 0 and not initial_text.isspace():

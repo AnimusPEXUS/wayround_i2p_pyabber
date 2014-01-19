@@ -314,6 +314,7 @@ class RosterWidget:
 
     def _set_cb_signal(self):
         self._remove_cb_signal()
+        # FIXME: re do this by making/using object attribute
         self._groups_combobox.connect(
             'changed',
             self._on_groups_combobox_changed

@@ -3,19 +3,15 @@ import json
 import queue
 import threading
 
-from gi.repository import Gtk, Pango
+from gi.repository import Gtk, Pango, Gdk
 
 import org.wayround.pyabber.ccc
 import org.wayround.pyabber.chat_pager
 import org.wayround.pyabber.message_filter
+import org.wayround.pyabber.l10n
 import org.wayround.utils.gtk
 import org.wayround.utils.timer
 import org.wayround.xmpp.core
-
-
-CHAT_LOG_TABLE_ROW_MODE_ITEMS = Gtk.ListStore(str)
-CHAT_LOG_TABLE_ROW_MODE_ITEMS.append(['plain'])
-CHAT_LOG_TABLE_ROW_MODE_ITEMS.append(['xhtml'])
 
 
 class ChatLogTableRow:
@@ -24,7 +20,6 @@ class ChatLogTableRow:
         self,
         date, jid_to_display,
         plain, xhtml,
-        default_language, default_mode,
         column_size_groups,
         delay_from,
         delay_message,
@@ -36,29 +31,31 @@ class ChatLogTableRow:
         self._date = date
         self._subject = subject
 
+        font_desc = Pango.FontDescription.from_string("Clean 9")
+
         b = Gtk.Box()
         b.set_orientation(Gtk.Orientation.HORIZONTAL)
         b.set_spacing(5)
+#        b.override_background_color(
+#            Gtk.StateFlags.NORMAL, Gdk.RGBA(0.9, 0.9, 0.9)
+#            )
 
         date_label = Gtk.Label(date)
-        date_label.set_alignment(0.0, 0.0)
+        date_label.set_alignment(0.0, 0.5)
 
         jid_label = Gtk.Label(jid_to_display)
-        jid_label.set_alignment(0.0, 0.0)
-
-        subject_label_separator = Gtk.Separator()
-        self._subject_label_separator = subject_label_separator
-        subject_label_separator.set_no_show_all(True)
-        subject_label_separator.set_margin_left(10)
-        subject_label_separator.set_margin_right(10)
-        subject_label_separator.hide()
+        jid_label.set_alignment(0.0, 0.5)
 
         subject_label = Gtk.Label()
+        subject_label.override_font(font_desc)
         self._subject_label = subject_label
-        subject_label.set_alignment(0.0, 0.0)
+        subject_label.set_alignment(0.0, 0.5)
         subject_label.set_no_show_all(True)
         subject_label.set_margin_left(10)
         subject_label.set_margin_right(10)
+        subject_label.set_line_wrap(True)
+        subject_label.set_line_wrap_mode(Pango.WrapMode.WORD)
+        subject_label.set_selectable(True)
         subject_label.hide()
 
         if isinstance(subject, dict) and '' in subject:
@@ -69,10 +66,12 @@ class ChatLogTableRow:
                     "Changed Subject to: {}".format(subject[''])
                     )
             subject_label.show()
-            subject_label_separator.show()
 
         delay_label = Gtk.Label()
-        delay_label.set_alignment(0.0, 0.0)
+        delay_label.set_line_wrap(True)
+        delay_label.set_line_wrap_mode(Pango.WrapMode.WORD)
+        delay_label.set_selectable(True)
+        delay_label.set_alignment(0.0, 0.5)
 
         delayed_text = ''
 
@@ -87,6 +86,7 @@ class ChatLogTableRow:
         delay_label.set_text(delayed_text)
 
         text_label = Gtk.Label()
+        text_label.override_font(font_desc)
         self._text_label = text_label
         text_label.set_alignment(0.0, 0.0)
         text_label.set_line_wrap(True)
@@ -99,54 +99,28 @@ class ChatLogTableRow:
         text_label.set_margin_bottom(10)
         text_label.set_no_show_all(True)
 
-        mode_switch = Gtk.ComboBox()
-        mode_switch.set_no_show_all(True)
-        mode_switch.hide()
-        self._mode_switch = mode_switch
-        mode_switch.set_model(CHAT_LOG_TABLE_ROW_MODE_ITEMS)
+        mode_lang_switch_combo = Gtk.ComboBox()
+        mode_lang_switch_combo.set_no_show_all(True)
+        mode_lang_switch_combo.hide()
+        self._mode_lang_switch_combo = mode_lang_switch_combo
 
-        language_switch = Gtk.ComboBox()
-        language_switch.set_no_show_all(True)
-        language_switch.hide()
-        self._language_switch = language_switch
+        self._modes_langs = Gtk.ListStore(str)
+
+        mode_lang_switch_combo.set_model(self._modes_langs)
 
         renderer_text = Gtk.CellRendererText()
-        mode_switch.pack_start(renderer_text, True)
-        mode_switch.add_attribute(renderer_text, "text", 0)
-
-        renderer_text2 = Gtk.CellRendererText()
-        language_switch.pack_start(renderer_text2, True)
-        language_switch.add_attribute(renderer_text2, "text", 0)
-
-        plain_langs = []
-        if plain:
-            plain_langs = list(plain.keys())
-            plain_langs.sort()
-        plain_language_switch_model = Gtk.ListStore(str)
-        self._plain_language_switch_model = plain_language_switch_model
-        for i in plain_langs:
-            plain_language_switch_model.append([i])
-
-        xhtml_langs = []
-        if xhtml:
-            xhtml_langs = list(xhtml.keys())
-            xhtml_langs.sort()
-        xhtml_language_switch_model = Gtk.ListStore(str)
-        for i in xhtml_langs:
-            xhtml_language_switch_model.append([i])
-        self._xhtml_language_switch_model = xhtml_language_switch_model
+        mode_lang_switch_combo.pack_start(renderer_text, True)
+        mode_lang_switch_combo.add_attribute(renderer_text, "text", 0)
 
         b.pack_start(jid_label, False, False, 0)
         b.pack_start(date_label, False, False, 0)
-        b.pack_start(mode_switch, False, False, 0)
-        b.pack_start(language_switch, False, False, 0)
+        b.pack_start(mode_lang_switch_combo, False, False, 0)
         b.pack_start(delay_label, False, False, 0)
 
         column_size_groups[0].add_widget(jid_label)
         column_size_groups[1].add_widget(date_label)
-        column_size_groups[2].add_widget(mode_switch)
-        column_size_groups[3].add_widget(language_switch)
-        column_size_groups[4].add_widget(delay_label)
+        column_size_groups[2].add_widget(mode_lang_switch_combo)
+        column_size_groups[3].add_widget(delay_label)
 
         b2 = Gtk.Box()
         b2.set_margin_top(5)
@@ -156,18 +130,26 @@ class ChatLogTableRow:
         b2.set_spacing(5)
         b2.set_orientation(Gtk.Orientation.VERTICAL)
 
+        b2.pack_start(
+            Gtk.Separator.new(Gtk.Orientation.HORIZONTAL), False, False, 0
+            )
         b2.pack_start(b, False, False, 0)
         b2.pack_start(subject_label, False, False, 0)
-        b2.pack_start(subject_label_separator, False, False, 0)
+        b2.pack_start(
+            Gtk.Separator.new(Gtk.Orientation.HORIZONTAL), False, False, 0
+            )
         b2.pack_start(text_label, False, False, 0)
 
         self._widget = b2
         self._widget.show_all()
 
-        self.set_mode(default_mode)
-        self.set_language(default_language)
+        mode_lang_switch_combo.connect(
+            'changed',
+            self._on_mode_lang_switch_combo_changed
+            )
 
-        language_switch.connect('changed', self._on_lang_switch_chenged)
+        self._update_mode_combobox()
+        self.set_mode_lang_switch_status('', 'plain')
 
         return
 
@@ -176,93 +158,6 @@ class ChatLogTableRow:
 
     def destroy(self):
         self.get_widget().destroy()
-
-    def _update_text(self):
-
-        mode = self.get_mode()
-        language = self.get_language()
-
-        if mode == 'plain':
-            self._text_label.set_markup('')
-            self._text_label.set_use_markup(False)
-            if language in self._plain:
-                self._text_label.set_text(self._plain[language])
-            else:
-                self._text_label.set_text("")
-
-            self._text_label.set_visible(self._text_label.get_text() != '')
-
-        else:
-            self._text_label.set_text('')
-            self._text_label.set_use_markup(True)
-            if language in self._xhtml:
-                self._text_label.set_markup(self._xhtml[language])
-            else:
-                self._text_label.set_markup("")
-
-            self._text_label.set_visible(self._text_label.get_markup() != '')
-
-        self._subject_label_separator.set_visible(
-            self._text_label.get_visible()
-            and self._subject_label.get_visible()
-            )
-
-        return
-
-    def set_mode(self, mode):
-
-        language = self.get_language()
-
-        if mode == 'plain':
-            self._language_switch.set_model(self._plain_language_switch_model)
-#            self._mode_switch.set_active(0)
-        else:
-            self._language_switch.set_model(self._xhtml_language_switch_model)
-#            self._mode_switch.set_active(1)
-
-        self.set_language(language)
-
-        self._update_text()
-
-    def get_mode(self):
-        ret = 'plain'
-        r = self._mode_switch.get_active()
-        if r == 1:
-            ret = 'xhtml'
-        return ret
-
-    def get_language(self):
-        ret = ''
-
-        r = self._language_switch.get_active()
-
-        if r != -1:
-            mode = self.get_mode()
-
-            if mode == 'plain':
-                ret = self._plain_language_switch_model[r][0]
-            else:
-                ret = self._xhtml_language_switch_model[r][0]
-
-        return ret
-
-    def set_language(self, language):
-
-        model = self._plain_language_switch_model
-        if self.get_mode() == 'xhtml':
-            model = self._xhtml_language_switch_model
-
-        active = -1
-        for i in range(len(model)):
-            if model[i][0] == language:
-                active = i
-                break
-
-        self._language_switch.set_active(active)
-
-        self._update_text()
-
-        return
 
     def get_date(self):
         return self._date
@@ -276,8 +171,123 @@ class ChatLogTableRow:
     def get_subject(self):
         return self._subject
 
-    def _on_lang_switch_chenged(self, widget):
-        self._update_text()
+    def _on_mode_lang_switch_combo_changed(self, combo):
+        lang, mode = self.get_mode_lang_switch_status()
+
+        m = self._plain
+        if mode == 'xhtml':
+            m = self._xhtml
+
+        if lang in m:
+            self._text_label.set_text(m[lang])
+        else:
+            self._text_label.set_text('')
+
+        self._text_label.set_visible(self._text_label.get_text() != '')
+
+        return
+
+    def _update_mode_combobox(self):
+        lang, mode = self.get_mode_lang_switch_status()
+
+        modes = ['plain', 'xhtml']
+
+        while len(self._modes_langs) != 0:
+            del self._modes_langs[0]
+
+        for i in modes:
+
+            lng_lst = self._plain
+            if i == 'xhtml':
+                lng_lst = self._xhtml
+
+            lng_lst_names = list(lng_lst.keys())
+            lng_lst_names.sort()
+
+            for j in lng_lst_names:
+                mod_lang = self._format_mode_lang_name(i, j)
+                self._modes_langs.append([mod_lang])
+
+        self._mode_lang_switch_combo.set_sensitive(
+            len(self._mode_lang_switch_combo.get_model()) > 1
+            )
+
+        self._mode_lang_switch_combo.set_visible(
+            self._plain != {}
+            or self._xhtml != {}
+            )
+
+        self.set_mode_lang_switch_status(lang, mode)
+
+        return
+
+    def get_mode_lang_switch_status(self):
+
+        ret = '', 'plain'
+
+        active = self._mode_lang_switch_combo.get_active()
+
+        if active != -1:
+
+            active_text = self._modes_langs[active][0]
+
+            res = org.wayround.pyabber.l10n.LANG_MODE_RE.match(active_text)
+
+            if res != None:
+                lang = res.group('lang')
+                if lang == None:
+                    lang = ''
+                ret = lang, res.group('mode')
+
+        return ret
+
+    def find_mode_lang_index(self, lang, mode):
+        mod_lang = self._format_mode_lang_name(mode, lang)
+        ret = -1
+        for i in range(len(self._modes_langs)):
+            if self._modes_langs[i][0] == mod_lang:
+                ret = i
+                break
+
+        return ret
+
+    def set_mode_lang_switch_status(self, lang, mode):
+
+        if lang == None:
+            lang = ''
+
+        if mode == None:
+            mode = 'plain'
+
+        if not isinstance(lang, str):
+            raise TypeError("`lang' must be str")
+
+        if not isinstance(mode, str):
+            raise TypeError("`mode' must be str")
+
+        active = self.find_mode_lang_index(lang, mode)
+
+        if active == -1:
+            active = self.find_mode_lang_index('', 'plain')
+
+        self._mode_lang_switch_combo.set_active(active)
+
+        return
+
+    def _format_mode_lang_name(self, mode, lang):
+
+        if lang == None:
+            lang = ''
+
+        if mode == None:
+            mode = 'plain'
+
+        minus = ''
+        if lang != '':
+            minus = '-'
+        ret = '{}{}{}'.format(mode, minus, lang)
+
+        return ret
 
 
 # TODO: make not dependent from Chat
@@ -305,7 +315,7 @@ class ChatLogWidget:
         self._operation_mode = None
 
         self._size_groups = []
-        for i in range(5):
+        for i in range(4):
             sg = Gtk.SizeGroup()
             sg.set_mode(Gtk.SizeGroupMode.HORIZONTAL)
             self._size_groups.append(sg)
@@ -395,41 +405,29 @@ class ChatLogWidget:
                 jid,
                 plain,
                 xhtml,
-                default_language='',
-                default_mode='plain',
                 column_size_groups=self._size_groups,
                 delay_from=delay_from,
                 delay_message=delay_message,
                 subject=subject
                 )
 
-            newer = None
-
-            for i in self._rows:
-                if type(i) == ChatLogTableRow:
-                    if i.get_date() > date:
-                        newer = self._rows.index(i)
-
             self._log_box.pack_start(clt.get_widget(), False, False, 0)
 
-            if newer == None:
+            self._rows.append(clt)
 
-                self._rows.append(clt)
-
-                if len(self._rows) > 100:
-                    del_list = self._rows[:-100]
-                    self._rows = self._rows[100:]
-
-                    for i in del_list:
-                        i.destroy()
-
-                    del del_list
-
-            else:
-                self._rows.insert(newer, clt)
+            self._rows.sort(key=lambda x:  x.get_date())
 
             for i in self._rows:
                 self._log_box.reorder_child(i.get_widget(), -1)
+
+            if len(self._rows) > 100:
+                del_list = self._rows[:-100]
+                self._rows = self._rows[100:]
+
+                for i in del_list:
+                    i.destroy()
+
+                del del_list
 
             if self._last_date == None or date > self._last_date:
                 self._last_date = date
@@ -439,9 +437,9 @@ class ChatLogWidget:
         return
 
     def destroy(self):
-        # NOTE: not needed - read the docs
-        #        for i in self._size_groups:
-        #            i.destroy()
+        self._controller.message_relay.disconnect_signal(
+            self.history_update_listener
+            )
         self.get_widget().destroy()
         self._looped_timer.stop()
 

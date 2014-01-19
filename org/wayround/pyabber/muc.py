@@ -1046,12 +1046,36 @@ List of dictionaries. Add to dictionaties only changes (delta)
 
         return
 
-    def run(self, target_jid, mode=None):
+    def run(self, target_jid, mode=None, editing_preset=None):
         self.show()
 
         self._g_box_grid_jid_entry.set_text(target_jid)
         self._target_jid = target_jid
-        self._on_query_fast_mod_clicked(None, mode)
+        if mode != None:
+            self._on_query_fast_mod_clicked(None, mode)
+
+        if editing_preset != None:
+
+            data = []
+            for i in [editing_preset]:
+                data.append(
+                    {
+                     'jid': org.wayround.xmpp.core.JID.new_from_str(
+                        i.get_jid()
+                        ).bare(),
+                     'affiliation': i.get_affiliation(),
+                     'role': i.get_role(),
+                     'nick': i.get_nick(),
+                     'reason': '',
+                     'actor': ''
+                     }
+                    )
+
+            b = self._set_text.get_buffer()
+            b.set_text(
+                json.dumps(data, sort_keys=True,
+                           indent=4, separators=(',', ': '))
+                )
 
         self._iterated_loop.wait()
 

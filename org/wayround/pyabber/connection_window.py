@@ -212,6 +212,7 @@ class ConnectionMgrWindow:
         return
 
     def run(self):
+        self._reload_list()
         self.show()
         self._iterated_loop.wait()
         return

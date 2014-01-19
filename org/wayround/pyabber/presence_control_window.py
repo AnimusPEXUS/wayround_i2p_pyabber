@@ -3,6 +3,7 @@ from gi.repository import Gtk
 from gi.repository import Gdk
 
 import org.wayround.xmpp.client
+import org.wayround.xmpp.disco
 
 
 class PresenceControlWindow:
@@ -27,10 +28,11 @@ class PresenceControlWindow:
         b.set_margin_bottom(5)
         b.set_margin_left(5)
         b.set_margin_right(5)
+        b.set_spacing(5)
 
         bb = Gtk.ButtonBox()
         bb.set_orientation(Gtk.Orientation.HORIZONTAL)
-        bb.set_spacing(3)
+        bb.set_spacing(5)
 
         available_button = Gtk.Button("Available")
         unavailable_button = Gtk.Button("Unavailable")
@@ -85,8 +87,21 @@ class PresenceControlWindow:
         to_frame.set_label_widget(to_cb)
         to_frame.add(to_entry)
 
+        f_options = Gtk.Frame()
+        f_options.set_label("Additional Options")
+
+        muc_option_cb = Gtk.CheckButton()
+        muc_option_cb.set_label("MUC announcement")
+        self._muc_option_cb = muc_option_cb
+
+        options_grid = Gtk.Grid()
+        options_grid.attach(muc_option_cb, 0, 0, 1, 1)
+
+        f_options.add(options_grid)
+
         b.pack_start(to_frame, False, False, 0)
         b.pack_start(status_frame, True, True, 5)
+        b.pack_start(f_options, False, False, 0)
         b.pack_start(bb, False, False, 0)
 
         window.add(b)
@@ -112,6 +127,18 @@ class PresenceControlWindow:
         if to_ != None:
             self._to.set_text(to_)
             self._to_cb.set_active(True)
+
+            to_bare = org.wayround.xmpp.core.JID.new_from_str(to_).bare()
+
+            res, stanza = org.wayround.xmpp.disco.get_info(
+                to_bare,
+                self._controller.jid.full(),
+                stanza_processor=self._controller.client.stanza_processor
+                )
+
+            if res != None:
+                if res.has_feature('http://jabber.org/protocol/muc'):
+                    self._muc_option_cb.set_active(True)
 
         self.show()
 
@@ -155,9 +182,14 @@ class PresenceControlWindow:
                     False
                     )
 
+            options = []
+            if self._muc_option_cb.get_active():
+                options.append('muc')
+
             self._presence_client.presence(
                 show=show,
                 to_full_or_bare_jid=to,
                 status=status,
-                typ=typ
+                typ=typ,
+                options=options
                 )

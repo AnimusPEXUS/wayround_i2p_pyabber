@@ -1,7 +1,5 @@
 
 import datetime
-import logging
-import threading
 import uuid
 
 from gi.repository import Gdk, Gtk
@@ -42,6 +40,7 @@ class Chat:
                 raise ValueError("`parrent_groupchat' must be defined")
 
         self._mode = mode
+        self._pager = pager
 
         self._unread = False
 
@@ -64,7 +63,9 @@ class Chat:
 
         log_widget = self._log.get_widget()
 
-        self._editor = org.wayround.pyabber.message_edit_widget.MessageEdit()
+        self._editor = org.wayround.pyabber.message_edit_widget.MessageEdit(
+            self._controller
+            )
         editor_widget = self._editor.get_widget()
 
         send_button = Gtk.Button("Send")
@@ -84,8 +85,10 @@ class Chat:
 
         log_widget.set_size_request(-1, 200)
         bottom_box.set_size_request(-1, 100)
-        main_paned.child_set_property(bottom_box, 'shrink', False)
+
         main_paned.child_set_property(log_widget, 'shrink', False)
+        main_paned.child_set_property(bottom_box, 'shrink', False)
+        main_paned.child_set_property(bottom_box, 'resize', False)
 
         b = Gtk.Box()
         b.set_orientation(Gtk.Orientation.VERTICAL)
@@ -111,7 +114,20 @@ class Chat:
 
         self._jid_widget = jid_widget
 
-        self._title_label = jid_widget.get_widget()
+        self._title_label = Gtk.Box()
+        self._title_label.set_orientation(Gtk.Orientation.HORIZONTAL)
+
+        self._title_label.pack_start(jid_widget.get_widget(), True, True, 0)
+
+        if self._mode != 'groupchat':
+
+            tab_close_button = Gtk.Button('x')
+            tab_close_button.connect(
+                'clicked',
+                self._on_tab_close_button_clicked
+                )
+
+            self._title_label.pack_start(tab_close_button, False, False, 0)
 
         self._subject_widget = \
             org.wayround.pyabber.subject_widget.SubjectWidget(
@@ -138,6 +154,9 @@ class Chat:
             'new_message', self.history_update_listener
             )
 
+        if self._mode == 'groupchat':
+            self.make_available()
+
         return
 
     def set_resource(self, value):
@@ -159,14 +178,49 @@ class Chat:
     def get_page_widget(self):
         return self._root_widget
 
+    def make_available(self):
+        j = org.wayround.xmpp.core.JID.new_from_str(self.contact_bare_jid)
+        j.resource = self.contact_resource
+
+        options = []
+        if self._mode == 'groupchat':
+            options.append('muc')
+
+        self._controller.presence_client.presence(
+            to_full_or_bare_jid=str(j),
+            options=options
+            )
+
+    def make_unavailable(self):
+        j = org.wayround.xmpp.core.JID.new_from_str(self.contact_bare_jid)
+        j.resource = self.contact_resource
+
+        options = []
+        if self._mode == 'groupchat':
+            options.append('muc')
+
+        self._controller.presence_client.presence(
+            to_full_or_bare_jid=str(j),
+            typ='unavailable',
+            options=options
+            )
+
     def destroy(self):
+
+        self._controller.message_relay.disconnect_signal(
+            self.history_update_listener
+            )
+
+        if self._mode == 'groupchat':
+            self.make_unavailable()
+
         self._jid_widget.destroy()
         self._subject_widget.destroy()
         self._thread_widget.destroy()
         self._log.destroy()
         self._editor.destroy()
-        self._title_label.destroy()
         self.get_page_widget().destroy()
+        self.get_tab_title_widget().destroy()
         return
 
     def add_message(self, txt, from_jid, date=None):
@@ -211,9 +265,9 @@ class Chat:
             type_ = 'message_groupchat'
             message_type = 'groupchat'
 
-        txt = self._editor.get_text()
+        plain, xhtml = self._editor.get_data()
 
-        self._editor.set_text('')
+        self._editor.set_data({'': ''}, None)
 
         to_jid = self.contact_bare_jid
         if self._mode == 'private':
@@ -225,7 +279,8 @@ class Chat:
             typ=message_type,
             thread=self.thread_id,
             subject=None,
-            body=txt
+            body=plain,
+            xhtml=xhtml
             )
 
         if self._mode != 'groupchat':
@@ -248,10 +303,14 @@ class Chat:
                 type_=type_,
                 parent_thread_id=None,
                 thread_id=self.thread_id,
-                subject=None,
-                plain={'': txt},
-                xhtml={}
+                subject={},
+                plain=plain,
+                xhtml=xhtml
                 )
+
+        self._editor.clear()
+
+        return
 
     def set_unread(self, value):
         if not isinstance(value, bool):
@@ -272,6 +331,9 @@ class Chat:
                 self.set_unread(True)
 
         return
+
+    def _on_tab_close_button_clicked(self, button):
+        self._pager.remove_page(self)
 
 
 class ChatPager:
@@ -349,12 +411,16 @@ class ChatPager:
             self.pages.remove(page)
         return
 
-    def close_all_pages(self):
+    def remove_all_pages(self):
         for i in self.pages[:]:
             self.remove_page(i)
 
     def destroy(self):
-        self.close_all_pages()
+        self._controller.message_relay.disconnect_signal(
+            self.history_update_listener
+            )
+        self.remove_all_pages()
+        self.get_widget().destroy()
 
     def _get_all_notebook_pages(self):
         n = self._notebook.get_n_pages()
@@ -475,6 +541,8 @@ class GroupChat:
         self.contact_resource = own_resource
         self.thread_id = None
 
+        self._pager = pager
+
         self._controller = controller
         self._room_bare_jid_obj = org.wayround.xmpp.core.JID.new_from_str(
             room_bare_jid
@@ -509,7 +577,8 @@ class GroupChat:
             contact_resource=own_resource,
             thread_id=None,
             mode='groupchat',
-            muc_roster_storage=self._storage
+            muc_roster_storage=self._storage,
+            parrent_groupchat=self
             )
 
         self._notebook = Gtk.Notebook()
@@ -522,13 +591,23 @@ class GroupChat:
 
         paned = Gtk.Paned()
 
+        rw_rw = self._roster_widget.get_widget()
+        rw_rw.set_margin_top(5)
+        rw_rw.set_margin_left(5)
+        rw_rw.set_margin_right(5)
+        rw_rw.set_margin_bottom(5)
+
         rw_f = Gtk.Frame()
         rw_sw = Gtk.ScrolledWindow()
         rw_f.add(rw_sw)
-        rw_sw.add(self._roster_widget.get_widget())
+        rw_sw.add(rw_rw)
 
         paned.add1(self._notebook)
         paned.add2(rw_f)
+
+        paned.child_set_property(self._notebook, 'shrink', False)
+        paned.child_set_property(rw_f, 'shrink', False)
+        paned.child_set_property(rw_f, 'resize', False)
 
         b.pack_start(paned, True, True, 0)
 
@@ -541,7 +620,21 @@ class GroupChat:
             self._controller.client.stanza_processor
             )
 
-        self._title_label = self._tab_widget.get_widget()
+        self._title_label = Gtk.Box()
+        self._title_label.set_orientation(Gtk.Orientation.HORIZONTAL)
+
+        tab_close_button = Gtk.Button('x')
+        tab_close_button.connect('clicked', self._on_tab_close_button_clicked)
+
+        self._title_label.pack_start(
+            self._tab_widget.get_widget(), True, True, 0
+            )
+
+        self._title_label.pack_start(
+            tab_close_button, False, False, 0
+            )
+
+        self._title_label.show_all()
 
         self._main_chat_page = main_chat_page
 
@@ -567,11 +660,16 @@ class GroupChat:
         return self.contact_resource
 
     def destroy(self):
-        self.close_all_pages()
+        self._storage.destroy()
+        self._controller.message_relay.disconnect_signal(
+            self.history_update_listener
+            )
+        self.remove_all_pages()
         self._roster_widget.destroy()
 #        self._jid_widget.destroy()
         self._main_chat_page.destroy()
-        self._tab_widget.destroy()
+        self.get_tab_title_widget().destroy()
+        self.get_page_widget().destroy()
 
     def get_tab_title_widget(self):
         return self._title_label
@@ -583,13 +681,26 @@ class GroupChat:
 
     remove_page = ChatPager.remove_page
 
-    close_all_pages = ChatPager.close_all_pages
+    remove_all_pages = ChatPager.remove_all_pages
 
     _get_all_notebook_pages = ChatPager._get_all_notebook_pages
 
     _get_all_list_pages = ChatPager._get_all_list_pages
 
-    _search_page = ChatPager._search_page
+    def _search_page(self, resource):
+
+        if not isinstance(resource, str):
+            raise ValueError("`resource' must be str")
+
+        ret = []
+
+        for i in self.pages:
+
+            if i.contact_resource == resource:
+
+                ret.append(i)
+
+        return ret
 
     def _sync_pages_with_list(self):
 
@@ -612,7 +723,8 @@ class GroupChat:
         return
 
     def add_private(self, jid_obj, parrent_groupchat):
-        res = self._search_page(jid_obj, type_=Chat)
+
+        res = self._search_page(jid_obj.resource)
 
         ret = None
 
@@ -649,3 +761,6 @@ class GroupChat:
                     self.add_private(jid_obj, self._main_chat_page)
 
         return
+
+    def _on_tab_close_button_clicked(self, button):
+        self._pager.remove_page(self)

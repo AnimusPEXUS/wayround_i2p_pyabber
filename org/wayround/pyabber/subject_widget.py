@@ -6,6 +6,103 @@ from gi.repository import Gtk, Pango
 
 import org.wayround.pyabber.misc
 import org.wayround.pyabber.message_filter
+import org.wayround.pyabber.message_edit_widget
+
+
+class SubjectEditor:
+
+    def __init__(self, controller):
+
+        self._controller = controller
+
+        window = Gtk.Window()
+        window.connect('destroy', self._on_destroy)
+
+        b = Gtk.Box()
+        b.set_orientation(Gtk.Orientation.VERTICAL)
+        b.set_margin_top(5)
+        b.set_margin_left(5)
+        b.set_margin_right(5)
+        b.set_margin_bottom(5)
+        b.set_spacing(5)
+
+        target_entry = Gtk.Entry()
+        self._target_entry = target_entry
+
+        bb = Gtk.ButtonBox()
+        bb.set_orientation(Gtk.Orientation.HORIZONTAL)
+
+        ok_button = Gtk.Button("Send")
+        ok_button.connect('clicked', self._on_ok_button_clicked)
+
+        cancel_button = Gtk.Button("Cancel")
+        cancel_button.connect('clicked', self._on_cancel_button_clicked)
+
+        bb.pack_start(ok_button, False, False, 0)
+        bb.pack_start(cancel_button, False, False, 0)
+
+        editor = org.wayround.pyabber.message_edit_widget.MessageEdit(
+            controller,
+            mode='subject'
+            )
+
+        self._editor = editor
+
+        b.pack_start(target_entry, False, False, 0)
+        b.pack_start(editor.get_widget(), True, True, 0)
+        b.pack_start(bb, False, False, 0)
+
+        window.add(b)
+
+        self._window = window
+
+        self._iterated_loop = org.wayround.utils.gtk.GtkIteratedLoop()
+
+        return
+
+    def run(self, data, target_jid):
+
+        self._target_entry.set_text(target_jid)
+
+        self._editor.set_data(data, None)
+
+        self.show()
+
+        self._iterated_loop.wait()
+
+        return
+
+    def show(self):
+        self._window.show_all()
+
+    def destroy(self):
+        self._window.hide()
+        self._window.destroy()
+        self._editor.destroy()
+        self._iterated_loop.stop()
+
+    def _on_destroy(self, window):
+        self.destroy()
+
+    def _on_ok_button_clicked(self, button):
+
+        subject = self._editor.get_data()[0]
+
+        self._controller.message_client.message(
+            to_jid=self._target_entry.get_text(),
+            from_jid=False,
+            typ='groupchat',
+            thread=None,
+            subject=subject,
+            body=None,
+            xhtml=None
+            )
+
+        self.destroy()
+        return
+
+    def _on_cancel_button_clicked(self, button):
+        self.destroy()
 
 
 class SubjectWidget:
@@ -39,11 +136,16 @@ class SubjectWidget:
         b.set_spacing(5)
 
         self._text = Gtk.Label()
-        self._text.set_alignment(0.0, 0.0)
+        self._text.set_alignment(0.0, 0.5)
+        font_desc = Pango.FontDescription.from_string("Clean 9")
+        self._text.override_font(font_desc)
         self._text.set_line_wrap(True)
         self._text.set_line_wrap_mode(Pango.WrapMode.WORD)
         self._text.set_selectable(True)
         self._text.set_justify(Gtk.Justification.LEFT)
+
+        self._edit_button = Gtk.Button("Edit..")
+        self._edit_button.connect('clicked', self._on_edit_button_clicked)
 
         self._delete_button = Gtk.Button("Del")
         self._delete_button.connect('clicked', self._on_delete_button_clicked)
@@ -60,6 +162,7 @@ class SubjectWidget:
         b.pack_start(Gtk.Label("Subject:"), False, False, 0)
         b.pack_start(self._text, True, True, 0)
         b.pack_start(self._lang_select_cb, False, False, 0)
+        b.pack_start(self._edit_button, False, False, 0)
         b.pack_start(self._delete_button, False, False, 0)
 
         self._main_widget = b
@@ -87,6 +190,9 @@ class SubjectWidget:
         return self._contact_resource
 
     def destroy(self):
+        self._controller.message_relay.disconnect_signal(
+            self.history_update_listener
+            )
         self.get_widget().destroy()
 
     def set_data(self, data):
@@ -224,5 +330,16 @@ class SubjectWidget:
                     res.gen_error(),
                     "Can't delete subject"
                     )
+
+        return
+
+    def _on_edit_button_clicked(self, button):
+
+        j = org.wayround.xmpp.core.JID.new_from_string(self._contact_bare_jid)
+
+        self._controller.show_subject_edit_window(
+            self._data,
+            str(j)
+            )
 
         return

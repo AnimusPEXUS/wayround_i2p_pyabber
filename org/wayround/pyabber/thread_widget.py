@@ -36,7 +36,9 @@ class ThreadWidget:
         b.set_spacing(5)
 
         self._text = Gtk.Label()
-        self._text.set_alignment(0.0, 0.0)
+        font_desc = Pango.FontDescription.from_string("Clean 9")
+        self._text.override_font(font_desc)
+        self._text.set_alignment(0.0, 0.5)
         self._text.set_line_wrap(True)
         self._text.set_line_wrap_mode(Pango.WrapMode.WORD)
         self._text.set_selectable(True)
@@ -64,6 +66,9 @@ class ThreadWidget:
         return self._contact_resource
 
     def destroy(self):
+        self._controller.message_relay.disconnect_signal(
+            self.history_update_listener
+            )
         self.get_widget().destroy()
 
     def set_data(self, data):
