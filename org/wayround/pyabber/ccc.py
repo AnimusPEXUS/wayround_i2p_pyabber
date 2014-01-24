@@ -1,5 +1,4 @@
 
-import datetime
 import logging
 import socket
 import threading
@@ -9,12 +8,13 @@ from gi.repository import Gtk
 import lxml.etree
 import org.wayround.gsasl.gsasl
 import org.wayround.pyabber.adhoc
+import org.wayround.pyabber.bob
 import org.wayround.pyabber.chat_window
 import org.wayround.pyabber.contact_editor
 import org.wayround.pyabber.disco
 import org.wayround.pyabber.main
-import org.wayround.pyabber.message_relay
 import org.wayround.pyabber.message_edit_widget
+import org.wayround.pyabber.message_relay
 import org.wayround.pyabber.muc
 import org.wayround.pyabber.presence_control_window
 import org.wayround.pyabber.registration
@@ -377,6 +377,8 @@ def show_{i}(self, *args, **kwargs):
             self.jid
             )
 
+        self.bob_mgr = org.wayround.pyabber.bob.BOBMgr(self)
+
         self.client.sock_streamer.connect_signal(
             ['start', 'stop', 'error'],
             self._on_connection_event
@@ -560,6 +562,10 @@ def show_{i}(self, *args, **kwargs):
                     self.jid,
                     info=self.self_disco_info,
                     items=None
+                    )
+
+                self.message_relay.connect_signal(
+                    'new_message', self.message_relay_listener
                     )
 
         self.is_driven = False
@@ -850,3 +856,15 @@ def show_{i}(self, *args, **kwargs):
             ret = 1
 
         return ret
+
+    def message_relay_listener(
+        self,
+        event, storage, original_stanza,
+        date, receive_date, delay_from, delay_message, incomming,
+        connection_jid_obj, jid_obj, type_, parent_thread_id, thread_id,
+        subject, plain, xhtml
+        ):
+
+        if event == 'new_message':
+            if type_ == 'message_normal':
+                self.show_single_message_window('view', original_stanza)

@@ -6,6 +6,8 @@ import logging
 from gi.repository import Gtk
 
 import lxml.etree
+import org.wayround.pyabber.ccc
+import org.wayround.pyabber.xdata_media_element
 import org.wayround.utils.list
 import org.wayround.xmpp.core
 import org.wayround.xmpp.xdata
@@ -14,9 +16,9 @@ import org.wayround.xmpp.xdata
 EXPENDABLE_WIDGETS = ['list-multi', 'list-single', 'jid-multi', 'text-multi']
 
 
-class XDataFormWidgetController:
+class XDataFormWidget:
 
-    def __init__(self, x_data):
+    def __init__(self, controller, x_data, origin_stanza, editable=True):
 
         """
         Forms a Gtk+3 widget, which can be added to Container or packed to Box
@@ -27,10 +29,24 @@ class XDataFormWidgetController:
         if not isinstance(x_data, org.wayround.xmpp.xdata.XData):
             raise TypeError("`x_data' must be org.wayround.xmpp.xdata.XData")
 
+        if not isinstance(
+            controller,
+            org.wayround.pyabber.ccc.ClientConnectionController
+            ):
+            raise TypeError(
+    "`controller' must be org.wayround.pyabber.ccc.ClientConnectionController"
+                )
+
+        self._controller = controller
+        self._origin_stanza = origin_stanza
+        self._editable = editable
+
         x_data = copy.deepcopy(x_data)
         self._x_data = x_data
 
         self._fields = {}
+        self._fieldswgs = []
+        self._media_fields = []
 
         main_frame = Gtk.Frame()
         self._main_frame = main_frame
@@ -70,7 +86,7 @@ class XDataFormWidgetController:
         for i in fields:
             i_var = i.get_var()
             if i_var != None:
-                w = field_widget(i)
+                w = self.field_widget(i)
                 self._fields[i_var] = w['controller']
 
                 widg = w['widget']
@@ -91,7 +107,19 @@ class XDataFormWidgetController:
     def get_widget(self):
         return self._main_frame
 
-    def gen_x_data(self):
+    def destroy(self):
+        # TODO: check everything is destroyed
+        for i in self._fieldswgs[:]:
+            i.destroy()
+            self._fieldswgs.remove(i)
+
+        for i in self._media_fields[:]:
+            i.destroy()
+            self._media_fields.remove(i)
+
+        self.get_widget().destroy()
+
+    def gen_stanza_subobject(self):
         """
         Applies form changes to internal x_data copy and returns the result
 
@@ -131,96 +159,120 @@ class XDataFormWidgetController:
 
         return ret
 
+    def field_widget(self, field_data):
 
-def field_widget(field_data):
-
-    if not isinstance(field_data, org.wayround.xmpp.xdata.XDataField):
-        raise TypeError(
-            "`field_data' must be org.wayround.xmpp.xdata.XDataField"
-            )
-
-    b = Gtk.Box()
-    b.set_spacing(5)
-    b.set_orientation(Gtk.Orientation.VERTICAL)
-
-    desc = field_data.get_desc()
-    if desc:
-        desc_label = Gtk.Label(desc)
-        b.pack_start(desc_label, False, False, 0)
-
-    specific_field_widget_controller = None
-    ft = field_data.get_type()
-    if ft == 'boolean':
-        specific_field_widget_controller = FieldBoolean(field_data)
-
-    elif ft == 'hidden':
-        specific_field_widget_controller = FieldHidden(field_data)
-
-    elif ft == 'list-multi':
-        specific_field_widget_controller = FieldList(field_data, True)
-
-    elif ft == 'list-single':
-        specific_field_widget_controller = FieldList(field_data, False)
-
-    elif ft == 'fixed':
-        specific_field_widget_controller = \
-            FieldTextArea(field_data, False, True)
-
-    elif ft == 'jid-multi':
-        specific_field_widget_controller = \
-            FieldTextArea(field_data, True, False)
-
-    elif ft == 'text-multi':
-        specific_field_widget_controller = \
-            FieldTextArea(field_data, False, False)
-
-    elif ft == 'jid-single':
-        specific_field_widget_controller = FieldText(field_data, True, False)
-
-    elif ft == 'text-single':
-        specific_field_widget_controller = \
-            FieldTextArea(field_data, False, False, True)
-
-    elif ft == 'text-private':
-        specific_field_widget_controller = FieldText(field_data, False, True)
-
-    else:
-        raise ValueError("invalid field type: {}".format(ft))
-
-    widg = specific_field_widget_controller.get_widget()
-    widg.set_margin_left(5)
-    widg.set_margin_right(5)
-    exp = False
-    if ft in EXPENDABLE_WIDGETS:
-        exp = True
-    b.pack_start(widg, exp, exp, 0)
-
-    ret_widg = b
-    if ft not in ['boolean']:
-        widg.set_margin_top(5)
-        widg.set_margin_bottom(5)
-        f = Gtk.Frame()
-
-        r = ''
-        if field_data.get_required():
-            r = ' (required)'
-
-        f.set_label(
-            "{label} {{{typ}}}{req}".format(
-                label=field_data.get_label(),
-                typ=field_data.get_type(),
-                req=r
+        if not isinstance(field_data, org.wayround.xmpp.xdata.XDataField):
+            raise TypeError(
+                "`field_data' must be org.wayround.xmpp.xdata.XDataField"
                 )
-            )
-        f.add(b)
-        ret_widg = f
 
-    return {'controller': specific_field_widget_controller, 'widget': ret_widg}
+        b = Gtk.Box()
+        b.set_spacing(5)
+        b.set_orientation(Gtk.Orientation.VERTICAL)
+
+        desc = field_data.get_desc()
+        if desc:
+            desc_label = Gtk.Label(desc)
+            b.pack_start(desc_label, False, False, 0)
+
+        media = field_data.get_media()
+        if media != None:
+            media_widget = \
+                org.wayround.pyabber.xdata_media_element.MediaElementWidget(
+                    self._controller,
+                    media,
+                    self._origin_stanza
+                    )
+            self._media_fields.append(media_widget)
+            b.pack_start(media_widget.get_widget(), False, False, 0)
+
+        specific_field_widget_controller = None
+        ft = field_data.get_type()
+        if ft == 'boolean':
+            specific_field_widget_controller = \
+                FieldBoolean(field_data, editable=self._editable)
+
+        elif ft == 'hidden':
+            specific_field_widget_controller = \
+                FieldHidden(field_data, editable=self._editable)
+
+        elif ft == 'list-multi':
+            specific_field_widget_controller = \
+                FieldList(field_data, True, editable=self._editable)
+
+        elif ft == 'list-single':
+            specific_field_widget_controller = \
+                FieldList(field_data, False, editable=self._editable)
+
+        elif ft == 'fixed':
+            specific_field_widget_controller = \
+                FieldTextArea(field_data, False, True, editable=self._editable)
+
+        elif ft == 'jid-multi':
+            specific_field_widget_controller = \
+                FieldTextArea(field_data, True, False, editable=self._editable)
+
+        elif ft == 'text-multi':
+            specific_field_widget_controller = \
+                FieldTextArea(
+                    field_data, False, False, editable=self._editable
+                    )
+
+        elif ft == 'jid-single':
+            specific_field_widget_controller = \
+                FieldText(field_data, True, False, editable=self._editable)
+
+        elif ft == 'text-single':
+            specific_field_widget_controller = \
+                FieldTextArea(
+                    field_data, False, False, True, editable=self._editable
+                    )
+
+        elif ft == 'text-private':
+            specific_field_widget_controller = \
+                FieldText(field_data, False, True, editable=self._editable)
+
+        else:
+            raise ValueError("invalid field type: {}".format(ft))
+
+        widg = specific_field_widget_controller.get_widget()
+        self._fieldswgs.append(widg)
+        widg.set_margin_left(5)
+        widg.set_margin_right(5)
+        exp = False
+        if ft in EXPENDABLE_WIDGETS:
+            exp = True
+        b.pack_start(widg, exp, exp, 0)
+
+        ret_widg = b
+        if ft not in ['boolean']:
+            widg.set_margin_top(5)
+            widg.set_margin_bottom(5)
+            f = Gtk.Frame()
+
+            r = ''
+            if field_data.get_required():
+                r = ' (required)'
+
+            f.set_label(
+                "{label} {{{typ}}}{req}".format(
+                    label=field_data.get_label(),
+                    typ=field_data.get_type(),
+                    req=r
+                    )
+                )
+            f.add(b)
+            ret_widg = f
+
+        return {
+            'controller': specific_field_widget_controller,
+            'widget': ret_widg
+            }
 
 
 class FieldBoolean:
 
-    def __init__(self, field_data):
+    def __init__(self, field_data, editable=True):
 
         if not isinstance(field_data, org.wayround.xmpp.xdata.XDataField):
             raise TypeError(
@@ -236,6 +288,7 @@ class FieldBoolean:
         text = field_data.get_label()
 
         widget = Gtk.CheckButton()
+        widget.set_sensitive(editable)
         widget.set_label(text)
         widget.set_active(value)
 
@@ -256,10 +309,13 @@ class FieldBoolean:
     def has_errors(self):
         return False
 
+    def destroy(self):
+        self.get_widget().destroy()
+
 
 class FieldHidden:
 
-    def __init__(self, field_data):
+    def __init__(self, field_data, editable=True):
 
         if not isinstance(field_data, org.wayround.xmpp.xdata.XDataField):
             raise TypeError(
@@ -271,6 +327,7 @@ class FieldHidden:
         for i in self._values:
             vals.append(i.get_value())
         self._w = Gtk.Label(json.dumps(vals))
+        self._w.set_selectable(True)
 
     def get_values(self):
         return self._values
@@ -281,10 +338,13 @@ class FieldHidden:
     def has_errors(self):
         return False
 
+    def destroy(self):
+        self.get_widget().destroy()
+
 
 class FieldList:
 
-    def __init__(self, field_data, multi=False):
+    def __init__(self, field_data, multi=False, editable=True):
 
         if not isinstance(field_data, org.wayround.xmpp.xdata.XDataField):
             raise TypeError(
@@ -292,6 +352,7 @@ class FieldList:
                 )
 
         view = Gtk.TreeView()
+        view.set_sensitive(editable)
         self._view = view
         frame = Gtk.Frame()
         scrolledwindow = Gtk.ScrolledWindow()
@@ -374,11 +435,15 @@ class FieldList:
     def has_errors(self):
         return False
 
+    def destroy(self):
+        self.get_widget().destroy()
+
 
 class FieldTextArea:
 
     def __init__(
-        self, field_data, jid_mode=False, fixed=False, single_mode=False
+        self, field_data, jid_mode=False, fixed=False, single_mode=False,
+        editable=True
         ):
 
         if not isinstance(field_data, org.wayround.xmpp.xdata.XDataField):
@@ -408,7 +473,7 @@ class FieldTextArea:
 
         view.get_buffer().set_text(text)
 
-        view.set_editable(not fixed)
+        view.set_editable(not fixed and editable)
 
         return
 
@@ -473,10 +538,16 @@ class FieldTextArea:
 
         return ret
 
+    def destroy(self):
+        self.get_widget().destroy()
+
 
 class FieldText:
 
-    def __init__(self, field_data, jid_mode=False, private=False):
+    def __init__(
+        self, field_data, jid_mode=False, private=False,
+        editable=True
+        ):
 
         if not isinstance(field_data, org.wayround.xmpp.xdata.XDataField):
             raise TypeError(
@@ -491,6 +562,7 @@ class FieldText:
         self._is_jid_mode = jid_mode
 
         entry = Gtk.Entry()
+        entry.set_editable(editable)
 
         self._widget = entry
         self._entry = entry
@@ -530,6 +602,9 @@ class FieldText:
                 ret = True
 
         return ret
+
+    def destroy(self):
+        self.get_widget().destroy()
 
 
 class ReportWidget:
@@ -589,3 +664,6 @@ class ReportWidget:
 
     def get_widget(self):
         return self._widget
+
+    def destroy(self):
+        self.get_widget().destroy()

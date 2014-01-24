@@ -122,9 +122,11 @@ class MUCRosterWidget:
 
         initial_sorting_list = []
         for i in self._list:
-            initial_sorting_list.append(
-                self._muc_roster_storage.get_item(i.get_nick())
-                )
+            t = i.get_nick()
+            if t:
+                t = self._muc_roster_storage.get_item(t)
+                if t:
+                    initial_sorting_list.append(t)
 
         final_sorting_list = []
         for i in ['moderator', 'none', 'participant', 'visitor', None]:

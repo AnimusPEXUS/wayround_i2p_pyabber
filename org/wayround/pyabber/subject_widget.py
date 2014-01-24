@@ -1,5 +1,4 @@
 
-import logging
 import threading
 
 from gi.repository import Gtk, Pango
@@ -7,6 +6,39 @@ from gi.repository import Gtk, Pango
 import org.wayround.pyabber.misc
 import org.wayround.pyabber.message_filter
 import org.wayround.pyabber.message_edit_widget
+
+
+class SubjectTooltip:
+
+    def __init__(self):
+        self._window = Gtk.Window()
+        self._window.connect('destroy', self._on_destroy)
+
+        self._label = Gtk.Label()
+        font_desc = Pango.FontDescription.from_string("Clean 9")
+        self._label.override_font(font_desc)
+        self._label.set_ellipsize(Pango.EllipsizeMode.END)
+        self._label.set_alignment(0.0, 0.0)
+        self._label.set_line_wrap(True)
+        self._label.set_line_wrap_mode(Pango.WrapMode.WORD)
+        self._label.set_justify(Gtk.Justification.LEFT)
+
+        self._window.add(self._label)
+        self._window.show_all()
+
+        return
+
+    def destroy(self):
+        self.get_window().destroy()
+
+    def get_window(self):
+        return self._window
+
+    def set_text(self, value):
+        self._label.set_text(value)
+
+    def _on_destroy(self, win):
+        self.destroy()
 
 
 class SubjectEditor:
@@ -127,6 +159,8 @@ class SubjectWidget:
         self._incomming_messages_lock = threading.Lock()
         self._incomming_messages_lock.acquire()
 
+#        self._tooltip = SubjectTooltip()
+
         self._data = {}
 
         self._last_date = None
@@ -143,14 +177,19 @@ class SubjectWidget:
         self._text.set_line_wrap_mode(Pango.WrapMode.WORD)
         self._text.set_selectable(True)
         self._text.set_justify(Gtk.Justification.LEFT)
+#        self._text.set_tooltip_window(self._tooltip.get_window())
+#        self._text.set_has_tooltip(True)
 
         self._edit_button = Gtk.Button("Edit..")
+        self._edit_button.set_valign(Gtk.Align.START)
         self._edit_button.connect('clicked', self._on_edit_button_clicked)
 
         self._delete_button = Gtk.Button("Del")
+        self._delete_button.set_valign(Gtk.Align.START)
         self._delete_button.connect('clicked', self._on_delete_button_clicked)
 
         self._lang_select_cb = Gtk.ComboBox()
+        self._lang_select_cb.set_valign(Gtk.Align.START)
 
         renderer_text = Gtk.CellRendererText()
         self._lang_select_cb.pack_start(renderer_text, True)
@@ -159,8 +198,11 @@ class SubjectWidget:
         self._languages_model = Gtk.ListStore(str)
         self._lang_select_cb.set_model(self._languages_model)
 
-        b.pack_start(Gtk.Label("Subject:"), False, False, 0)
-        b.pack_start(self._text, True, True, 0)
+        text_scrolled_win = Gtk.ScrolledWindow()
+        text_scrolled_win.add(self._text)
+#        text_scrolled_win.set_size_request(-1, 100)
+
+        b.pack_start(text_scrolled_win, True, True, 0)
         b.pack_start(self._lang_select_cb, False, False, 0)
         b.pack_start(self._edit_button, False, False, 0)
         b.pack_start(self._delete_button, False, False, 0)
@@ -171,7 +213,7 @@ class SubjectWidget:
         self._lang_select_cb.connect('changed', self._on_lang_switch_chenged)
 
         self._controller.message_relay.connect_signal(
-            'new_message', self.history_update_listener
+            'new_message', self.message_relay_listener
             )
 
         self.set_selected_language('')
@@ -191,9 +233,18 @@ class SubjectWidget:
 
     def destroy(self):
         self._controller.message_relay.disconnect_signal(
-            self.history_update_listener
+            self.message_relay_listener
             )
+#        self._tooltip.destroy()
         self.get_widget().destroy()
+
+    def set_editable(self, value):
+        self._edit_button.set_sensitive(value)
+        self._delete_button.set_sensitive(value)
+        return
+
+    def get_editable(self):
+        return self._edit_button.get_sensitive()
 
     def set_data(self, data):
 
@@ -236,6 +287,9 @@ class SubjectWidget:
 
         return
 
+    def get_data(self):
+        return self._data
+
     def get_selected_language(self):
 
         ret = ''
@@ -272,15 +326,16 @@ class SubjectWidget:
             self._text.set_text(
                 self._data[lang]
                 )
+#            self._tooltip.set_text(self._data[lang])
 
         return
 
     def _on_lang_switch_chenged(self, widget):
         self._update_text()
 
-    def history_update_listener(
+    def message_relay_listener(
         self,
-        event, storage,
+        event, storage, original_stanza,
         date, receive_date, delay_from, delay_message, incomming,
         connection_jid_obj, jid_obj, type_, parent_thread_id, thread_id,
         subject, plain, xhtml

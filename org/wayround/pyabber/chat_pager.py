@@ -19,7 +19,7 @@ class Chat:
     def __init__(
         self, pager, controller,
         contact_bare_jid, contact_resource, thread_id, mode='chat',
-        muc_roster_storage=None, parrent_groupchat=None
+        muc_roster_storage=None
         ):
 
         if not mode in ['chat', 'groupchat', 'private']:
@@ -35,10 +35,6 @@ class Chat:
             if contact_resource == None:
                 raise ValueError("`contact_resource' must be defined")
 
-        if mode == 'private':
-            if parrent_groupchat == None:
-                raise ValueError("`parrent_groupchat' must be defined")
-
         self._mode = mode
         self._pager = pager
 
@@ -53,7 +49,6 @@ class Chat:
         self.contact_bare_jid = contact_bare_jid
         self.contact_resource = contact_resource
         self.thread_id = thread_id
-        self.parrent_groupchat = parrent_groupchat
 
         self._log = org.wayround.pyabber.chat_log_widget.ChatLogWidget(
             self._controller,
@@ -151,7 +146,7 @@ class Chat:
         self._update_jid_widget()
 
         self._controller.message_relay.connect_signal(
-            'new_message', self.history_update_listener
+            'new_message', self.message_relay_listener
             )
 
         if self._mode == 'groupchat':
@@ -202,13 +197,14 @@ class Chat:
         self._controller.presence_client.presence(
             to_full_or_bare_jid=str(j),
             typ='unavailable',
-            options=options
+            options=options,
+            wait=False
             )
 
     def destroy(self):
 
         self._controller.message_relay.disconnect_signal(
-            self.history_update_listener
+            self.message_relay_listener
             )
 
         if self._mode == 'groupchat':
@@ -318,9 +314,9 @@ class Chat:
 
         self._unread = value
 
-    def history_update_listener(
+    def message_relay_listener(
         self,
-        event, storage,
+        event, storage, original_stanza,
         date, receive_date, delay_from, delay_message, incomming,
         connection_jid_obj, jid_obj, type_, parent_thread_id, thread_id,
         subject, plain, xhtml
@@ -351,7 +347,7 @@ class ChatPager:
         self._root_widget = self._notebook
 
         self._controller.message_relay.connect_signal(
-            'new_message', self.history_update_listener
+            'new_message', self.message_relay_listener
             )
 
     def get_widget(self):
@@ -389,6 +385,8 @@ class ChatPager:
                 )
             self.add_page(p)
             ret = p
+        else:
+            ret = res[0]
 
         return ret
 
@@ -405,10 +403,25 @@ class ChatPager:
 
         return
 
+    def add_private(self, full_jid):
+        j = org.wayround.xmpp.core.JID.new_from_string(full_jid)
+        j2 = j.copy()
+        j2.resource = None
+        gc = self.add_groupchat(j2)
+        if gc != None:
+            gc.add_private(j)
+
+        return
+
     def remove_page(self, page):
         while page in self.pages:
+            num = self._notebook.page_num(page.get_page_widget())
+            self._notebook.remove_page(num)
             page.destroy()
             self.pages.remove(page)
+
+        self._sync_pages_with_list()
+
         return
 
     def remove_all_pages(self):
@@ -417,7 +430,7 @@ class ChatPager:
 
     def destroy(self):
         self._controller.message_relay.disconnect_signal(
-            self.history_update_listener
+            self.message_relay_listener
             )
         self.remove_all_pages()
         self.get_widget().destroy()
@@ -445,10 +458,11 @@ class ChatPager:
         for i in self.pages:
             p = i.get_page_widget()
             pp = i.get_tab_title_widget()
-            if not i.get_page_widget() in _notebook_pages:
+            if not p in _notebook_pages:
                 self._notebook.append_page(p, pp)
                 p.show_all()
                 pp.show_all()
+                self._notebook.set_tab_reorderable(p, True)
 
         for i in _notebook_pages:
             if not i in _list_pages:
@@ -494,9 +508,9 @@ class ChatPager:
 
         return ret
 
-    def history_update_listener(
+    def message_relay_listener(
         self,
-        event, storage,
+        event, storage, original_stanza,
         date, receive_date, delay_from, delay_message, incomming,
         connection_jid_obj, jid_obj, type_, parent_thread_id, thread_id,
         subject, plain, xhtml
@@ -577,8 +591,7 @@ class GroupChat:
             contact_resource=own_resource,
             thread_id=None,
             mode='groupchat',
-            muc_roster_storage=self._storage,
-            parrent_groupchat=self
+            muc_roster_storage=self._storage
             )
 
         self._notebook = Gtk.Notebook()
@@ -587,6 +600,10 @@ class GroupChat:
         self._notebook.append_page(
             main_chat_page.get_page_widget(),
             main_chat_page.get_tab_title_widget()
+            )
+        self._notebook.set_tab_reorderable(
+            main_chat_page.get_page_widget(),
+            True
             )
 
         paned = Gtk.Paned()
@@ -643,10 +660,12 @@ class GroupChat:
         self._root_widget.show_all()
 
         self._controller.message_relay.connect_signal(
-            'new_message', self.history_update_listener
+            'new_message', self.message_relay_listener
             )
 
         self.set_own_resource(own_resource)
+
+        self._sync_pages_with_list()
 
         return
 
@@ -654,21 +673,28 @@ class GroupChat:
         self.contact_resource = value
         self._main_chat_page.set_resource(value)
         self._tab_widget.set_own_resource(value)
-#        self._jid_widget.set_resource(value)
 
     def get_own_resource(self):
         return self.contact_resource
 
     def destroy(self):
-        self._storage.destroy()
+#        print("111 1")
         self._controller.message_relay.disconnect_signal(
-            self.history_update_listener
+            self.message_relay_listener
             )
-        self.remove_all_pages()
-        self._roster_widget.destroy()
-#        self._jid_widget.destroy()
+#        print("111 2")
+        self._storage.destroy()
+#        print("111 3")
         self._main_chat_page.destroy()
+#        print("111 4")
+        self.remove_all_pages()
+#        print("111 5")
+        self._roster_widget.destroy()
+#        print("111 6")
+        self._tab_widget.destroy()
+#        print("111 7")
         self.get_tab_title_widget().destroy()
+#        print("111 8")
         self.get_page_widget().destroy()
 
     def get_tab_title_widget(self):
@@ -683,7 +709,17 @@ class GroupChat:
 
     remove_all_pages = ChatPager.remove_all_pages
 
-    _get_all_notebook_pages = ChatPager._get_all_notebook_pages
+    def _get_all_notebook_pages(self):
+        n = self._notebook.get_n_pages()
+        l = []
+        for i in range(n):
+            l.append(self._notebook.get_nth_page(i))
+
+        p = self._main_chat_page.get_page_widget()
+        if p in l:
+            l.remove(p)
+
+        return l
 
     _get_all_list_pages = ChatPager._get_all_list_pages
 
@@ -710,19 +746,37 @@ class GroupChat:
         for i in self.pages:
             p = i.get_page_widget()
             pp = i.get_tab_title_widget()
-            if not i.get_page_widget() in _notebook_pages:
+            if not p in _notebook_pages:
                 self._notebook.append_page(p, pp)
                 p.show_all()
                 pp.show_all()
+                self._notebook.set_tab_reorderable(p, True)
 
-        for i in _notebook_pages[1:]:
+        for i in _notebook_pages:
             if not i in _list_pages:
                 page_n = self._notebook.page_num(i)
                 self._notebook.remove_page(page_n)
 
+        _notebook_pages = self._get_all_notebook_pages()
+        w = self._main_chat_page.get_page_widget()
+        if len(_notebook_pages) != 0:
+            w.set_margin_top(5)
+            w.set_margin_left(5)
+            w.set_margin_right(5)
+            w.set_margin_bottom(5)
+            self._notebook.set_show_tabs(True)
+            self._notebook.set_show_border(True)
+        else:
+            w.set_margin_top(0)
+            w.set_margin_left(0)
+            w.set_margin_right(0)
+            w.set_margin_bottom(0)
+            self._notebook.set_show_tabs(False)
+            self._notebook.set_show_border(False)
+
         return
 
-    def add_private(self, jid_obj, parrent_groupchat):
+    def add_private(self, jid_obj):
 
         res = self._search_page(jid_obj.resource)
 
@@ -736,17 +790,16 @@ class GroupChat:
                 contact_resource=jid_obj.resource,
                 thread_id=None,
                 mode='private',
-                muc_roster_storage=self._storage,
-                parrent_groupchat=parrent_groupchat
+                muc_roster_storage=self._storage, \
                 )
             self.add_page(p)
             ret = p
 
         return ret
 
-    def history_update_listener(
+    def message_relay_listener(
         self,
-        event, storage,
+        event, storage, original_stanza,
         date, receive_date, delay_from, delay_message, incomming,
         connection_jid_obj, jid_obj, type_, parent_thread_id, thread_id,
         subject, plain, xhtml
@@ -758,7 +811,7 @@ class GroupChat:
 
                 if self.contact_bare_jid == jid_obj.bare():
 
-                    self.add_private(jid_obj, self._main_chat_page)
+                    self.add_private(jid_obj)
 
         return
 

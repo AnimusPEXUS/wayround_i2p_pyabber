@@ -2,15 +2,15 @@
 import logging
 import threading
 import datetime
-import json
+import hashlib
 
 import sqlalchemy.ext.declarative
-import sqlalchemy.orm
 
 import org.wayround.utils.db
 import org.wayround.utils.signal
 import org.wayround.utils.types
 import org.wayround.utils.sqlalchemy
+import org.wayround.xmpp.bob
 
 
 class StorageDB(org.wayround.utils.db.BasicDB):
@@ -262,6 +262,47 @@ class StorageDB(org.wayround.utils.db.BasicDB):
             default=True
             )
 
+    class BoBCache(Base):
+
+        __tablename__ = 'bob_cache'
+
+        id_ = sqlalchemy.Column(
+            name='id',
+            type_=sqlalchemy.Integer,
+            primary_key=True,
+            autoincrement=True
+            )
+
+        date = sqlalchemy.Column(
+            type_=sqlalchemy.DateTime,
+            nullable=False,
+            default=datetime.datetime(1, 1, 1),
+            index=True
+            )
+
+        maxage = sqlalchemy.Column(
+            type_=sqlalchemy.Integer,
+            nullable=False,
+            default=0
+            )
+
+        type_ = sqlalchemy.Column(
+            name='type',
+            type_=sqlalchemy.UnicodeText,
+            nullable=True,
+            index=True
+            )
+
+        sha1 = sqlalchemy.Column(
+            type_=sqlalchemy.UnicodeText,
+            nullable=False,
+            index=True
+            )
+
+        data = sqlalchemy.Column(
+            type_=sqlalchemy.LargeBinary,
+            nullable=True
+            )
 
 CONNECTION_PRESET_FIELDS = \
     org.wayround.utils.types.attrs_dict_to_object_same_names(
@@ -279,10 +320,6 @@ HISTORY_RECORD_FIELDS = \
             )
         )
 
-#print(repr(HISTORY_RECORD_FIELDS))
-##print(StorageDB.Base.metadata.tables['history'].columns)
-#print(repr(dir(StorageDB.Base.metadata.tables['history'].columns['id'])))
-#print(repr(StorageDB.Base.metadata.tables['history'].columns['id'].name))
 
 for i in HISTORY_RECORD_FIELDS[:]:
     if i[0] == 'id':
@@ -295,7 +332,23 @@ for i in HISTORY_RECORD_FIELDS[:]:
 
 del i
 
-#print(repr(HISTORY_RECORD_FIELDS))
+
+BOB_CACHE_FIELDS = \
+    org.wayround.utils.types.attrs_dict_to_object_same_names(
+        org.wayround.utils.sqlalchemy.get_column_names(
+            StorageDB.Base.metadata,
+            'bob_cache'
+            )
+        )
+
+for i in BOB_CACHE_FIELDS[:]:
+    if i[0] == 'id':
+        BOB_CACHE_FIELDS.remove(i)
+        BOB_CACHE_FIELDS.append(('id_', 'id_',))
+
+    if i[0] == 'type':
+        BOB_CACHE_FIELDS.remove(i)
+        BOB_CACHE_FIELDS.append(('type_', 'type_',))
 
 
 class Storage(org.wayround.utils.signal.Signal):
@@ -309,6 +362,9 @@ class Storage(org.wayround.utils.signal.Signal):
         self._db = StorageDB(*args, **kwargs)
 
         self._lock = threading.Lock()
+
+        self._cleaning_bob = False
+
         return
 
     def create(self):
@@ -691,6 +747,117 @@ class Storage(org.wayround.utils.signal.Signal):
             logging.exception("Error deleting connection preset")
 
         self._lock.release()
+
+        return
+
+    def _get_count_bob_data(self, method, sum_val, _mode='count'):
+
+        if not _mode in ['get', 'count']:
+            raise ValueError("invalid `_mode'")
+
+        if not method in ['sha1']:
+            raise ValueError(
+                "acceptable methods are ['sha1']"
+                )
+
+        table_field = eval('self._db.BoBCache.{}'.format(method))
+
+        ret = 0
+        if _mode == 'get':
+            ret = None
+
+        self._lock.acquire()
+
+        try:
+            ret = self._db.session.query(self._db.BoBCache).\
+                filter(table_field == sum_val)
+
+            if _mode == 'count':
+                ret = ret.count()
+            elif _mode == 'get':
+                ret = ret.all()
+                if len(ret) > 0:
+                    ret = ret[0]
+                else:
+                    ret = None
+
+        except:
+            logging.exception("Error '{}' bob data".format(_mode))
+        else:
+            if _mode == 'get' and ret != None:
+                res = org.wayround.xmpp.bob.Data(
+                    org.wayround.xmpp.bob.format_cid(method, sum_val)
+                    )
+                res.set_type_(ret.type_)
+                res.set_data(ret.data)
+                res.set_maxage(ret.maxage)
+
+                ret = res
+
+        self._lock.release()
+
+        return ret
+
+    def count_bob_data(self, method, sum_val):
+        return self._get_count_bob_data(method, sum_val, _mode='count')
+
+    def get_bob_data(self, method, sum_val):
+        return self._get_count_bob_data(method, sum_val, _mode='get')
+
+    def add_bob_data(self, date, bob):
+
+        if not isinstance(date, datetime.datetime):
+            raise ValueError("`date' must be datetime")
+
+        if not isinstance(bob, org.wayround.xmpp.bob.Data):
+            raise ValueError("`bob' must be org.wayround.xmpp.bob.Data")
+
+        d = hashlib.sha1()
+        d.update(bob.get_data())
+        sha1 = d.hexdigest()
+
+        if self.count_bob_data('sha1', sha1) == 0:
+
+            self._lock.acquire()
+
+            try:
+                n = self._db.BoBCache()
+                n.data = bob.get_data()
+                n.date = date
+                n.maxage = int(bob.get_maxage())
+                n.sha1 = sha1
+                n.type_ = bob.get_type_()
+
+                self._db.session.add(n)
+                self._db.commit()
+            except:
+                logging.exception("Error adding bob data")
+
+            self._lock.release()
+
+        return
+
+    def clean_bob_data(self):
+
+        if not self._cleaning_bob:
+
+            self._cleaning_bob = True
+
+            self._lock.acquire()
+            try:
+                all1 = self._db.session.query(self._db.BoBCache).all()
+                curdat = datetime.datetime.utcnow()
+                for i in all1:
+                    if (i.date + datetime.timedelta(seconds=int(i.maxage))
+                        < curdat):
+                        self._db.session.delete(i)
+                self._db.commit()
+
+            except:
+                logging.exception("Error cleaning bob data")
+            self._lock.release()
+
+            self._cleaning_bob = False
 
         return
 

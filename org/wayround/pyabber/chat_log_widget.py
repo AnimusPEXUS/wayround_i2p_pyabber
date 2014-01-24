@@ -345,7 +345,7 @@ class ChatLogWidget:
         self._lock = threading.Lock()
 
         self._controller.message_relay.connect_signal(
-            'new_message', self.history_update_listener
+            'new_message', self.message_relay_listener
             )
 
         self._looped_timer = org.wayround.utils.timer.LoopedTimer(
@@ -438,14 +438,14 @@ class ChatLogWidget:
 
     def destroy(self):
         self._controller.message_relay.disconnect_signal(
-            self.history_update_listener
+            self.message_relay_listener
             )
         self.get_widget().destroy()
         self._looped_timer.stop()
 
-    def history_update_listener(
+    def message_relay_listener(
         self,
-        event, storage,
+        event, storage, original_stanza,
         date, receive_date, delay_from, delay_message, incomming,
         connection_jid_obj, jid_obj, type_, parent_thread_id, thread_id,
         subject, plain, xhtml

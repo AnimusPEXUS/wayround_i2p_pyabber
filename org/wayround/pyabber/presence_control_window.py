@@ -60,7 +60,7 @@ class PresenceControlWindow:
         bb.pack_start(dnd_button, False, False, 0)
 
         status_cb = Gtk.CheckButton()
-        status_cb.set_label("Add _status description")
+        status_cb.set_label("Add status description")
 
         status_frame = Gtk.Frame()
         status_frame.set_label_widget(status_cb)
@@ -105,7 +105,7 @@ class PresenceControlWindow:
         b.pack_start(bb, False, False, 0)
 
         window.add(b)
-        window.set_title("Send new presence _status")
+        window.set_title("Send new presence status")
 #        window.set_transient_for(parent_window)
 #        window.set_keep_above(True)
         window.set_default_size(300, 200)

@@ -1,5 +1,6 @@
 
 import threading
+import uuid
 
 from gi.repository import Gtk, Pango
 
@@ -44,14 +45,22 @@ class ThreadWidget:
         self._text.set_selectable(True)
         self._text.set_justify(Gtk.Justification.LEFT)
 
-        b.pack_start(Gtk.Label("Thread:"), False, False, 0)
-        b.pack_start(self._text, True, True, 0)
-
         self._main_widget = b
         self._main_widget.show_all()
 
+        thread_generate_button = Gtk.Button("Generate New UUID")
+        thread_generate_button.set_no_show_all(True)
+        thread_generate_button.connect(
+            'clicked',
+            self._on_thread_generate_button_clicked
+            )
+        self._thread_generate_button = thread_generate_button
+
+        b.pack_start(self._text, True, True, 0)
+        b.pack_start(thread_generate_button, False, False, 0)
+
         self._controller.message_relay.connect_signal(
-            'new_message', self.history_update_listener
+            'new_message', self.message_relay_listener
             )
 
         return
@@ -67,17 +76,29 @@ class ThreadWidget:
 
     def destroy(self):
         self._controller.message_relay.disconnect_signal(
-            self.history_update_listener
+            self.message_relay_listener
             )
         self.get_widget().destroy()
 
+    def set_editable(self, value):
+        return
+
+    def get_editable(self):
+        return
+
     def set_data(self, data):
+
+        if data != None and not isinstance(data, str):
+            raise ValueError("`data' must be str or None")
 
         self._data = data
 
         self._update_text()
 
         return
+
+    def get_data(self):
+        return self._data
 
     def _update_text(self):
 
@@ -88,9 +109,9 @@ class ThreadWidget:
 
         return
 
-    def history_update_listener(
+    def message_relay_listener(
         self,
-        event, storage,
+        event, storage, original_stanza,
         date, receive_date, delay_from, delay_message, incomming,
         connection_jid_obj, jid_obj, type_, parent_thread_id, thread_id,
         subject, plain, xhtml
@@ -123,3 +144,10 @@ class ThreadWidget:
                     self._incomming_messages_lock.release()
 
         return
+
+    def _on_thread_generate_button_clicked(self, button):
+        self.generate_new_thread_entry()
+
+    def generate_new_thread_entry(self):
+
+        self.set_data(uuid.uuid4().hex)

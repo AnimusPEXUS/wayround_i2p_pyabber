@@ -39,7 +39,17 @@ class RegistrationWidgetField:
 
 class RegistrationWidget:
 
-    def __init__(self):
+    def __init__(self, controller):
+
+        if not isinstance(
+            controller,
+            org.wayround.pyabber.ccc.ClientConnectionController
+            ):
+            raise TypeError(
+    "`controller' must be org.wayround.pyabber.ccc.ClientConnectionController"
+                )
+
+        self._controller = controller
 
         self._fields = []
         self._oob = None
@@ -110,7 +120,8 @@ class RegistrationWidget:
 
         xdata = form.get_xdata()
         if xdata != None:
-            self._xdata = org.wayround.pyabber.xdata.XDataFormWidgetController(
+            self._xdata = org.wayround.pyabber.xdata.XDataFormWidget(
+                self._controller,
                 xdata
                 )
             _f = Gtk.Frame()
@@ -141,7 +152,7 @@ class RegistrationWidget:
             func(i.get_value())
 
         if self._xdata != None:
-            xdata = self._xdata.gen_x_data()
+            xdata = self._xdata.gen_stanza_subobject()
             form.set_xdata(xdata)
 
         return form
@@ -162,6 +173,11 @@ class RegistrationWidget:
 
     def get_widget(self):
         return self._b
+
+    def destroy(self):
+        if self._xdata:
+            self._xdata.destroy()
+        self.get_widget().destroy()
 
 
 class RegistrationWindow:
@@ -218,7 +234,7 @@ class RegistrationWindow:
         self._from_entry = from_entry
         from_frame.add(from_entry)
 
-        self._reg_widget_ins = RegistrationWidget()
+        self._reg_widget_ins = RegistrationWidget(self._controller)
         _reg_widget_ins_widg = self._reg_widget_ins.get_widget()
         #        _reg_widget_ins_widg.set_margin_top(5)
         #        _reg_widget_ins_widg.set_margin_left(5)

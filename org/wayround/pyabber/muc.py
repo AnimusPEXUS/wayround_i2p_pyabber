@@ -282,7 +282,8 @@ class MUCConfigWindow:
             b.pack_start(lab, True, True, 0)
         else:
             xdata_widget_ctl = (
-                org.wayround.pyabber.xdata.XDataFormWidgetController(
+                org.wayround.pyabber.xdata.XDataFormWidget(
+                    self._controller,
                     xdata
                     )
                 )
@@ -334,6 +335,8 @@ class MUCConfigWindow:
         self._iterated_loop.stop()
 
     def _on_destroy(self, window):
+        if self._form_controller:
+            self._form_controller.destroy()
         self.destroy()
 
     def _on_submit_pressed(self, button):
@@ -350,7 +353,7 @@ class MUCConfigWindow:
             d.destroy()
         else:
 
-            x_data = self._form_controller.gen_x_data()
+            x_data = self._form_controller.gen_stanza_subobject()
             if x_data == None:
                 d = org.wayround.utils.gtk.MessageDialog(
                     None,
@@ -392,6 +395,7 @@ class MUCDestructionDialog:
 
         self._own_jid = self._controller.jid
         self._stanza_processor = self._controller.client.stanza_processor
+        self._room_jid = None
 
         b = Gtk.Box()
         b.set_orientation(Gtk.Orientation.VERTICAL)
@@ -457,9 +461,10 @@ class MUCDestructionDialog:
         self._window.set_title(
             "Destroying room `{}' being `{}'".format(
                 room_jid,
-                self.own_jid
+                self._own_jid
                 )
             )
+        self._room_jid = room_jid
         self.show()
         self._iterated_loop.wait()
 
@@ -487,7 +492,7 @@ class MUCDestructionDialog:
 
         res = org.wayround.xmpp.muc.destroy_room(
             room_bare_jid=self._room_jid,
-            from_full_jid=self._own_jid,
+            from_full_jid=str(self._own_jid),
             stanza_processor=self._stanza_processor,
             reason=reason,
             alternate_venue_jid=alternate_venue_jid

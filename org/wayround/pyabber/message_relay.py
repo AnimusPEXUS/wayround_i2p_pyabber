@@ -58,6 +58,7 @@ class MessageRelay(org.wayround.utils.signal.Signal):
                     delay_message = ''
 
             self.manual_addition(
+                original_stanza=stanza,
                 date=date,
                 receive_date=receive_date,
                 delay_from=delay_from,
@@ -77,6 +78,7 @@ class MessageRelay(org.wayround.utils.signal.Signal):
 
     def manual_addition(
         self,
+        original_stanza,
         date, receive_date, delay_from, delay_message, incomming,
         connection_jid_obj, jid_obj, type_, parent_thread_id, thread_id,
         subject, plain, xhtml
@@ -104,6 +106,7 @@ class MessageRelay(org.wayround.utils.signal.Signal):
         self.emit_signal(
             'new_message',
             self,
+            original_stanza,
             date, receive_date, delay_from, delay_message, incomming,
             connection_jid_obj, jid_obj, type_, parent_thread_id, thread_id,
             subject, plain, xhtml

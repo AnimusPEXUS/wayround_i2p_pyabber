@@ -182,12 +182,21 @@ class ContactPopupMenu:
             )
 
     def _send_message_activate(self, menuitem):
+
+        stanza = org.wayround.xmpp.core.Stanza(tag='message')
+        stanza.set_to_jid(str(self._jid))
+        stanza.set_from_jid(self._controller.jid.bare())
+        stanza.set_subject(
+            [org.wayround.xmpp.core.MessageSubject("HI!")]
+            )
+
+        stanza.set_body(
+            [org.wayround.xmpp.core.MessageBody("How are You?")]
+            )
+
         self._controller.show_single_message_window(
             mode='new',
-            to_jid=str(self._jid),
-            from_jid=self._controller.jid.bare(),
-            subject='HI!',
-            body="How are You?"
+            stanza=stanza
             )
 
     def _start_chat_activate(self, menuitem):

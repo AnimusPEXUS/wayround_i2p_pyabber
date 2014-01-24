@@ -3,8 +3,12 @@ import uuid
 
 from gi.repository import Gtk
 
+import org.wayround.pyabber.captcha
 import org.wayround.pyabber.message_edit_widget
+import org.wayround.pyabber.subject_widget
+import org.wayround.pyabber.thread_widget
 import org.wayround.utils.gtk
+import org.wayround.xmpp.captcha
 
 
 class SingleMessageWindow:
@@ -20,59 +24,78 @@ class SingleMessageWindow:
                 )
 
         self._controller = controller
+        self._original_stanza = None
 
         self._window = Gtk.Window()
 
         self._iterated_loop = org.wayround.utils.gtk.GtkIteratedLoop()
 
+        b0 = Gtk.Box()
+        b0.set_orientation(Gtk.Orientation.VERTICAL)
+        b0.set_spacing(5)
+        b0.set_margin_top(5)
+        b0.set_margin_bottom(5)
+        b0.set_margin_left(5)
+        b0.set_margin_right(5)
+
+        b = Gtk.Box()
+        b.set_orientation(Gtk.Orientation.HORIZONTAL)
+        b.set_spacing(5)
+
         main_box = Gtk.Box()
         main_box.set_orientation(Gtk.Orientation.VERTICAL)
         main_box.set_spacing(5)
-        main_box.set_margin_top(5)
-        main_box.set_margin_bottom(5)
-        main_box.set_margin_left(5)
-        main_box.set_margin_right(5)
 
         from_frame = Gtk.Frame()
         from_frame.set_no_show_all(True)
         from_frame.set_label("From Jabber ID")
-        self.from_frame = from_frame
+        self._from_frame = from_frame
 
         from_entry = Gtk.Entry()
-        self.from_entry = from_entry
+        self._from_entry = from_entry
         from_entry.set_margin_top(5)
         from_entry.set_margin_bottom(5)
         from_entry.set_margin_left(5)
         from_entry.set_margin_right(5)
+        from_entry.show()
 
         from_frame.add(from_entry)
 
         to_frame = Gtk.Frame()
         to_frame.set_no_show_all(True)
         to_frame.set_label("To Jabber ID")
-        self.to_frame = to_frame
+        self._to_frame = to_frame
 
         to_entry = Gtk.Entry()
-        self.to_entry = to_entry
+        self._to_entry = to_entry
         to_entry.set_margin_top(5)
         to_entry.set_margin_bottom(5)
         to_entry.set_margin_left(5)
         to_entry.set_margin_right(5)
+        to_entry.show()
 
         to_frame.add(to_entry)
 
         subject_frame = Gtk.Frame()
-        self.subject_frame = subject_frame
+        self._subject_frame = subject_frame
         subject_frame_cb = Gtk.CheckButton()
-        self.subject_frame_cb = subject_frame_cb
+        self._subject_frame_cb = subject_frame_cb
 
         subject_frame_cb.set_label("Include Subject")
         subject_frame_cb.set_active(True)
 
         subject_frame.set_label_widget(subject_frame_cb)
 
-        subject_entry = Gtk.Entry()
-        self.subject_entry = subject_entry
+        self._subject_widget = \
+            org.wayround.pyabber.subject_widget.SubjectWidget(
+                controller,
+                contact_bare_jid=self._controller.jid.bare(),
+                contact_resource=self._controller.jid.resource,
+                operation_mode='chat'
+                )
+
+        subject_entry = self._subject_widget.get_widget()
+        self._subject_entry = subject_entry
         subject_entry.set_margin_top(5)
         subject_entry.set_margin_bottom(5)
         subject_entry.set_margin_left(5)
@@ -81,9 +104,9 @@ class SingleMessageWindow:
         subject_frame.add(subject_entry)
 
         thread_frame = Gtk.Frame()
-        self.thread_frame = thread_frame
+        self._thread_frame = thread_frame
         thread_frame_cb = Gtk.CheckButton()
-        self.thread_frame_cb = thread_frame_cb
+        self._thread_frame_cb = thread_frame_cb
 
         thread_frame_cb.set_label("Include Unique Thread Identifier")
         thread_frame_cb.set_active(True)
@@ -98,32 +121,20 @@ class SingleMessageWindow:
         thread_box.set_orientation(Gtk.Orientation.HORIZONTAL)
         thread_box.set_spacing(5)
 
-        thread_generate_button = Gtk.Button("Generate New UUID")
-        thread_generate_button.set_no_show_all(True)
-        thread_generate_button.connect(
-            'clicked',
-            self._on_thread_generate_button_clicked
-            )
-        self.thread_generate_button = thread_generate_button
-
-        thread_edit_button = Gtk.Button("Edit Thread")
-        thread_edit_button.set_no_show_all(True)
-        self.thread_edit_button = thread_edit_button
-        thread_edit_button.connect(
-            'clicked',
-            self._on_thread_edit_button_clicked
+        self._thread_widget = org.wayround.pyabber.thread_widget.ThreadWidget(
+            controller,
+            contact_bare_jid=self._controller.jid.bare(),
+            contact_resource=self._controller.jid.resource,
+            operation_mode='chat'
             )
 
-        thread_entry = Gtk.Entry()
-        self.thread_entry = thread_entry
+        thread_entry = self._thread_widget.get_widget()
+        self._thread_entry = thread_entry
         thread_entry.set_tooltip_text(
             "You not really need to edit it manually!"
             )
-        thread_entry.set_editable(False)
 
         thread_box.pack_start(thread_entry, True, True, 0)
-        thread_box.pack_start(thread_edit_button, False, False, 0)
-        thread_box.pack_start(thread_generate_button, False, False, 0)
 
         thread_frame.add(thread_box)
 
@@ -131,19 +142,14 @@ class SingleMessageWindow:
             org.wayround.pyabber.message_edit_widget.MessageEdit(
                 self._controller
                 )
-        self.msg_edit_widget = msg_edit_widget
+        self._msg_edit_widget = msg_edit_widget
 
-        body_message_editor = msg_edit_widget.get_widget()
-        self.body_message_editor = body_message_editor
-        body_message_editor.set_margin_top(5)
-        body_message_editor.set_margin_bottom(5)
-        body_message_editor.set_margin_left(5)
-        body_message_editor.set_margin_right(5)
+        self._body_message_editor = msg_edit_widget.get_widget()
 
         buttons_bb = Gtk.ButtonBox()
         buttons_bb.set_orientation(Gtk.Orientation.HORIZONTAL)
 
-        reply_button = Gtk.Button("Reply")
+        reply_button = Gtk.Button("Reply..")
         reply_button.set_no_show_all(True)
         reply_button.connect('clicked', self._on_reply_button_clicked)
 
@@ -151,71 +157,118 @@ class SingleMessageWindow:
         send_button.connect('clicked', self._on_send_button_clicked)
         send_button.set_no_show_all(True)
 
-        self.reply_button = reply_button
-        self.send_button = send_button
+        self._reply_button = reply_button
+        self._send_button = send_button
 
         buttons_bb.pack_start(reply_button, False, False, 0)
         buttons_bb.pack_start(send_button, False, False, 0)
+
+        self._additional_box = Gtk.Box()
+        self._additional_box.set_spacing(5)
+        self._additional_box.set_orientation(Gtk.Orientation.VERTICAL)
+        self._additional_box.set_no_show_all(True)
 
         main_box.pack_start(from_frame, False, False, 0)
         main_box.pack_start(to_frame, False, False, 0)
         main_box.pack_start(subject_frame, False, False, 0)
         main_box.pack_start(thread_frame, False, False, 0)
-        main_box.pack_start(body_message_editor, True, True, 0)
-        main_box.pack_start(buttons_bb, False, False, 0)
+        main_box.pack_start(self._body_message_editor, True, True, 0)
 
-        self._window.add(main_box)
+        b.pack_start(main_box, True, True, 0)
+        b.pack_start(self._additional_box, True, True, 0)
+
+        b0.pack_start(b, True, True, 0)
+        b0.pack_start(buttons_bb, False, False, 0)
+
+        self._window.add(b0)
         self._window.connect('destroy', self._on_destroy)
         self._window.show_all()
+
+        self._additional_widgets = []
+
+        return
 
     def run(
         self,
         mode='new',
-        to_jid=None, from_jid=None, subject=None, thread=None, body=None
+        stanza=None
         ):
 
         if not mode in ['new', 'view']:
             raise ValueError("Wrong mode")
 
+        self._original_stanza = stanza
+
+        to_jid = stanza.get_to_jid()
+        from_jid = stanza.get_from_jid()
+        subject = stanza.get_subject_dict()
+        thread = stanza.get_thread()
+        body = stanza.get_body_dict()
+
         if mode == 'new' and thread == None:
-            self.generate_new_thread_entry()
+            self._thread_widget.generate_new_thread_entry()
 
-        self.reply_button.set_visible(mode == 'view')
-        self.send_button.set_visible(mode == 'new')
-        self.from_frame.set_visible(mode == 'view')
-        self.to_frame.set_visible(mode == 'new')
-
-        self.thread_generate_button.set_visible(mode == 'new')
-        self.thread_edit_button.set_visible(mode == 'new')
+        self._reply_button.set_visible(mode == 'view')
+        self._send_button.set_visible(mode == 'new')
+        self._from_frame.set_visible(mode == 'view')
+        self._to_frame.set_visible(mode == 'new')
 
         if mode == 'view':
-            self.subject_frame.set_label("Subject")
-            self.thread_frame.set_label("Unique Thread Identifier")
+            self._subject_frame.set_label("Subject")
+            self._thread_frame.set_label("Unique Thread Identifier")
 
-        self.subject_entry.set_editable(mode == 'new')
-        self.from_entry.set_editable(mode == 'new')
-        self.to_entry.set_editable(mode == 'new')
+        self._thread_widget.set_editable(mode == 'new')
+        self._subject_widget.set_editable(mode == 'new')
+        self._from_entry.set_editable(mode == 'new')
+        self._to_entry.set_editable(mode == 'new')
 
-        self.msg_edit_widget.set_editable(mode == 'new')
+        self._msg_edit_widget.set_editable(mode == 'new')
 
         if to_jid != None:
-            self.to_entry.set_text(str(to_jid))
+            self._to_entry.set_text(str(to_jid))
 
         if from_jid != None:
-            self.from_entry.set_text(str(from_jid))
+            self._from_entry.set_text(str(from_jid))
 
         if subject != None:
-            self.subject_entry.set_text(str(subject))
+            self._subject_widget.set_data(subject)
 
         if thread != None:
-            self.thread_entry.set_text(repr(thread)[1:-1])
+            self._thread_widget.set_data(thread.get_thread())
 
         if body != None:
-            self.msg_edit_widget.set_data({'': body}, None)
+            self._msg_edit_widget.set_data(body, None)
 
         if mode == 'new':
-            self.msg_edit_widget.set_cursor_to_end()
-            self.msg_edit_widget.grab_focus()
+            self._msg_edit_widget.set_cursor_to_end()
+            self._msg_edit_widget.grab_focus()
+
+        e = self._original_stanza.get_element()
+        if e != None:
+            for i in e:
+                if i.tag == '{urn:xmpp:captcha}captcha':
+
+                    captcha_data = \
+                        org.wayround.xmpp.captcha.Captcha.new_from_element(i)
+
+                    captcha_widget = \
+                        org.wayround.pyabber.captcha.CAPTCHAWidget(
+                            self._controller,
+                            captcha_element_object=captcha_data,
+                            origin_stanza=self._original_stanza,
+                            editable=True
+                            )
+
+                    self._additional_widgets.append(captcha_widget)
+                    self._additional_box.pack_start(
+                        captcha_widget.get_widget(),
+                        True,
+                        True,
+                        0
+                        )
+            self._additional_box.show()
+        else:
+            self._additional_box.hide()
 
         self.show()
 
@@ -227,58 +280,69 @@ class SingleMessageWindow:
         self._window.show_all()
 
     def destroy(self):
+        for i in self._additional_widgets[:]:
+            i.destroy()
+            self._additional_widgets.remove(i)
+        self._thread_widget.destroy()
+        self._subject_widget.destroy()
+        self._msg_edit_widget.destroy()
         self._window.destroy()
         self._iterated_loop.stop()
 
     def _on_destroy(self, window):
         self.destroy()
 
-    def _on_thread_generate_button_clicked(self, button):
-        self.generate_new_thread_entry()
-
     def _on_send_button_clicked(self, button):
 
         thread = None
-        if self.thread_frame_cb.get_active() == True:
-            thread = self.thread_entry.get_text()
+        if self._thread_frame_cb.get_active() == True:
+            t = self._thread_widget.get_data()
+            if t != None:
+                thread = org.wayround.xmpp.core.MessageThread(
+                    t
+                    )
 
         subject = None
-        if self.subject_frame_cb.get_active() == True:
-            subject = self.subject_entry.get_text()
+        if self._subject_frame_cb.get_active() == True:
+            subject = self._subject_widget.get_data()
 
-        plain, xhtml = self.msg_edit_widget.get_data()
+        objects = []
+        for i in self._additional_widgets:
+            objects.append(i.gen_stanza_subobject())
 
-        self._controller.message_client.message(
-            to_jid=self.to_entry.get_text(),
-            from_jid=False,
-            typ='normal',
-            thread=thread,
-            subject=subject,
-            body=plain,
-            xhtml=xhtml,
-            wait=False
-            )
+        for i in objects:
+            if type(i) == org.wayround.xmpp.captcha.Captcha:
+                x = i.get_x()
+                x.set_typ('submit')
+
+        plain, xhtml = self._msg_edit_widget.get_data()
+
+        stanza = org.wayround.xmpp.core.Stanza(tag='message')
+        stanza.set_typ('normal')
+        stanza.set_to_jid(self._to_entry.get_text())
+#        stanza.set_objects(objects)
+        stanza.set_body_dict(plain)
+        stanza.set_subject_dict(subject)
+        stanza.set_thread(thread)
+
+        self._controller.client.stanza_processor.send(stanza, wait=False)
 
         self._window.destroy()
 
     def _on_reply_button_clicked(self, button):
-        initial_text = self.msg_edit_widget.get_data()[0]['']
 
-        body = ''
-        if len(initial_text) != 0 and not initial_text.isspace():
-            body = ">{}\n\n".format(initial_text)
+        stanza = org.wayround.xmpp.core.Stanza(tag='message')
+        stanza.set_to_jid(self._from_entry.get_text())
+        stanza.set_from_jid(str(self._controller.jid))
+        stanza.set_subject_dict(self._subject_widget.get_data())
+        stanza.set_body_dict(self._msg_edit_widget.get_data()[0])
+        stanza.set_element(self._original_stanza.get_element())
+
+        # TODO: add XHTML processing
 
         self._controller.show_single_message_window(
             mode='new',
-            to_jid=self.from_entry.get_text(),
-            subject="Re: {}".format(self.subject_entry.get_text()),
-            thread=self.thread_entry.get_text(),
-            body=body
+            stanza=stanza
             )
 
-    def _on_thread_edit_button_clicked(self, button):
-        self.thread_entry.set_editable(not self.thread_entry.get_editable())
-
-    def generate_new_thread_entry(self):
-
-        self.thread_entry.set_text(uuid.uuid4().hex)
+        return

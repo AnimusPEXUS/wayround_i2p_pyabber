@@ -146,9 +146,11 @@ class MessageEdit:
         mode_language_tool_box.set_spacing(5)
 
         add_button = Gtk.Button("Add")
+        self._add_button = add_button
         add_button.connect('clicked', self._on_add_button_clicked)
 
         remove_button = Gtk.Button("Remove")
+        self._remove_button = remove_button
         remove_button.connect('clicked', self._on_remove_button_clicked)
 
         mode_lang_switch_combo = Gtk.ComboBox()
@@ -368,6 +370,11 @@ class MessageEdit:
 
     def set_editable(self, val):
         self._text_view.set_editable(val)
+        self._add_button.set_sensitive(val)
+        self._remove_button.set_sensitive(val)
+
+    def get_editable(self):
+        return self._text_view.get_editable()
 
     def set_cursor_to_end(self):
         b = self._text_view.get_buffer()

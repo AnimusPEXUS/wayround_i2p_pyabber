@@ -50,6 +50,7 @@ class JIDWidget:
         self._jid_label.set_alignment(0, 0.5)
 
         self._status_text_label = Gtk.Label()
+        self._status_text_label.set_ellipsize(Pango.EllipsizeMode.END)
         self._status_text_label.set_alignment(0, 0)
 
         self._userpic_i = Gtk.Image()
@@ -152,10 +153,12 @@ class JIDWidget:
             self._available_i.set_from_pixbuf(
                 org.wayround.pyabber.icondb.get('contact_available')
                 )
+            self._available_i.set_tooltip_text('Available')
         else:
             self._available_i.set_from_pixbuf(
                 org.wayround.pyabber.icondb.get('contact_unavailable')
                 )
+            self._available_i.set_tooltip_text('Unavailable')
 
     def _set_title_label(self, name, nick, bare_jid):
         title_label_text = ''
@@ -251,6 +254,11 @@ class MUCRosterJIDWidgetMenu:
         edit_entity_mi = Gtk.MenuItem("Edit this entity..")
         edit_entity_mi.connect('activate', self._on_edit_entity_activated)
 
+        open_private_mi = Gtk.MenuItem("Open Private Chat")
+        open_private_mi.connect('activate', self._on_open_private_activated)
+
+        menu.append(open_private_mi)
+        menu.append(Gtk.SeparatorMenuItem())
         menu.append(contact_submenu_mi)
         menu.append(Gtk.SeparatorMenuItem())
         menu.append(edit_entity_mi)
@@ -301,6 +309,11 @@ class MUCRosterJIDWidgetMenu:
             )
 
         return
+
+    def _on_open_private_activated(self, mi):
+
+        cw = self._controller.get_chat_window()
+        cw.chat_pager.add_private(self._bare_or_full_jid)
 
 
 class MUCRosterJIDWidget:
@@ -459,10 +472,12 @@ class MUCRosterJIDWidget:
             self._online_icon.set_from_pixbuf(
                 org.wayround.pyabber.icondb.get('contact_available')
                 )
+            self._online_icon.set_tooltip_text('Available')
         else:
             self._online_icon.set_from_pixbuf(
                 org.wayround.pyabber.icondb.get('contact_unavailable')
                 )
+            self._online_icon.set_tooltip_text('Unavailable')
 
     def _set_show(self, value):
         if not value in [

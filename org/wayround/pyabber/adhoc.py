@@ -337,6 +337,8 @@ class AD_HOC_Response_Window:
         self._window.show_all()
 
     def destroy(self):
+        if self._form_controller:
+            self._form_controller.destroy()
         self._window.hide()
         self._window.destroy()
         self._iterated_loop.stop()
@@ -381,7 +383,10 @@ class AD_HOC_Response_Window:
         if not isinstance(data, org.wayround.xmpp.xdata.XData):
             raise TypeError("`data' must be org.wayround.xmpp.xdata.XData")
 
-        res = org.wayround.pyabber.xdata.XDataFormWidgetController(data)
+        res = org.wayround.pyabber.xdata.XDataFormWidget(
+            self._controller,
+            data
+            )
 
         self._form_controller = res
 
@@ -415,7 +420,7 @@ class AD_HOC_Response_Window:
                 d.destroy()
             else:
 
-                x_data = self._form_controller.gen_x_data()
+                x_data = self._form_controller.gen_stanza_subobject()
                 if x_data == None:
                     d = org.wayround.utils.gtk.MessageDialog(
                         None,
