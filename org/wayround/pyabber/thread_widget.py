@@ -59,7 +59,7 @@ class ThreadWidget:
         b.pack_start(self._text, True, True, 0)
         b.pack_start(thread_generate_button, False, False, 0)
 
-        self._controller.message_relay.connect_signal(
+        self._controller.message_relay.signal.connect(
             'new_message', self.message_relay_listener
             )
 
@@ -75,7 +75,7 @@ class ThreadWidget:
         return self._contact_resource
 
     def destroy(self):
-        self._controller.message_relay.disconnect_signal(
+        self._controller.message_relay.signal.disconnect(
             self.message_relay_listener
             )
         self.get_widget().destroy()

@@ -295,7 +295,7 @@ class AD_HOC_Response_Window:
                 d.run()
                 d.destroy()
             else:
-                self._add_x_form(i)
+                self._add_x_form(i, self._stanza_response)
 
         buttons = {}
 
@@ -378,14 +378,15 @@ class AD_HOC_Response_Window:
 
         return
 
-    def _add_x_form(self, data):
+    def _add_x_form(self, data, stanza):
 
         if not isinstance(data, org.wayround.xmpp.xdata.XData):
             raise TypeError("`data' must be org.wayround.xmpp.xdata.XData")
 
         res = org.wayround.pyabber.xdata.XDataFormWidget(
             self._controller,
-            data
+            data,
+            stanza
             )
 
         self._form_controller = res

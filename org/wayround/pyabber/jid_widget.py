@@ -84,7 +84,7 @@ class JIDWidget:
             self._on_widget_right_button
             )
 
-        self._roster_storage.connect_signal(
+        self._roster_storage.signal.connect(
             True,
             self._roster_storage_listener
             )
@@ -212,7 +212,7 @@ class JIDWidget:
         self._subscription_i.set_tooltip_text(value)
 
     def destroy(self):
-        self._roster_storage.disconnect_signal(
+        self._roster_storage.dissignal.connect(
             self._roster_storage_listener
             )
         self._menu.destroy()
@@ -251,8 +251,13 @@ class MUCRosterJIDWidgetMenu:
 
         contact_submenu_mi = Gtk.MenuItem("MUC Roster Contact Menu")
 
-        edit_entity_mi = Gtk.MenuItem("Edit this entity..")
+        edit_entity_mi = Gtk.MenuItem("Full Entity Editor..")
         edit_entity_mi.connect('activate', self._on_edit_entity_activated)
+
+        mini_edit_entity_mi = Gtk.MenuItem("Mini Entity Editor..")
+        mini_edit_entity_mi.connect(
+            'activate', self._on_mini_edit_entity_activated
+            )
 
         open_private_mi = Gtk.MenuItem("Open Private Chat")
         open_private_mi.connect('activate', self._on_open_private_activated)
@@ -262,6 +267,7 @@ class MUCRosterJIDWidgetMenu:
         menu.append(contact_submenu_mi)
         menu.append(Gtk.SeparatorMenuItem())
         menu.append(edit_entity_mi)
+        menu.append(mini_edit_entity_mi)
 
         menu.show_all()
 
@@ -307,13 +313,38 @@ class MUCRosterJIDWidgetMenu:
             target_jid=jid.bare(),
             editing_preset=self._muc_roster_storage.get_item(jid.resource)
             )
-
         return
 
     def _on_open_private_activated(self, mi):
 
         cw = self._controller.get_chat_window()
         cw.chat_pager.add_private(self._bare_or_full_jid)
+
+        return
+
+    def _on_mini_edit_entity_activated(self, mi):
+        room_resource_jid = org.wayround.xmpp.core.JID.new_from_str(
+            self._bare_or_full_jid
+            )
+
+        storage_item = self._muc_roster_storage.get_item(
+            room_resource_jid.resource
+            )
+
+        room_resource_jid_true_jid = storage_item.get_jid()
+
+        target_jid = None
+        if room_resource_jid_true_jid != None:
+            target_jid = org.wayround.xmpp.core.JID.new_from_str(
+                room_resource_jid_true_jid
+                ).bare()
+
+        self._controller.show_muc_mini_identity_editor_window(
+            room_jid=room_resource_jid.bare(),
+            target_jid=target_jid,
+            editing_preset=storage_item
+            )
+        return
 
 
 class MUCRosterJIDWidget:
@@ -405,7 +436,7 @@ class MUCRosterJIDWidget:
             self._on_jid_right_button
             )
 
-        muc_roster_storage.connect_signal(
+        muc_roster_storage.signal.connect(
             True,
             self._on_storage_actions
             )
@@ -519,7 +550,7 @@ class MUCRosterJIDWidget:
         return self._main_widget
 
     def destroy(self):
-        self._muc_roster_storage.disconnect_signal(
+        self._muc_roster_storage.dissignal.connect(
             self._on_storage_actions
             )
         self._menu.destroy()
@@ -529,6 +560,9 @@ class MUCRosterJIDWidget:
     def _on_storage_actions(self, event, storage, nick, item):
         if event == 'set':
             if nick == self.get_nick():
+                new_nick = item.get_nick()
+                if new_nick != None:
+                    self.set_nick(new_nick)
                 self.reload_data(item)
         return
 
@@ -609,6 +643,11 @@ class GroupChatTabWidget:
             self._on_widget_right_button
             )
 
+        muc_roster_storage.signal.connect(
+            True,
+            self._on_storage_actions
+            )
+
         return
 
     def get_widget(self):
@@ -622,7 +661,7 @@ class GroupChatTabWidget:
 
     def set_own_resource(self, value):
         self._own_resource = value
-        self._mrjw.set_nick(value)
+#        self._mrjw.set_nick(value)
         self._menu.set(self._room_bare_jid)
         self._title_label.set_text('MUC: {}'.format(self._room_bare_jid))
 
@@ -635,5 +674,14 @@ class GroupChatTabWidget:
 
             self._menu.set(self._room_bare_jid)
             self._menu.show()
+
+        return
+
+    def _on_storage_actions(self, event, storage, nick, item):
+        if event == 'set':
+            if nick == self.get_own_resource():
+                new_nick = item.get_nick()
+                if new_nick != None:
+                    self.set_own_resource(new_nick)
 
         return

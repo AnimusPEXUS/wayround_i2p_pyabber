@@ -7,7 +7,7 @@ import hashlib
 import sqlalchemy.ext.declarative
 
 import org.wayround.utils.db
-import org.wayround.utils.signal
+import org.wayround.utils.threading
 import org.wayround.utils.types
 import org.wayround.utils.sqlalchemy
 import org.wayround.xmpp.bob
@@ -351,10 +351,10 @@ for i in BOB_CACHE_FIELDS[:]:
         BOB_CACHE_FIELDS.append(('type_', 'type_',))
 
 
-class Storage(org.wayround.utils.signal.Signal):
+class Storage:
 
     def __init__(self, *args, **kwargs):
-        super().__init__(
+        self.signal = org.wayround.utils.threading.Signal(
             [
              'history_update'
              ]
@@ -522,7 +522,7 @@ class Storage(org.wayround.utils.signal.Signal):
 
                 self._db.session.commit()
 
-                self.emit_signal(
+                self.signal.emit(
                     'history_update',
                     self,
                     date, receive_date, delay_from, delay_message, incomming,

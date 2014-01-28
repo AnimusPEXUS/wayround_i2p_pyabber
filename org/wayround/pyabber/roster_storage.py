@@ -3,11 +3,12 @@ import copy
 import logging
 import threading
 
-import org.wayround.utils.signal
+import org.wayround.pyabber.muc_roster_storage
+import org.wayround.utils.threading
 import org.wayround.xmpp.muc
 
 
-class RosterStorage(org.wayround.utils.signal.Signal):
+class RosterStorage:
 
     def __init__(self, own_jid_obj, roster_client, presence_client):
 
@@ -34,13 +35,15 @@ class RosterStorage(org.wayround.utils.signal.Signal):
 
         self._data = {}
 
-        super().__init__(['set_bare', 'set_resource', 'unset_bare'])
+        self.signal = org.wayround.utils.threading.Signal(
+            ['set_bare', 'set_resource', 'unset_bare']
+            )
 
-        roster_client.connect_signal(
+        roster_client.signal.connect(
             ['push'], self._on_roster_push
             )
 
-        presence_client.connect_signal(
+        presence_client.signal.connect(
             ['presence'], self._on_presence
             )
 
@@ -87,7 +90,7 @@ class RosterStorage(org.wayround.utils.signal.Signal):
 
         jid_data = data[bare_jid]
 
-        self.emit_signal(
+        self.signal.emit(
             'set_resource', self, bare_jid, resource, data, jid_data
             )
 
@@ -145,7 +148,7 @@ class RosterStorage(org.wayround.utils.signal.Signal):
 
         jid_data = data[bare_jid]
 
-        self.emit_signal('set_bare', self, bare_jid, None, data, jid_data)
+        self.signal.emit('set_bare', self, bare_jid, None, data, jid_data)
 
         return
 
@@ -165,7 +168,7 @@ class RosterStorage(org.wayround.utils.signal.Signal):
 
         self._lock.release()
 
-        self.emit_signal('unset_bare', self, bare_jid, None, data, jid_data)
+        self.signal.emit('unset_bare', self, bare_jid, None, data, jid_data)
 
         return
 
@@ -352,9 +355,9 @@ class RosterStorage(org.wayround.utils.signal.Signal):
 
                 else:
                     logging.warning(
-                        "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stanza.typ is {}".format(
-                            stanza.get_typ()
-                            )
+                "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stanza.typ is {}".format(
+                    stanza.get_typ()
+                    )
                         )
 
         return

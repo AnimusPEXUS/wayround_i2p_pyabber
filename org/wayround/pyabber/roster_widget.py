@@ -109,7 +109,7 @@ class RosterWidget:
 
         order_combobox.connect('changed', self._on_order_combobox_changed)
 
-        self._roster_storage.connect_signal(
+        self._roster_storage.signal.connect(
             True,
             self._roster_storage_listener
             )

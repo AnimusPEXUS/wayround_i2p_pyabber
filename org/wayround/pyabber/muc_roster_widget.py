@@ -18,7 +18,7 @@ class MUCRosterWidget:
 
         self._list = []
 
-        muc_roster_storage.connect_signal(
+        muc_roster_storage.signal.connect(
             True,
             self._on_muc_roster_storage_event
             )
@@ -36,7 +36,7 @@ class MUCRosterWidget:
         return self._b
 
     def destroy(self):
-        self._muc_roster_storage.disconnect_signal(
+        self._muc_roster_storage.signal.disconnect(
             self._on_muc_roster_storage_event
             )
         self._remove_all_items()

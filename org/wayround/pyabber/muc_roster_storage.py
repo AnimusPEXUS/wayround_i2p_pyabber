@@ -4,13 +4,12 @@ import logging
 import threading
 
 import lxml.etree
-import org.wayround.utils.signal
+import org.wayround.utils.threading
 import org.wayround.xmpp.client
 import org.wayround.xmpp.core
 import org.wayround.xmpp.muc
 
 
-#class Item(org.wayround.utils.signal.Signal):
 class Item:
 
     def __init__(
@@ -20,8 +19,6 @@ class Item:
         available=None, show=None, status=None,
         jid=None
         ):
-
-#        super().__init__(['changed'])
 
         self.set_nick(nick)
         self.set_affiliation(affiliation)
@@ -67,19 +64,8 @@ org.wayround.utils.factory.class_generate_attributes(
     ['nick', 'affiliation', 'role', 'available', 'show', 'status', 'jid']
     )
 
-#org.wayround.utils.factory.class_generate_attributes(
-#    Item,
-#    [('nick', 'changed'),
-#     ('affiliation', 'changed'),
-#     ('role', 'changed'),
-#     ('available', 'changed'),
-#     ('show', 'changed'),
-#     ('status', 'changed')
-#     ]
-#    )
 
-
-class Storage(org.wayround.utils.signal.Signal):
+class Storage:
 
     def __init__(self, room_jid, presence_client):
 
@@ -100,20 +86,27 @@ class Storage(org.wayround.utils.signal.Signal):
 
         self._items = []
 
-        super().__init__(['set'])
+        self._own_resource = None
 
-        presence_client.connect_signal(
+        self.signal = org.wayround.utils.threading.Signal(
+            ['set',
+             'own_rename']
+            )
+
+        presence_client.signal.connect(
             ['presence'], self._on_presence
             )
 
         return
-    
+
     def destroy(self):
-        self._presence_client.disconnect_signal(
+        self._presence_client.signal.disconnect(
             self._on_presence
             )
 
-    def _on_presence(self, event, presence_obj, from_jid, to_jid, stanza):
+    def _on_presence(
+        self, event, presence_client_obj, from_jid, to_jid, stanza
+        ):
 
         if event == 'presence':
 
@@ -175,6 +168,18 @@ class Storage(org.wayround.utils.signal.Signal):
                             jid=item.get_jid()
                             )
 
+                        if 110 in muc_obj.get_status():
+                            if stanza.get_typ() != 'unavailable':
+                                self._own_resource = fj.resource
+                            else:
+                                self._own_resource = None
+
+                            self.signal.emit(
+                                'own_rename',
+                                self,
+                                self._own_resource
+                                )
+
                 elif len_muc_elem_list > 1:
                     logging.error(
                         "Not supported more then one muc element in stanza"
@@ -184,6 +189,8 @@ class Storage(org.wayround.utils.signal.Signal):
                         )
 
         return
+
+    pass_presence_signal = _on_presence
 
     def set(
         self,
@@ -218,7 +225,7 @@ class Storage(org.wayround.utils.signal.Signal):
         if new_nick != None:
             d.set_nick(new_nick)
 
-        self.emit_signal('set', self, nick, d)
+        self.signal.emit('set', self, nick, d)
 
         return
 

@@ -23,7 +23,7 @@ import org.wayround.pyabber.roster_window
 import org.wayround.pyabber.single_message_window
 import org.wayround.pyabber.subject_widget
 import org.wayround.utils.gtk
-import org.wayround.utils.signal
+import org.wayround.utils.threading
 import org.wayround.xmpp.client
 import org.wayround.xmpp.core
 import org.wayround.xmpp.disco
@@ -46,6 +46,8 @@ SUBWINDOWS = [
     ('muc_identity_editor_window', False, True),
     ('muc_jid_entry_dialog', False, False),
     ('muc_join_dialog', False, True),
+    ('muc_mini_identity_editor_window', False, True),
+    ('muc_voice_request_window', False, True),
     ('presence_control_window', False, True),
     ('registration_window', False, False),
     ('registration_window_threaded', False, True),
@@ -205,6 +207,8 @@ self._rel_win_ctl.set_constructor_cb(
 
         self.clear(init=True)
 
+        return
+
     def __del__(self):
         self._remove_self_from_list()
 
@@ -268,14 +272,23 @@ self._rel_win_ctl.set_constructor_cb(
     def _subject_edit_window_constructor(self):
         return org.wayround.pyabber.subject_widget.SubjectEditor(self)
 
+    def _muc_voice_request_window_constructor(self):
+        return org.wayround.pyabber.muc.MUCVoiceRequestWindow(self)
+
+    def _muc_mini_identity_editor_window_constructor(self):
+        return org.wayround.pyabber.muc.MUCMiniIdentityEditorWindow(self)
+
     for i in SUBWINDOWS:
         exec(
             """\
+def destroy_{i}(self):
+    return self._rel_win_ctl.destroy_window('{i}')
+
 def get_{i}(self):
-    ret = self._rel_win_ctl.get_window('{i}')
+    ret = self._rel_win_ctl.get('{i}')
     if ret == None:
         self.show_{i}()
-    ret = self._rel_win_ctl.get_window('{i}')
+    ret = self._rel_win_ctl.get('{i}')
     return ret
 
 def show_{i}(self, *args, **kwargs):
@@ -310,8 +323,7 @@ def show_{i}(self, *args, **kwargs):
             self._disconnection_flag.clear()
 
     def destroy(self):
-        chat_window = self.get_chat_window()
-        chat_window.destroy()
+        self.destroy_chat_window()
         self.disconnect()
         self._rel_win_ctl.destroy()
         self._menu.destroy()
@@ -379,20 +391,22 @@ def show_{i}(self, *args, **kwargs):
 
         self.bob_mgr = org.wayround.pyabber.bob.BOBMgr(self)
 
-        self.client.sock_streamer.connect_signal(
+        self.muc_pool = org.wayround.pyabber.muc.MUCControllerPool(self)
+
+        self.client.sock_streamer.signal.connect(
             ['start', 'stop', 'error'],
             self._on_connection_event
             )
 
         logging.debug("streamer connected")
 
-        self.client.io_machine.connect_signal(
+        self.client.io_machine.signal.connect(
             ['in_start', 'in_stop', 'in_error',
              'out_start', 'out_stop', 'out_error'],
             self._on_stream_io_event
             )
 
-        features_waiter = org.wayround.utils.signal.SignalWaiter(
+        features_waiter = org.wayround.utils.threading.SignalWaiter(
             self.client,
             'features'
             )
@@ -553,7 +567,11 @@ def show_{i}(self, *args, **kwargs):
                         self.presence_client
                         )
 
-                self.message_client.connect_signal(
+                self.presence_client.signal.connect(
+                    ['presence'], self._on_presence
+                    )
+
+                self.message_client.signal.connect(
                     ['message'], self.message_relay.on_message
                     )
 
@@ -564,7 +582,7 @@ def show_{i}(self, *args, **kwargs):
                     items=None
                     )
 
-                self.message_relay.connect_signal(
+                self.message_relay.signal.connect(
                     'new_message', self.message_relay_listener
                     )
 
@@ -866,5 +884,23 @@ def show_{i}(self, *args, **kwargs):
         ):
 
         if event == 'new_message':
-            if type_ == 'message_normal':
-                self.show_single_message_window('view', original_stanza)
+            if type_ in ['message_normal', 'message_error']:
+                self.show_single_message_window(
+                    'view',
+                    original_stanza,
+                    receive_date
+                    )
+
+    def _on_presence(self, event, presence_obj, from_jid, to_jid, stanza):
+
+        if event == 'presence':
+            if org.wayround.xmpp.muc.has_muc_elements(
+                stanza.get_element()
+                ):
+                w = self.get_chat_window()
+                jid = org.wayround.xmpp.core.JID.new_from_str(
+                    stanza.get_from_jid()
+                    )
+                w.chat_pager.add_groupchat(jid)
+
+        return

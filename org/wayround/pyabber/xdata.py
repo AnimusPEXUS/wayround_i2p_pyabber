@@ -26,6 +26,8 @@ class XDataFormWidget:
         x_data is deepcopied internally
         """
 
+        # FIXME: provide origin_stanza==None
+
         if not isinstance(x_data, org.wayround.xmpp.xdata.XData):
             raise TypeError("`x_data' must be org.wayround.xmpp.xdata.XData")
 
@@ -100,7 +102,7 @@ class XDataFormWidget:
             w = widg.get_widget()
             b.pack_start(w, True, True, 0)
 
-        b.show_all()
+        self.get_widget().show_all()
 
         return
 

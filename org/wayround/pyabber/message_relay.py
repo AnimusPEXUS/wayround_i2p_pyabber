@@ -1,21 +1,24 @@
 
+import logging
 import datetime
 import threading
 
 import org.wayround.xmpp.delay
-import org.wayround.utils.signal
+import org.wayround.utils.threading
 
 
-class MessageRelay(org.wayround.utils.signal.Signal):
+class MessageRelay:
 
     def __init__(self, controller):
 
         self._controller = controller
-        super().__init__(['new_message'])
+        self.signal = org.wayround.utils.threading.Signal(['new_message'])
 
     def on_message(self, event, message_obj, stanza):
 
         if event == 'message':
+
+            logging.debug("Received stanza for relay: {}".format(stanza))
 
             type_ = 'message_normal'
             typ = stanza.get_typ()
@@ -103,7 +106,7 @@ class MessageRelay(org.wayround.utils.signal.Signal):
             )
         t.start()
 
-        self.emit_signal(
+        self.signal.emit(
             'new_message',
             self,
             original_stanza,

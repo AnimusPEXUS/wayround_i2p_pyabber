@@ -1,6 +1,4 @@
 
-import uuid
-
 from gi.repository import Gtk
 
 import org.wayround.pyabber.captcha
@@ -30,6 +28,12 @@ class SingleMessageWindow:
 
         self._iterated_loop = org.wayround.utils.gtk.GtkIteratedLoop()
 
+        date_label = Gtk.Label()
+        date_label.set_no_show_all(True)
+        date_label.set_alignment(0.0, 0.5)
+        date_label.set_selectable(True)
+        self._date_label = date_label
+
         b0 = Gtk.Box()
         b0.set_orientation(Gtk.Orientation.VERTICAL)
         b0.set_spacing(5)
@@ -45,6 +49,7 @@ class SingleMessageWindow:
         main_box = Gtk.Box()
         main_box.set_orientation(Gtk.Orientation.VERTICAL)
         main_box.set_spacing(5)
+        main_box.set_size_request(300, -1)
 
         from_frame = Gtk.Frame()
         from_frame.set_no_show_all(True)
@@ -168,6 +173,7 @@ class SingleMessageWindow:
         self._additional_box.set_orientation(Gtk.Orientation.VERTICAL)
         self._additional_box.set_no_show_all(True)
 
+        main_box.pack_start(date_label, False, False, 0)
         main_box.pack_start(from_frame, False, False, 0)
         main_box.pack_start(to_frame, False, False, 0)
         main_box.pack_start(subject_frame, False, False, 0)
@@ -182,7 +188,6 @@ class SingleMessageWindow:
 
         self._window.add(b0)
         self._window.connect('destroy', self._on_destroy)
-        self._window.show_all()
 
         self._additional_widgets = []
 
@@ -191,11 +196,17 @@ class SingleMessageWindow:
     def run(
         self,
         mode='new',
-        stanza=None
+        stanza=None,
+        date=None
         ):
 
         if not mode in ['new', 'view']:
             raise ValueError("Wrong mode")
+
+        if mode == 'view':
+            self._date_label.set_text(str(date))
+
+        self._date_label.set_visible(mode == 'view')
 
         self._original_stanza = stanza
 
@@ -245,6 +256,14 @@ class SingleMessageWindow:
 
         e = self._original_stanza.get_element()
         if e != None:
+
+            if self._original_stanza.is_error():
+                err = self._original_stanza.gen_error()
+                txt = err.gen_text()
+                l = Gtk.Label(txt)
+                l.show()
+                self._additional_box.pack_start(l, False, False, 0)
+
             for i in e:
                 if i.tag == '{urn:xmpp:captcha}captcha':
 
@@ -262,10 +281,34 @@ class SingleMessageWindow:
                     self._additional_widgets.append(captcha_widget)
                     self._additional_box.pack_start(
                         captcha_widget.get_widget(),
-                        True,
-                        True,
+                        False,
+                        False,
                         0
                         )
+                    w = captcha_widget.get_widget()
+                    w.set_size_request(300, 400)
+
+                if i.tag == '{jabber:x:data}x':
+
+                    xdata = org.wayround.xmpp.xdata.XData.new_from_element(i)
+
+                    xform = org.wayround.pyabber.xdata.XDataFormWidget(
+                        self._controller,
+                        x_data=xdata,
+                        origin_stanza=self._original_stanza,
+                        editable=mode == 'new'
+                        )
+
+                    self._additional_widgets.append(xform)
+                    self._additional_box.pack_start(
+                        xform.get_widget(),
+                        False,
+                        False,
+                        0
+                        )
+                    w = xform.get_widget()
+                    w.set_size_request(300, 400)
+
             self._additional_box.show()
         else:
             self._additional_box.hide()
@@ -311,16 +354,15 @@ class SingleMessageWindow:
             objects.append(i.gen_stanza_subobject())
 
         for i in objects:
-            if type(i) == org.wayround.xmpp.captcha.Captcha:
-                x = i.get_x()
-                x.set_typ('submit')
+            if type(i) == org.wayround.xmpp.xdata.XData:
+                i.set_typ('submit')
 
         plain, xhtml = self._msg_edit_widget.get_data()
 
         stanza = org.wayround.xmpp.core.Stanza(tag='message')
         stanza.set_typ('normal')
         stanza.set_to_jid(self._to_entry.get_text())
-#        stanza.set_objects(objects)
+        stanza.set_objects(objects)
         stanza.set_body_dict(plain)
         stanza.set_subject_dict(subject)
         stanza.set_thread(thread)

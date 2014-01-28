@@ -212,8 +212,8 @@ class SubjectWidget:
 
         self._lang_select_cb.connect('changed', self._on_lang_switch_chenged)
 
-        self._controller.message_relay.connect_signal(
-            'new_message', self.message_relay_listener
+        self._controller.message_relay.signal.connect(
+            'new_message', self._message_relay_listener
             )
 
         self.set_selected_language('')
@@ -232,8 +232,8 @@ class SubjectWidget:
         return self._contact_resource
 
     def destroy(self):
-        self._controller.message_relay.disconnect_signal(
-            self.message_relay_listener
+        self._controller.message_relay.signal.disconnect(
+            self._message_relay_listener
             )
 #        self._tooltip.destroy()
         self.get_widget().destroy()
@@ -333,7 +333,7 @@ class SubjectWidget:
     def _on_lang_switch_chenged(self, widget):
         self._update_text()
 
-    def message_relay_listener(
+    def _message_relay_listener(
         self,
         event, storage, original_stanza,
         date, receive_date, delay_from, delay_message, incomming,

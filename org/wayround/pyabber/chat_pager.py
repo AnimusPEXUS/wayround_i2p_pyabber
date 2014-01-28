@@ -1,4 +1,5 @@
 
+import threading
 import datetime
 import uuid
 
@@ -17,7 +18,7 @@ import org.wayround.xmpp.core
 class Chat:
 
     def __init__(
-        self, pager, controller,
+        self, controller, pager, groupchat,
         contact_bare_jid, contact_resource, thread_id, mode='chat',
         muc_roster_storage=None
         ):
@@ -37,6 +38,7 @@ class Chat:
 
         self._mode = mode
         self._pager = pager
+        self._groupchat = groupchat
 
         self._unread = False
 
@@ -145,12 +147,9 @@ class Chat:
 
         self._update_jid_widget()
 
-        self._controller.message_relay.connect_signal(
-            'new_message', self.message_relay_listener
+        self._controller.message_relay.signal.connect(
+            'new_message', self._message_relay_listener
             )
-
-        if self._mode == 'groupchat':
-            self.make_available()
 
         return
 
@@ -203,12 +202,12 @@ class Chat:
 
     def destroy(self):
 
-        self._controller.message_relay.disconnect_signal(
-            self.message_relay_listener
+        self._controller.message_relay.dissignal.connect(
+            self._message_relay_listener
             )
 
-        if self._mode == 'groupchat':
-            self.make_unavailable()
+#        if self._mode == 'groupchat':
+#            self.make_unavailable()
 
         self._jid_widget.destroy()
         self._subject_widget.destroy()
@@ -314,7 +313,7 @@ class Chat:
 
         self._unread = value
 
-    def message_relay_listener(
+    def _message_relay_listener(
         self,
         event, storage, original_stanza,
         date, receive_date, delay_from, delay_message, incomming,
@@ -346,22 +345,27 @@ class ChatPager:
 
         self._root_widget = self._notebook
 
-        self._controller.message_relay.connect_signal(
-            'new_message', self.message_relay_listener
+        self._controller.message_relay.signal.connect(
+            'new_message', self._message_relay_listener
             )
+
+        self._groupchat_addition_lock = threading.Lock()
+
+        return
 
     def get_widget(self):
         return self._root_widget
 
     def add_chat(self, jid_obj, thread_id):
-        res = self._search_page(jid_obj, thread_id, type_=Chat)
+        res = self.search_page(jid_obj, thread_id, type_=Chat)
 
         ret = None
 
         if len(res) == 0:
             p = Chat(
-                pager=self,
                 controller=self._controller,
+                pager=self,
+                groupchat=None,
                 contact_bare_jid=jid_obj.bare(),
                 contact_resource=None,
                 thread_id=thread_id
@@ -372,7 +376,8 @@ class ChatPager:
         return ret
 
     def add_groupchat(self, jid_obj):
-        res = self._search_page(jid_obj, type_=GroupChat)
+        self._groupchat_addition_lock.acquire()
+        res = self.search_page(jid_obj, type_=GroupChat)
 
         ret = None
 
@@ -387,7 +392,7 @@ class ChatPager:
             ret = p
         else:
             ret = res[0]
-
+        self._groupchat_addition_lock.release()
         return ret
 
     def add_page(self, page):
@@ -404,14 +409,14 @@ class ChatPager:
         return
 
     def add_private(self, full_jid):
+        ret = None
         j = org.wayround.xmpp.core.JID.new_from_string(full_jid)
         j2 = j.copy()
         j2.resource = None
         gc = self.add_groupchat(j2)
         if gc != None:
-            gc.add_private(j)
-
-        return
+            ret = gc.add_private(j)
+        return ret
 
     def remove_page(self, page):
         while page in self.pages:
@@ -429,8 +434,8 @@ class ChatPager:
             self.remove_page(i)
 
     def destroy(self):
-        self._controller.message_relay.disconnect_signal(
-            self.message_relay_listener
+        self._controller.message_relay.dissignal.connect(
+            self._message_relay_listener
             )
         self.remove_all_pages()
         self.get_widget().destroy()
@@ -471,7 +476,7 @@ class ChatPager:
 
         return
 
-    def _search_page(self, jid_obj, thread_id=None, type_=None):
+    def search_page(self, jid_obj, thread_id=None, type_=None):
 
         if not isinstance(jid_obj, org.wayround.xmpp.core.JID):
             raise ValueError("`jid_obj' must be org.wayround.xmpp.core.JID")
@@ -508,7 +513,7 @@ class ChatPager:
 
         return ret
 
-    def message_relay_listener(
+    def _message_relay_listener(
         self,
         event, storage, original_stanza,
         date, receive_date, delay_from, delay_message, incomming,
@@ -558,10 +563,16 @@ class GroupChat:
         self._pager = pager
 
         self._controller = controller
+
         self._room_bare_jid_obj = org.wayround.xmpp.core.JID.new_from_str(
             room_bare_jid
             )
 
+        self._muc_controller = self._controller.muc_pool.get_controller(
+            room_bare_jid
+            )
+
+        self._storage = self._muc_controller.get_roster_storage()
         self.pages = []
 
         b = Gtk.Box()
@@ -572,11 +583,6 @@ class GroupChat:
         b.set_margin_bottom(5)
         b.set_spacing(5)
 
-        self._storage = org.wayround.pyabber.muc_roster_storage.Storage(
-            self._room_bare_jid_obj,
-            controller.presence_client
-            )
-
         self._roster_widget = \
             org.wayround.pyabber.muc_roster_widget.MUCRosterWidget(
                 self._room_bare_jid_obj,
@@ -585,14 +591,16 @@ class GroupChat:
                 )
 
         main_chat_page = Chat(
-            pager,
             controller,
+            pager,
+            self,
             contact_bare_jid=self._room_bare_jid_obj.bare(),
             contact_resource=own_resource,
             thread_id=None,
             mode='groupchat',
             muc_roster_storage=self._storage
             )
+        self._main_chat_page = main_chat_page
 
         self._notebook = Gtk.Notebook()
         self._notebook.set_scrollable(True)
@@ -653,14 +661,16 @@ class GroupChat:
 
         self._title_label.show_all()
 
-        self._main_chat_page = main_chat_page
-
         self._root_widget = b
 
         self._root_widget.show_all()
 
-        self._controller.message_relay.connect_signal(
-            'new_message', self.message_relay_listener
+        self._controller.message_relay.signal.connect(
+            'new_message', self._message_relay_listener
+            )
+
+        self._storage.signal.connect(
+            'own_rename', self._on_own_rename_storage_action
             )
 
         self.set_own_resource(own_resource)
@@ -672,15 +682,15 @@ class GroupChat:
     def set_own_resource(self, value):
         self.contact_resource = value
         self._main_chat_page.set_resource(value)
-        self._tab_widget.set_own_resource(value)
+#        self._tab_widget.set_own_resource(value)
 
     def get_own_resource(self):
         return self.contact_resource
 
     def destroy(self):
 #        print("111 1")
-        self._controller.message_relay.disconnect_signal(
-            self.message_relay_listener
+        self._controller.message_relay.signal.disconnect(
+            self._message_relay_listener
             )
 #        print("111 2")
         self._storage.destroy()
@@ -723,7 +733,7 @@ class GroupChat:
 
     _get_all_list_pages = ChatPager._get_all_list_pages
 
-    def _search_page(self, resource):
+    def search_page(self, resource):
 
         if not isinstance(resource, str):
             raise ValueError("`resource' must be str")
@@ -778,14 +788,15 @@ class GroupChat:
 
     def add_private(self, jid_obj):
 
-        res = self._search_page(jid_obj.resource)
+        res = self.search_page(jid_obj.resource)
 
         ret = None
 
         if len(res) == 0:
             p = Chat(
-                pager=self,
                 controller=self._controller,
+                pager=self,
+                groupchat=None,
                 contact_bare_jid=jid_obj.bare(),
                 contact_resource=jid_obj.resource,
                 thread_id=None,
@@ -797,7 +808,7 @@ class GroupChat:
 
         return ret
 
-    def message_relay_listener(
+    def _message_relay_listener(
         self,
         event, storage, original_stanza,
         date, receive_date, delay_from, delay_message, incomming,
@@ -817,3 +828,12 @@ class GroupChat:
 
     def _on_tab_close_button_clicked(self, button):
         self._pager.remove_page(self)
+
+    def _on_own_rename_storage_action(self, event, storage, own_nick):
+        if event == 'own_rename':
+            if own_nick != None:
+                self.set_own_resource(own_nick)
+        return
+
+    def pass_presence_signal(self, *args, **kwargs):
+        self._storage.pass_presence_signal(*args, **kwargs)

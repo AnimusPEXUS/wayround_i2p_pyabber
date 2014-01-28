@@ -2,8 +2,9 @@
 
 from gi.repository import Gtk
 
-import org.wayround.pyabber.xdata
 import org.wayround.pyabber.misc
+import org.wayround.pyabber.xdata
+import org.wayround.utils.gtk
 import org.wayround.xmpp.captcha
 import org.wayround.xmpp.core
 
@@ -85,5 +86,15 @@ class CAPTCHAWidget:
                     res,
                     "CAPTCHA challenge failed"
                     )
+            else:
+                d = org.wayround.utils.gtk.MessageDialog(
+                    None,
+                    0,
+                    Gtk.MessageType.INFO,
+                    Gtk.ButtonsType.OK,
+                    "Processed. No Error Returned From Server."
+                    )
+                d.run()
+                d.destroy()
 
         return

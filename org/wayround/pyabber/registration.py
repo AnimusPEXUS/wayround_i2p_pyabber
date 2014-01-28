@@ -122,7 +122,8 @@ class RegistrationWidget:
         if xdata != None:
             self._xdata = org.wayround.pyabber.xdata.XDataFormWidget(
                 self._controller,
-                xdata
+                xdata,
+                None
                 )
             _f = Gtk.Frame()
             _f.set_label("Additional Form Supplied")

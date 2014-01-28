@@ -1,4 +1,5 @@
 
+import threading
 import json
 import sys
 
@@ -11,9 +12,465 @@ import org.wayround.utils.error
 import org.wayround.utils.gtk
 import org.wayround.xmpp.muc
 import org.wayround.xmpp.xdata
+import org.wayround.pyabber.muc_roster_storage
+
+ROLE_LISTSTORE = Gtk.ListStore(str)
+AFFILIATION_LISTSTORE = Gtk.ListStore(str)
+
+for i in org.wayround.xmpp.muc.ROLES:
+    ROLE_LISTSTORE.append([i])
+
+for i in org.wayround.xmpp.muc.AFFILIATIONS:
+    AFFILIATION_LISTSTORE.append([i])
+
+del i
+
+MODE_LIST = Gtk.ListStore(str)
+MODE_LIST.append(['role'])
+MODE_LIST.append(['affiliation'])
+
+
+class MUCMiniIdentityEditorWindow:
+
+    def __init__(self, controller):
+
+        self._controller = controller
+
+        self._iterated_loop = org.wayround.utils.gtk.GtkIteratedLoop()
+
+        window = Gtk.Window()
+
+        b = Gtk.Box()
+        b.set_orientation(Gtk.Orientation.VERTICAL)
+        b.set_spacing(5)
+        b.set_margin_top(5)
+        b.set_margin_left(5)
+        b.set_margin_right(5)
+        b.set_margin_bottom(5)
+
+        room_jid_label = Gtk.Label("Room JID")
+
+        room_jid_entry = Gtk.Entry()
+        room_jid_entry.set_hexpand(True)
+        room_jid_entry.set_vexpand(False)
+        self._room_jid_entry = room_jid_entry
+
+        jid_label = Gtk.Label("JID")
+
+        jid_entry = Gtk.Entry()
+        jid_entry.set_hexpand(True)
+        jid_entry.set_vexpand(False)
+        self._jid_entry = jid_entry
+
+        role_sw_cb = Gtk.ComboBox()
+        role_sw_cb.set_hexpand(True)
+        role_sw_cb.set_vexpand(False)
+        self._role_sw_cb = role_sw_cb
+        renderer_text = Gtk.CellRendererText()
+        role_sw_cb.pack_start(renderer_text, True)
+        role_sw_cb.add_attribute(renderer_text, "text", 0)
+
+        role_sw_cb.set_model(ROLE_LISTSTORE)
+        role_sw_cb.set_active(0)
+
+        affiliation_sw_cb = Gtk.ComboBox()
+        affiliation_sw_cb.set_hexpand(True)
+        affiliation_sw_cb.set_vexpand(False)
+        self._affiliation_sw_cb = affiliation_sw_cb
+        renderer_text = Gtk.CellRendererText()
+        affiliation_sw_cb.pack_start(renderer_text, True)
+        affiliation_sw_cb.add_attribute(renderer_text, "text", 0)
+
+        affiliation_sw_cb.set_model(AFFILIATION_LISTSTORE)
+        affiliation_sw_cb.set_active(0)
+
+        g = Gtk.Grid()
+        g.set_column_spacing(5)
+        g.set_row_spacing(5)
+        self._g = g
+
+        role_cb = Gtk.CheckButton()
+        role_cb.set_label("Role")
+        self._role_cb = role_cb
+
+        affiliation_cb = Gtk.CheckButton()
+        affiliation_cb.set_label("Affiliation")
+        self._affiliation_cb = affiliation_cb
+
+        nick_cb = Gtk.CheckButton()
+        self._nick_cb = nick_cb
+        nick_cb.set_label("Nick")
+
+        nick_entry = Gtk.Entry()
+        nick_entry.set_hexpand(True)
+        nick_entry.set_vexpand(False)
+        self._nick_entry = nick_entry
+
+        reason_cb = Gtk.CheckButton()
+        reason_cb.set_label("Reason")
+        self._reason_cb = reason_cb
+
+        reason_tv = Gtk.TextView()
+        reason_tv.set_hexpand(True)
+        reason_tv.set_vexpand(True)
+        reason_tv_sw = Gtk.ScrolledWindow()
+        reason_tv_sw.add(reason_tv)
+        self._reason_tv = reason_tv
+
+        actor_cb = Gtk.CheckButton()
+        actor_cb.set_label("Actor")
+        self._actor_cb = actor_cb
+
+        actor_entry = Gtk.Entry()
+        actor_entry.set_hexpand(True)
+        actor_entry.set_vexpand(False)
+        self._actor_entry = actor_entry
+
+        lst = [
+            (room_jid_label, room_jid_entry),
+            (jid_label, jid_entry),
+            (nick_cb, nick_entry),
+            (role_cb, role_sw_cb),
+            (affiliation_cb, affiliation_sw_cb),
+            (reason_cb, reason_tv_sw),
+            (actor_cb, actor_entry)
+            ]
+
+        for i in range(len(lst)):
+            for j in range(len(lst[i])):
+                g.attach(lst[i][j], j, i, 1, 1)
+
+        bb = Gtk.ButtonBox()
+        bb.set_spacing(5)
+        bb.set_orientation(Gtk.Orientation.HORIZONTAL)
+
+        request_button = Gtk.Button("Request")
+        request_button.connect('clicked', self._on_request_clicked)
+
+        cancel_button = Gtk.Button("Cancel")
+        cancel_button.connect('clicked', self._on_cancel_clicked)
+
+        bb.pack_start(request_button, False, False, 0)
+        bb.pack_start(cancel_button, False, False, 0)
+
+        b.pack_start(g, True, True, 0)
+        b.pack_start(bb, False, False, 0)
+
+        window.add(b)
+        window.connect('destroy', self._on_destroy)
+
+        self._window = window
+        return
+
+    def run(self, room_jid, target_jid, editing_preset):
+
+        self._room_jid_entry.set_text(room_jid)
+        if target_jid:
+            self._jid_entry.set_text(target_jid)
+
+        aff = editing_preset.get_affiliation()
+        for i in range(len(AFFILIATION_LISTSTORE)):
+            if AFFILIATION_LISTSTORE[i][0] == aff:
+                self._affiliation_sw_cb.set_active(i)
+                break
+
+        role = editing_preset.get_role()
+        for i in range(len(ROLE_LISTSTORE)):
+            if ROLE_LISTSTORE[i][0] == role:
+                self._role_sw_cb.set_active(i)
+                break
+
+        self._nick_entry.set_text(editing_preset.get_nick()),
+
+        self.show()
+
+        self._iterated_loop.wait()
+
+        return
+
+    def show(self):
+        self._window.show_all()
+
+    def destroy(self):
+        self._window.destroy()
+        self._iterated_loop.stop()
+
+    def _on_destroy(self, window):
+        self.destroy()
+
+    def _on_cancel_clicked(self, button):
+        self.destroy()
+
+    def _on_request_clicked(self, button):
+        items = []
+
+        actor = None
+        if self._actor_cb.get_active():
+            actor = self._actor_entry.get_text()
+            if actor != None:
+                actor = org.wayround.xmpp.muc.Actor(actor)
+
+        affiliation = None
+        if self._affiliation_cb.get_active():
+            affiliation = \
+                AFFILIATION_LISTSTORE[self._affiliation_sw_cb.get_active()][0]
+
+        role = None
+        if self._role_cb.get_active():
+            role = \
+                ROLE_LISTSTORE[self._role_sw_cb.get_active()][0]
+
+        nick = None
+        if self._nick_cb.get_active():
+            nick = self._nick_entry.get_text()
+
+        reason = None
+        if self._reason_cb.get_active():
+            buff = self._reason_tv.get_buffer()
+            reason = buff.get_text(
+                buff.get_start_iter(),
+                buff.get_end_iter(),
+                False
+                )
+
+        items.append(
+            org.wayround.xmpp.muc.Item(
+                affiliation=affiliation,
+                jid=self._jid_entry.get_text(),
+                nick=nick,
+                role=role,
+                reason=reason,
+                actor=actor
+                )
+            )
+
+        query = org.wayround.xmpp.muc.Query(
+            xmlns='#admin',
+            item=items
+            )
+
+        stanza = org.wayround.xmpp.core.Stanza('iq')
+
+        stanza.set_from_jid(str(self._own_jid))
+        stanza.set_to_jid(self._target_jid)
+        stanza.set_typ('set')
+
+        stanza.get_objects().append(query)
+
+        res = self._stanza_processor.send(stanza, wait=None)
+        if res.is_error():
+            org.wayround.pyabber.misc.stanza_error_message(
+                self._window,
+                res,
+                "Server Returned Error"
+                )
+        else:
+            d = org.wayround.utils.gtk.MessageDialog(
+                self._window,
+                0,
+                Gtk.MessageType.INFO,
+                Gtk.ButtonsType.OK,
+                "Processed. No Error Returned From Server."
+                )
+            d.run()
+            d.destroy()
+        return
+
+
+class MUCVoiceRequestWindow:
+
+    def __init__(self, controller):
+
+        self._controller = controller
+
+        self._iterated_loop = org.wayround.utils.gtk.GtkIteratedLoop()
+
+        window = Gtk.Window()
+
+        b = Gtk.Box()
+        b.set_orientation(Gtk.Orientation.VERTICAL)
+        b.set_spacing(5)
+        b.set_margin_top(5)
+        b.set_margin_left(5)
+        b.set_margin_right(5)
+        b.set_margin_bottom(5)
+
+        target_entry = Gtk.Entry()
+        self._target_entry = target_entry
+
+        mode_sw_cb = Gtk.ComboBox()
+        self._role_sw_cb = mode_sw_cb
+        renderer_text = Gtk.CellRendererText()
+        mode_sw_cb.pack_start(renderer_text, True)
+        mode_sw_cb.add_attribute(renderer_text, "text", 0)
+
+        mode_sw_cb.set_model(MODE_LIST)
+        mode_sw_cb.set_active(0)
+
+        value_sw_cb = Gtk.ComboBox()
+        self._value_sw_cb = value_sw_cb
+        renderer_text = Gtk.CellRendererText()
+        value_sw_cb.pack_start(renderer_text, True)
+        value_sw_cb.add_attribute(renderer_text, "text", 0)
+
+        value_sw_cb.set_model(ROLE_LISTSTORE)
+
+        for i in range(len(ROLE_LISTSTORE)):
+            if ROLE_LISTSTORE[i][0] == 'participant':
+                value_sw_cb.set_active(i)
+                break
+
+        g = Gtk.Grid()
+        self._g = g
+        g.set_column_spacing(5)
+
+        l = Gtk.Label("Mode")
+        l.set_hexpand(True)
+        l.set_halign(Gtk.Align.START)
+        g.attach(l, 0, 0, 1, 1)
+        g.attach(mode_sw_cb, 1, 0, 1, 1)
+
+        l = Gtk.Label("Value")
+        l.set_hexpand(True)
+        l.set_halign(Gtk.Align.START)
+        g.attach(l, 0, 1, 1, 1)
+        g.attach(value_sw_cb, 1, 1, 1, 1)
+
+        bb = Gtk.ButtonBox()
+        bb.set_spacing(5)
+        bb.set_orientation(Gtk.Orientation.HORIZONTAL)
+
+        request_button = Gtk.Button("Request")
+        request_button.connect('clicked', self._on_request_clicked)
+
+        cancel_button = Gtk.Button("Cancel")
+        cancel_button.connect('clicked', self._on_cancel_clicked)
+
+        mode_sw_cb.connect('changed', self._on_mode_sw_cb_changed)
+
+        bb.pack_start(request_button, False, False, 0)
+        bb.pack_start(cancel_button, False, False, 0)
+
+        use_standard_cb = Gtk.CheckButton()
+        use_standard_cb.set_label("Use Standard")
+        use_standard_cb.connect('toggled', self._on_use_standard_cb_toggled)
+        use_standard_cb.set_active(True)
+        self._use_standard_cb = use_standard_cb
+
+        b.pack_start(target_entry, False, False, 0)
+        b.pack_start(use_standard_cb, False, False, 0)
+        b.pack_start(g, True, True, 0)
+        b.pack_start(bb, False, False, 0)
+
+        window.add(b)
+        window.connect('destroy', self._on_destroy)
+
+        self._window = window
+
+        return
+
+    def run(self, room_jid):
+
+        self._window.set_title(
+            "Requesting voice in room `{}'".format(room_jid)
+            )
+        self._target_entry.set_text(room_jid)
+
+        self.show()
+
+        self._iterated_loop.wait()
+
+        return
+
+    def show(self):
+        self._window.show_all()
+
+    def destroy(self):
+        self._window.destroy()
+        self._iterated_loop.stop()
+
+    def _on_destroy(self, window):
+        self.destroy()
+
+    def _on_cancel_clicked(self, button):
+        self.destroy()
+
+    def _on_request_clicked(self, button):
+
+        mode = 'role'
+        value = 'participant'
+
+        if self._use_standard_cb.get_active() == False:
+
+            mode = MODE_LIST[self._mode_sw_cb.get_active()][0]
+
+            if mode == 'affiliation':
+                value = \
+                    AFFILIATION_LISTSTORE[self._value_sw_cb.get_active()][0]
+            elif mode == 'role':
+                value = ROLE_LISTSTORE[self._value_sw_cb.get_active()][0]
+
+        fields = [
+            org.wayround.xmpp.xdata.XDataField(
+                var='FORM_TYPE',
+                values=[
+                    org.wayround.xmpp.xdata.XDataValue(
+                        'http://jabber.org/protocol/muc#request'
+                        )
+                    ]
+                ),
+            org.wayround.xmpp.xdata.XDataField(
+                var='muc#{}'.format(mode),
+                typ='text-single',
+                label="Requested {}".format(mode),
+                values=[
+                    org.wayround.xmpp.xdata.XDataValue(
+                        value
+                        )
+                    ]
+                )
+            ]
+
+        xdata = org.wayround.xmpp.xdata.XData(
+            typ='submit',
+            fields=fields
+            )
+
+        stanza = org.wayround.xmpp.core.Stanza(tag='message')
+        stanza.set_from_jid(str(self._controller.jid))
+        stanza.set_to_jid(self._target_entry.get_text())
+        stanza.set_objects([xdata])
+
+        self._controller.client.stanza_processor.send(
+            stanza,
+            wait=False,
+            pass_new_stanza_anyway=True
+            )
+
+        return
+
+    def _on_mode_sw_cb_changed(self, cb):
+
+        mode = MODE_LIST[self._mode_sw_cb.get_active()][0]
+
+        if mode == 'affiliation':
+            self._value_sw_cb.set_model(AFFILIATION_LISTSTORE)
+        elif mode == 'role':
+            self._value_sw_cb.set_model(ROLE_LISTSTORE)
+
+        self._value_sw_cb.set_active(0)
+
+        return
+
+    def _on_use_standard_cb_toggled(self, cb):
+        self._g.set_sensitive(not cb.get_active())
 
 
 class MUCJoinDialog:
+    """
+    Dialog for explicit MUC opening
+    """
+    # TODO: do we really need this dialog?
 
     def __init__(self, controller):
 
@@ -26,9 +483,6 @@ class MUCJoinDialog:
         b.set_margin_right(5)
         b.set_margin_bottom(5)
         b.set_spacing(5)
-
-        bb = Gtk.ButtonBox()
-        bb.set_orientation(Gtk.Orientation.HORIZONTAL)
 
         bb2 = Gtk.ButtonBox()
         bb2.set_orientation(Gtk.Orientation.HORIZONTAL)
@@ -45,14 +499,13 @@ class MUCJoinDialog:
         entry.set_margin_right(5)
         entry.set_margin_bottom(5)
 
-        b.pack_start(e_f, False, False, 0)
-        b.pack_start(bb, False, False, 0)
+        b.pack_start(e_f, True, True, 0)
         b.pack_start(bb2, False, False, 0)
 
         join_button = Gtk.Button("Join")
         cancel_button = Gtk.Button("Cancel")
 
-        bb.pack_start(join_button, False, False, 0)
+        bb2.pack_start(join_button, False, False, 0)
 
         bb2.pack_start(cancel_button, False, False, 0)
 
@@ -96,6 +549,7 @@ class MUCJoinDialog:
         self.destroy()
 
     def _on_join_clicked(self, button):
+        raise Exception("Rework required")
         w = self._controller.get_chat_window()
         o = org.wayround.xmpp.core.JID.new_from_str(self._entry.get_text())
 
@@ -112,6 +566,7 @@ class MUCJoinDialog:
         else:
 
             w.chat_pager.add_groupchat(o)
+            self._controller.show_presence_control_window(to_=str(o))
             self.destroy()
 
         return
@@ -284,7 +739,8 @@ class MUCConfigWindow:
             xdata_widget_ctl = (
                 org.wayround.pyabber.xdata.XDataFormWidget(
                     self._controller,
-                    xdata
+                    xdata,
+                    stanza
                     )
                 )
 
@@ -539,14 +995,14 @@ class MUCPopupMenu:
 
         menu = Gtk.Menu()
 
-        join_muc_mi = Gtk.MenuItem("Join..")
+        join_muc_mi = Gtk.MenuItem("Join/[Change Nick]..")
         voice_request_muc_mi = Gtk.MenuItem("Request Voice..")
 
         new_muc_inst_mi = Gtk.MenuItem("New Instantly..")
         new_muc_conf_mi = Gtk.MenuItem("New Configuring..")
 
         configure_muc_mi = Gtk.MenuItem("Configure..")
-        discover_nick_mi = Gtk.MenuItem("Discover Own Nickname...")
+        discover_nick_mi = Gtk.MenuItem("Discover Own Nickname..")
 
         edit_owner_list_muc_mi = Gtk.MenuItem("Owner list..")
         edit_admin_list_muc_mi = Gtk.MenuItem("Admin List..")
@@ -587,6 +1043,9 @@ class MUCPopupMenu:
             )
         edit_voice_list_muc_mi.connect(
             'activate', self._on_list_edit_mi_activated, 'voice'
+            )
+        voice_request_muc_mi.connect(
+            'activate', self._on_voice_request_muc_mi_activated
             )
 
         destroy_muc_mi.connect('activate', self._on_delete_muc_mi_activated)
@@ -846,7 +1305,10 @@ class MUCPopupMenu:
         return
 
     def _on_join_muc_mi_activated(self, mi):
-        self._controller.show_muc_join_dialog(self._muc_jid)
+        self._controller.show_presence_control_window(self._muc_jid)
+
+    def _on_voice_request_muc_mi_activated(self, mi):
+        self._controller.show_muc_voice_request_window(self._muc_jid)
 
 
 class MUCIdentityEditorWindow:
@@ -1312,7 +1774,7 @@ List of dictionaries. Add to dictionaties only changes (delta)
                             org.wayround.xmpp.muc.Item(
                                 affiliation=i.get('affiliation'),
                                 jid=i.get('jid'),
-                                nick=i.get('affiliation'),
+                                nick=i.get('nick'),
                                 role=i.get('role'),
                                 reason=i.get('reason'),
                                 actor=actor
@@ -1366,5 +1828,205 @@ List of dictionaries. Add to dictionaties only changes (delta)
                             )
                         d.run()
                         d.destroy()
+
+        return
+
+
+class MUCControllerPool:
+
+    def __init__(self, controller):
+
+        self._controller = controller
+
+        self._pool = []
+
+        controller.presence_client.signal.connect(
+            ['presence'], self._on_presence
+            )
+
+        return
+
+    def create_controller(self, room_jid):
+        self._pool.append(MUCController(self._controller, room_jid))
+
+    def ensure_room_under_control(self, room_jid):
+
+        found = False
+        for i in self._pool:
+            if i.room_jid == room_jid:
+                found = True
+                break
+        if not found:
+            self.create_controller(room_jid)
+
+        return
+
+    def get_controller(self, room_jid):
+        ret = None
+        for i in self._pool:
+            if i.room_jid == room_jid:
+                ret = i
+                break
+        return ret
+
+    def _message_relay_listener(
+        self,
+        event, storage, original_stanza,
+        date, receive_date, delay_from, delay_message, incomming,
+        connection_jid_obj, jid_obj, type_, parent_thread_id, thread_id,
+        subject, plain, xhtml
+        ):
+
+        # TODO: not supporting this event now, but maybe it needed indeed.
+        # NOTE: probably, the best way to this is NOT to [Disc]over info
+        #       about incoming message sender, but leave this to chat_pager
+
+        #if event == 'new_message':
+        #    jid = org.wayround.xmpp.core.JID.new_from_str(
+        #        original_stanza.get_from_jid()
+        #        )
+        #    bare_jid = jid.bare()
+        #    # FIXME: I don't like is_groupchat function very match, but
+        #    #        does anyone knows better way to know is message (possibly
+        #    #        private) from groupchat?
+        #    if (type_ == 'message_groupchat'
+        #        or org.wayround.xmpp.muc.is_groupchat(
+        #            bare_jid,
+        #            str(self._controller.jid),
+        #            self._controller.client.stanza_processor,
+        #            True
+        #            )
+        #        ):
+        #        self.ensure_room_under_control(bare_jid)
+        #        ctl = self.get_controller(bare_jid)
+        #        ctl.pass_message_relay_signal(
+        #            event, presence_obj, from_jid, to_jid, stanza
+        #            )
+
+        return
+
+    def _on_presence(self, event, presence_obj, from_jid, to_jid, stanza):
+
+        if event == 'presence':
+            if org.wayround.xmpp.muc.has_muc_elements(
+                stanza.get_element()
+                ):
+#                jid = org.wayround.xmpp.core.JID.new_from_str(
+#                    stanza.get_from_jid()
+#                    )
+#                bare_jid = jid.bare()
+#                ctl.pass_presence_signal(
+#                    event, presence_obj, from_jid, to_jid, stanza
+#                    )
+
+                jid = org.wayround.xmpp.core.JID.new_from_str(
+                    stanza.get_from_jid()
+                    )
+                bare_jid = jid.bare()
+                self.ensure_room_under_control(bare_jid)
+                ctl = self.get_controller(bare_jid)
+                mrs = self.get_muc_roster_storage(bare_jid)
+                mrs.pass_presence_signal(
+                    event, presence_obj, from_jid, to_jid, stanza
+                    )
+
+#
+#        if event == 'presence':
+#            if org.wayround.xmpp.muc.has_muc_elements(
+#                stanza.get_element()
+#                ):
+#                w = self.get_chat_window()
+#                jid = org.wayround.xmpp.core.JID.new_from_str(
+#                    stanza.get_from_jid()
+#                    )
+#                w.chat_pager.add_groupchat(jid)
+
+        return
+
+
+class MUCController:
+
+    def __init__(self, controller, room_jid):
+
+        self._controller = controller
+
+        self.room_jid = \
+            org.wayround.xmpp.core.JID.new_from_str(room_jid).bare()
+
+        self.resource = None
+
+        self._subject_last_date = None
+        self._subject = {}
+
+        self._incomming_messages_lock = threading.Lock()
+
+        self._muc_roster_storage = \
+            org.wayround.pyabber.muc_roster_storage.Storage(
+                self._room_bare_jid_obj,
+                controller.presence_client
+                )
+
+        self._muc_roster_storage.signal.connect(
+            True,
+            self._on_storage_actions
+            )
+
+        self._controller.message_relay.signal.connect(
+            'new_message', self._message_relay_listener
+            )
+
+        return
+
+    def get_subject(self):
+        return self._subject
+
+    def get_thread(self):
+        # TODO: to do
+        return None
+
+    def get_roster_storage(self):
+        return self._muc_roster_storage
+
+    def pass_presence_signal(self, *args, **kwareg):
+        self._muc_roster_storage.pass_presence_signal(*args, **kwareg)
+
+    def _on_storage_actions(self, event, storage, nick, item):
+        if event == 'set':
+            if nick == self.get_own_resource():
+                new_nick = item.get_nick()
+                if new_nick != None:
+                    self.set_own_resource(new_nick)
+
+        return
+
+    def _message_relay_listener(
+        self,
+        event, storage, original_stanza,
+        date, receive_date, delay_from, delay_message, incomming,
+        connection_jid_obj, jid_obj, type_, parent_thread_id, thread_id,
+        subject, plain, xhtml
+        ):
+
+        if event == 'new_message':
+            if type_ in ['message_chat', 'message_groupchat']:
+
+                if org.wayround.pyabber.message_filter.is_message_acceptable(
+                    operation_mode=self._operation_mode,
+                    message_type=type_,
+                    contact_bare_jid=self._contact_bare_jid,
+                    contact_resource=self._contact_resource,
+                    active_bare_jid=jid_obj.bare(),
+                    active_resource=jid_obj.resource
+                    ):
+
+                    self._incomming_messages_lock.acquire()
+
+                    if (self._subject_last_date == None
+                        or date > self._subject_last_date):
+                        if len(subject.keys()) != 0:
+                            self._subject = subject
+                        self._subject_last_date = date
+
+                    self._incomming_messages_lock.release()
 
         return

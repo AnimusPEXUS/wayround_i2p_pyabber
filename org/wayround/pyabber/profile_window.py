@@ -37,8 +37,8 @@ class ProfileMgrWindow:
         bb1.set_margin_bottom(5)
 
         but1 = Gtk.Button("Open")
-        but3 = Gtk.Button("New...")
-        but4 = Gtk.Button("Change Password...")
+        but3 = Gtk.Button("New..")
+        but4 = Gtk.Button("Change Password..")
         but6 = Gtk.Button("Delete")
         but7 = Gtk.Button("Refresh List")
 

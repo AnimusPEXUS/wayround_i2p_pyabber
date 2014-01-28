@@ -176,8 +176,8 @@ class ConnectionMgrWindow:
 
         but6 = Gtk.Button('Refresh')
         but1 = Gtk.Button('Open')
-        but3 = Gtk.Button('New...')
-        but4 = Gtk.Button('Edit...')
+        but3 = Gtk.Button('New..')
+        but4 = Gtk.Button('Edit..')
         but5 = Gtk.Button('Delete')
 
         bb01.pack_start(but6, False, True, 0)
