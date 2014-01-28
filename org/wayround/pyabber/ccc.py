@@ -407,7 +407,7 @@ def show_{i}(self, *args, **kwargs):
             )
 
         features_waiter = org.wayround.utils.threading.SignalWaiter(
-            self.client,
+            self.client.signal,
             'features'
             )
         features_waiter.start()
