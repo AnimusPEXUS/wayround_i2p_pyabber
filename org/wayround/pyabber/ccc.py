@@ -391,7 +391,7 @@ def show_{i}(self, *args, **kwargs):
 
         self.bob_mgr = org.wayround.pyabber.bob.BOBMgr(self)
 
-        self.muc_pool = org.wayround.pyabber.muc.MUCControllerPool(self)
+#        self.muc_pool = org.wayround.pyabber.muc.MUCControllerPool(self)
 
         self.client.sock_streamer.signal.connect(
             ['start', 'stop', 'error'],
@@ -897,10 +897,18 @@ def show_{i}(self, *args, **kwargs):
             if org.wayround.xmpp.muc.has_muc_elements(
                 stanza.get_element()
                 ):
+                message_relay_listener_call_queue = \
+                    self.message_relay.signal.gen_call_queue(
+                        ['new_message']
+                        )
                 w = self.get_chat_window()
                 jid = org.wayround.xmpp.core.JID.new_from_str(
                     stanza.get_from_jid()
                     )
-                w.chat_pager.add_groupchat(jid)
+                w.chat_pager.add_groupchat(
+                    jid,
+                    message_relay_listener_call_queue=\
+                        message_relay_listener_call_queue
+                    )
 
         return

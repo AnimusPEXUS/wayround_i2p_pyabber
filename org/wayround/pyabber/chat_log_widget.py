@@ -293,7 +293,10 @@ class ChatLogTableRow:
 # TODO: make not dependent from Chat
 class ChatLogWidget:
 
-    def __init__(self, controller, chat, operation_mode='chat'):
+    def __init__(
+        self, controller, chat, operation_mode='chat',
+        message_relay_listener_call_queue=None
+        ):
 
         if not isinstance(
             controller,
@@ -344,9 +347,15 @@ class ChatLogWidget:
         self._rows = []
         self._lock = threading.Lock()
 
-        self._controller.message_relay.signal.connect(
-            'new_message', self._message_relay_listener
-            )
+        if message_relay_listener_call_queue:
+            message_relay_listener_call_queue.set_callable_target(
+                self._message_relay_listener
+                )
+            message_relay_listener_call_queue.dump()
+        else:
+            self._controller.message_relay.signal.connect(
+                'new_message', self._message_relay_listener
+                )
 
         self._looped_timer = org.wayround.utils.timer.LoopedTimer(
             0.25,
@@ -437,7 +446,7 @@ class ChatLogWidget:
         return
 
     def destroy(self):
-        self._controller.message_relay.dissignal.connect(
+        self._controller.message_relay.signal.disconnect(
             self._message_relay_listener
             )
         self.get_widget().destroy()

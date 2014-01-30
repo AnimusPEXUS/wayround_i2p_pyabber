@@ -14,6 +14,7 @@ class ThreadWidget:
         controller,
         contact_bare_jid, contact_resource=None,
         operation_mode='chat',
+        message_relay_listener_call_queue=None
         ):
 
         if not operation_mode in ['chat', 'groupchat', 'private']:
@@ -59,9 +60,15 @@ class ThreadWidget:
         b.pack_start(self._text, True, True, 0)
         b.pack_start(thread_generate_button, False, False, 0)
 
-        self._controller.message_relay.signal.connect(
-            'new_message', self.message_relay_listener
-            )
+        if message_relay_listener_call_queue:
+            message_relay_listener_call_queue.set_callable_target(
+                self._message_relay_listener
+                )
+            message_relay_listener_call_queue.dump()
+        else:
+            self._controller.message_relay.signal.connect(
+                'new_message', self._message_relay_listener
+                )
 
         return
 
@@ -76,7 +83,7 @@ class ThreadWidget:
 
     def destroy(self):
         self._controller.message_relay.signal.disconnect(
-            self.message_relay_listener
+            self._message_relay_listener
             )
         self.get_widget().destroy()
 
@@ -109,7 +116,7 @@ class ThreadWidget:
 
         return
 
-    def message_relay_listener(
+    def _message_relay_listener(
         self,
         event, storage, original_stanza,
         date, receive_date, delay_from, delay_message, incomming,

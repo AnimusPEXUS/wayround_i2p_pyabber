@@ -32,10 +32,13 @@ class RosterStorage:
         self._presence_client = presence_client
 
         self._lock = threading.Lock()
+        self._muc_storage_creation_lock = threading.Lock()
 
         self._data = {}
+        self._muc_rosters = {}
 
         self.signal = org.wayround.utils.threading.Signal(
+            self,
             ['set_bare', 'set_resource', 'unset_bare']
             )
 
@@ -360,4 +363,34 @@ class RosterStorage:
                     )
                         )
 
+            else:
+                f_jid = org.wayround.xmpp.core.JID.new_from_str(
+                    from_jid
+                    )
+                f_jid_bare = f_jid.bare()
+
+                muc_storage = self.get_muc_storage(f_jid_bare)
+
+                muc_storage.pass_presence_signal(
+                    event,
+                    presence_obj,
+                    from_jid,
+                    to_jid,
+                    stanza
+                    )
         return
+
+    def get_muc_storage(self, room_bare_jid):
+        with self._muc_storage_creation_lock:
+            f_jid = org.wayround.xmpp.core.JID.new_from_str(
+                room_bare_jid
+                )
+            f_jid_bare = f_jid.bare()
+            if not f_jid_bare in self._muc_rosters:
+                self._muc_rosters[f_jid_bare] = \
+                    org.wayround.pyabber.muc_roster_storage.Storage(
+                        f_jid.bare_obj(),
+                        self._presence_client
+                        )
+            muc_storage = self._muc_rosters[f_jid_bare]
+        return muc_storage

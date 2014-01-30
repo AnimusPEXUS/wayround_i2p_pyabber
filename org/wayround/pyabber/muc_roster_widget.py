@@ -19,7 +19,7 @@ class MUCRosterWidget:
         self._list = []
 
         muc_roster_storage.signal.connect(
-            True,
+            'set',
             self._on_muc_roster_storage_event
             )
 

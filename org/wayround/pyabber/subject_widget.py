@@ -143,7 +143,8 @@ class SubjectWidget:
         self,
         controller,
         contact_bare_jid, contact_resource=None,
-        operation_mode='chat'
+        operation_mode='chat',
+        message_relay_listener_call_queue=None
         ):
 
         if not operation_mode in ['chat', 'groupchat', 'private']:
@@ -212,9 +213,15 @@ class SubjectWidget:
 
         self._lang_select_cb.connect('changed', self._on_lang_switch_chenged)
 
-        self._controller.message_relay.signal.connect(
-            'new_message', self._message_relay_listener
-            )
+        if message_relay_listener_call_queue:
+            message_relay_listener_call_queue.set_callable_target(
+                self._message_relay_listener
+                )
+            message_relay_listener_call_queue.dump()
+        else:
+            self._controller.message_relay.signal.connect(
+                'new_message', self._message_relay_listener
+                )
 
         self.set_selected_language('')
 

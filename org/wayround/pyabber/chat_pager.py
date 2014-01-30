@@ -1,14 +1,12 @@
 
-import threading
 import datetime
-import uuid
+import threading
 
 from gi.repository import Gdk, Gtk
 
 import org.wayround.pyabber.chat_log_widget
 import org.wayround.pyabber.jid_widget
 import org.wayround.pyabber.message_edit_widget
-import org.wayround.pyabber.muc_roster_storage
 import org.wayround.pyabber.muc_roster_widget
 import org.wayround.pyabber.subject_widget
 import org.wayround.pyabber.thread_widget
@@ -20,7 +18,7 @@ class Chat:
     def __init__(
         self, controller, pager, groupchat,
         contact_bare_jid, contact_resource, thread_id, mode='chat',
-        muc_roster_storage=None
+        muc_roster_storage=None, message_relay_listener_call_queue=None
         ):
 
         if not mode in ['chat', 'groupchat', 'private']:
@@ -33,12 +31,16 @@ class Chat:
             if muc_roster_storage == None:
                 raise ValueError("`muc_roster_storage' must be defined")
 
+        if mode == 'private':
+
             if contact_resource == None:
                 raise ValueError("`contact_resource' must be defined")
 
         self._mode = mode
         self._pager = pager
         self._groupchat = groupchat
+        self._message_relay_listener_call_queue = \
+            message_relay_listener_call_queue
 
         self._unread = False
 
@@ -52,10 +54,20 @@ class Chat:
         self.contact_resource = contact_resource
         self.thread_id = thread_id
 
+        # as queue objects connected to signal objects weakly, firsts can not
+        # survive the end of this method: GC destroys them. firsts must live,
+        # as long, as instance is living
+        self._queues = []
+
+        _t = None
+        if message_relay_listener_call_queue:
+            _t = message_relay_listener_call_queue.copy()
+        self._queues.append(_t)
         self._log = org.wayround.pyabber.chat_log_widget.ChatLogWidget(
             self._controller,
             self,
-            mode
+            mode,
+            message_relay_listener_call_queue=_t
             )
 
         log_widget = self._log.get_widget()
@@ -126,14 +138,24 @@ class Chat:
 
             self._title_label.pack_start(tab_close_button, False, False, 0)
 
+        _t = None
+        if message_relay_listener_call_queue:
+            _t = message_relay_listener_call_queue.copy()
+        self._queues.append(_t)
         self._subject_widget = \
             org.wayround.pyabber.subject_widget.SubjectWidget(
-                controller, contact_bare_jid, contact_resource, mode
+                controller, contact_bare_jid, contact_resource, mode,
+                message_relay_listener_call_queue=_t
                 )
 
+        _t = None
+        if message_relay_listener_call_queue:
+            _t = message_relay_listener_call_queue.copy()
+        self._queues.append(_t)
         self._thread_widget = \
             org.wayround.pyabber.thread_widget.ThreadWidget(
-                controller, contact_bare_jid, contact_resource, mode
+                controller, contact_bare_jid, contact_resource, mode,
+                message_relay_listener_call_queue=_t
                 )
 
         b.pack_start(self._subject_widget.get_widget(), False, False, 0)
@@ -147,9 +169,15 @@ class Chat:
 
         self._update_jid_widget()
 
-        self._controller.message_relay.signal.connect(
-            'new_message', self._message_relay_listener
-            )
+        if message_relay_listener_call_queue:
+            message_relay_listener_call_queue.set_callable_target(
+                self._message_relay_listener
+                )
+            message_relay_listener_call_queue.dump()
+        else:
+            self._controller.message_relay.signal.connect(
+                'new_message', self._message_relay_listener
+                )
 
         return
 
@@ -202,7 +230,7 @@ class Chat:
 
     def destroy(self):
 
-        self._controller.message_relay.dissignal.connect(
+        self._controller.message_relay.signal.disconnect(
             self._message_relay_listener
             )
 
@@ -289,6 +317,7 @@ class Chat:
 
             self._controller.message_relay.manual_addition(
                 date=d,
+                original_stanza=None,
                 receive_date=d,
                 delay_from=None,
                 delay_message=None,
@@ -375,7 +404,7 @@ class ChatPager:
 
         return ret
 
-    def add_groupchat(self, jid_obj):
+    def add_groupchat(self, jid_obj, message_relay_listener_call_queue=None):
         self._groupchat_addition_lock.acquire()
         res = self.search_page(jid_obj, type_=GroupChat)
 
@@ -386,7 +415,9 @@ class ChatPager:
                 pager=self,
                 controller=self._controller,
                 room_bare_jid=jid_obj.bare(),
-                own_resource=jid_obj.resource
+                own_resource=jid_obj.resource,
+                message_relay_listener_call_queue=\
+                    message_relay_listener_call_queue
                 )
             self.add_page(p)
             ret = p
@@ -434,7 +465,7 @@ class ChatPager:
             self.remove_page(i)
 
     def destroy(self):
-        self._controller.message_relay.dissignal.connect(
+        self._controller.message_relay.signal.disconnect(
             self._message_relay_listener
             )
         self.remove_all_pages()
@@ -553,7 +584,8 @@ class GroupChat:
         self,
         pager, controller,
         room_bare_jid,
-        own_resource=None
+        own_resource=None,
+        message_relay_listener_call_queue=None
         ):
 
         self.contact_bare_jid = room_bare_jid
@@ -568,11 +600,9 @@ class GroupChat:
             room_bare_jid
             )
 
-        self._muc_controller = self._controller.muc_pool.get_controller(
-            room_bare_jid
+        self._storage = controller.roster_storage.get_muc_storage(
+            self._room_bare_jid_obj.bare()
             )
-
-        self._storage = self._muc_controller.get_roster_storage()
         self.pages = []
 
         b = Gtk.Box()
@@ -590,6 +620,10 @@ class GroupChat:
                 self._storage
                 )
 
+        # save it to not be distracted by GC
+        self._message_relay_listener_call_queue = \
+            message_relay_listener_call_queue
+
         main_chat_page = Chat(
             controller,
             pager,
@@ -598,7 +632,9 @@ class GroupChat:
             contact_resource=own_resource,
             thread_id=None,
             mode='groupchat',
-            muc_roster_storage=self._storage
+            muc_roster_storage=self._storage,
+            message_relay_listener_call_queue=\
+                message_relay_listener_call_queue
             )
         self._main_chat_page = main_chat_page
 

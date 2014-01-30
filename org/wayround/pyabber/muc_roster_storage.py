@@ -89,6 +89,7 @@ class Storage:
         self._own_resource = None
 
         self.signal = org.wayround.utils.threading.Signal(
+            self,
             ['set',
              'own_rename']
             )

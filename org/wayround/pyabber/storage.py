@@ -355,6 +355,7 @@ class Storage:
 
     def __init__(self, *args, **kwargs):
         self.signal = org.wayround.utils.threading.Signal(
+            self,
             [
              'history_update'
              ]

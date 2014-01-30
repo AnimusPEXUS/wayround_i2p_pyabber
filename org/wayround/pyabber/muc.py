@@ -1832,201 +1832,183 @@ List of dictionaries. Add to dictionaties only changes (delta)
         return
 
 
-class MUCControllerPool:
-
-    def __init__(self, controller):
-
-        self._controller = controller
-
-        self._pool = []
-
-        controller.presence_client.signal.connect(
-            ['presence'], self._on_presence
-            )
-
-        return
-
-    def create_controller(self, room_jid):
-        self._pool.append(MUCController(self._controller, room_jid))
-
-    def ensure_room_under_control(self, room_jid):
-
-        found = False
-        for i in self._pool:
-            if i.room_jid == room_jid:
-                found = True
-                break
-        if not found:
-            self.create_controller(room_jid)
-
-        return
-
-    def get_controller(self, room_jid):
-        ret = None
-        for i in self._pool:
-            if i.room_jid == room_jid:
-                ret = i
-                break
-        return ret
-
-    def _message_relay_listener(
-        self,
-        event, storage, original_stanza,
-        date, receive_date, delay_from, delay_message, incomming,
-        connection_jid_obj, jid_obj, type_, parent_thread_id, thread_id,
-        subject, plain, xhtml
-        ):
-
-        # TODO: not supporting this event now, but maybe it needed indeed.
-        # NOTE: probably, the best way to this is NOT to [Disc]over info
-        #       about incoming message sender, but leave this to chat_pager
-
-        #if event == 'new_message':
-        #    jid = org.wayround.xmpp.core.JID.new_from_str(
-        #        original_stanza.get_from_jid()
-        #        )
-        #    bare_jid = jid.bare()
-        #    # FIXME: I don't like is_groupchat function very match, but
-        #    #        does anyone knows better way to know is message (possibly
-        #    #        private) from groupchat?
-        #    if (type_ == 'message_groupchat'
-        #        or org.wayround.xmpp.muc.is_groupchat(
-        #            bare_jid,
-        #            str(self._controller.jid),
-        #            self._controller.client.stanza_processor,
-        #            True
-        #            )
-        #        ):
-        #        self.ensure_room_under_control(bare_jid)
-        #        ctl = self.get_controller(bare_jid)
-        #        ctl.pass_message_relay_signal(
-        #            event, presence_obj, from_jid, to_jid, stanza
-        #            )
-
-        return
-
-    def _on_presence(self, event, presence_obj, from_jid, to_jid, stanza):
-
-        if event == 'presence':
-            if org.wayround.xmpp.muc.has_muc_elements(
-                stanza.get_element()
-                ):
-#                jid = org.wayround.xmpp.core.JID.new_from_str(
-#                    stanza.get_from_jid()
-#                    )
-#                bare_jid = jid.bare()
-#                ctl.pass_presence_signal(
-#                    event, presence_obj, from_jid, to_jid, stanza
-#                    )
-
-                jid = org.wayround.xmpp.core.JID.new_from_str(
-                    stanza.get_from_jid()
-                    )
-                bare_jid = jid.bare()
-                self.ensure_room_under_control(bare_jid)
-                ctl = self.get_controller(bare_jid)
-                mrs = self.get_muc_roster_storage(bare_jid)
-                mrs.pass_presence_signal(
-                    event, presence_obj, from_jid, to_jid, stanza
-                    )
-
+#class MUCControllerPool:
+#
+#    def __init__(self, controller):
+#
+#        self._controller = controller
+#
+#        self._pool = []
+#
+#        controller.presence_client.signal.connect(
+#            ['presence'], self._on_presence
+#            )
+#
+#        return
+#
+#    def create_controller(self, room_jid):
+#        self._pool.append(MUCController(self._controller, room_jid))
+#
+#    def ensure_room_under_control(self, room_jid):
+#
+#        found = False
+#        for i in self._pool:
+#            if i.room_jid == room_jid:
+#                found = True
+#                break
+#        if not found:
+#            self.create_controller(room_jid)
+#
+#        return
+#
+#    def get_controller(self, room_jid):
+#        ret = None
+#        for i in self._pool:
+#            if i.room_jid == room_jid:
+#                ret = i
+#                break
+#        return ret
+#
+#    def _message_relay_listener(
+#        self,
+#        event, storage, original_stanza,
+#        date, receive_date, delay_from, delay_message, incomming,
+#        connection_jid_obj, jid_obj, type_, parent_thread_id, thread_id,
+#        subject, plain, xhtml
+#        ):
+#
+#        # TODO: not supporting this event now, but maybe it needed indeed.
+#        # NOTE: probably, the best way to this is NOT to [Disc]over info
+#        #       about incoming message sender, but leave this to chat_pager
+#
+#        #if event == 'new_message':
+#        #    jid = org.wayround.xmpp.core.JID.new_from_str(
+#        #        original_stanza.get_from_jid()
+#        #        )
+#        #    bare_jid = jid.bare()
+#        #    # FIXME: I don't like is_groupchat function very match, but
+#        #    #        does anyone knows better way to know is message (possibly
+#        #    #        private) from groupchat?
+#        #    if (type_ == 'message_groupchat'
+#        #        or org.wayround.xmpp.muc.is_groupchat(
+#        #            bare_jid,
+#        #            str(self._controller.jid),
+#        #            self._controller.client.stanza_processor,
+#        #            True
+#        #            )
+#        #        ):
+#        #        self.ensure_room_under_control(bare_jid)
+#        #        ctl = self.get_controller(bare_jid)
+#        #        ctl.pass_message_relay_signal(
+#        #            event, presence_obj, from_jid, to_jid, stanza
+#        #            )
+#
+#        return
+#
+#    def _on_presence(self, event, presence_obj, from_jid, to_jid, stanza):
 #
 #        if event == 'presence':
 #            if org.wayround.xmpp.muc.has_muc_elements(
 #                stanza.get_element()
 #                ):
-#                w = self.get_chat_window()
+#
 #                jid = org.wayround.xmpp.core.JID.new_from_str(
 #                    stanza.get_from_jid()
 #                    )
-#                w.chat_pager.add_groupchat(jid)
-
-        return
-
-
-class MUCController:
-
-    def __init__(self, controller, room_jid):
-
-        self._controller = controller
-
-        self.room_jid = \
-            org.wayround.xmpp.core.JID.new_from_str(room_jid).bare()
-
-        self.resource = None
-
-        self._subject_last_date = None
-        self._subject = {}
-
-        self._incomming_messages_lock = threading.Lock()
-
-        self._muc_roster_storage = \
-            org.wayround.pyabber.muc_roster_storage.Storage(
-                self._room_bare_jid_obj,
-                controller.presence_client
-                )
-
-        self._muc_roster_storage.signal.connect(
-            True,
-            self._on_storage_actions
-            )
-
-        self._controller.message_relay.signal.connect(
-            'new_message', self._message_relay_listener
-            )
-
-        return
-
-    def get_subject(self):
-        return self._subject
-
-    def get_thread(self):
-        # TODO: to do
-        return None
-
-    def get_roster_storage(self):
-        return self._muc_roster_storage
-
-    def pass_presence_signal(self, *args, **kwareg):
-        self._muc_roster_storage.pass_presence_signal(*args, **kwareg)
-
-    def _on_storage_actions(self, event, storage, nick, item):
-        if event == 'set':
-            if nick == self.get_own_resource():
-                new_nick = item.get_nick()
-                if new_nick != None:
-                    self.set_own_resource(new_nick)
-
-        return
-
-    def _message_relay_listener(
-        self,
-        event, storage, original_stanza,
-        date, receive_date, delay_from, delay_message, incomming,
-        connection_jid_obj, jid_obj, type_, parent_thread_id, thread_id,
-        subject, plain, xhtml
-        ):
-
-        if event == 'new_message':
-            if type_ in ['message_chat', 'message_groupchat']:
-
-                if org.wayround.pyabber.message_filter.is_message_acceptable(
-                    operation_mode=self._operation_mode,
-                    message_type=type_,
-                    contact_bare_jid=self._contact_bare_jid,
-                    contact_resource=self._contact_resource,
-                    active_bare_jid=jid_obj.bare(),
-                    active_resource=jid_obj.resource
-                    ):
-
-                    self._incomming_messages_lock.acquire()
-
-                    if (self._subject_last_date == None
-                        or date > self._subject_last_date):
-                        if len(subject.keys()) != 0:
-                            self._subject = subject
-                        self._subject_last_date = date
-
-                    self._incomming_messages_lock.release()
-
-        return
+#                bare_jid = jid.bare()
+#                self.ensure_room_under_control(bare_jid)
+#                ctl = self.get_controller(bare_jid)
+#                mrs = self.get_muc_roster_storage(bare_jid)
+#                mrs.pass_presence_signal(
+#                    event, presence_obj, from_jid, to_jid, stanza
+#                    )
+#
+#        return
+#
+#
+#class MUCController:
+#
+#    def __init__(self, controller, room_jid):
+#
+#        self._controller = controller
+#
+#        self.room_jid = \
+#            org.wayround.xmpp.core.JID.new_from_str(room_jid).bare_obj()
+#
+#        self.resource = None
+#
+#        self._subject_last_date = None
+#        self._subject = {}
+#
+#        self._incomming_messages_lock = threading.Lock()
+#
+#        self._muc_roster_storage = \
+#            org.wayround.pyabber.muc_roster_storage.Storage(
+#                self.room_jid,
+#                controller.presence_client
+#                )
+#
+#        self._muc_roster_storage.signal.connect(
+#            True,
+#            self._on_storage_actions
+#            )
+#
+##        self._controller.message_relay.signal.connect(
+##            'new_message', self._message_relay_listener
+##            )
+#
+#        return
+#
+#    def get_subject(self):
+#        return self._subject
+#
+#    def get_thread(self):
+#        # TODO: to do
+#        return None
+#
+#    def get_roster_storage(self):
+#        return self._muc_roster_storage
+#
+#    def pass_presence_signal(self, *args, **kwareg):
+#        self._muc_roster_storage.pass_presence_signal(*args, **kwareg)
+#
+#    def _on_storage_actions(self, event, storage, nick, item):
+#        if event == 'set':
+#            if nick == self.get_own_resource():
+#                new_nick = item.get_nick()
+#                if new_nick != None:
+#                    self.set_own_resource(new_nick)
+#
+#        return
+#
+#    def _message_relay_listener(
+#        self,
+#        event, storage, original_stanza,
+#        date, receive_date, delay_from, delay_message, incomming,
+#        connection_jid_obj, jid_obj, type_, parent_thread_id, thread_id,
+#        subject, plain, xhtml
+#        ):
+#
+#        if event == 'new_message':
+#            if type_ in ['message_chat', 'message_groupchat']:
+#
+#                if org.wayround.pyabber.message_filter.is_message_acceptable(
+#                    operation_mode=self._operation_mode,
+#                    message_type=type_,
+#                    contact_bare_jid=self._contact_bare_jid,
+#                    contact_resource=self._contact_resource,
+#                    active_bare_jid=jid_obj.bare(),
+#                    active_resource=jid_obj.resource
+#                    ):
+#
+#                    self._incomming_messages_lock.acquire()
+#
+#                    if (self._subject_last_date == None
+#                        or date > self._subject_last_date):
+#                        if len(subject.keys()) != 0:
+#                            self._subject = subject
+#                        self._subject_last_date = date
+#
+#                    self._incomming_messages_lock.release()
+#
+#        return

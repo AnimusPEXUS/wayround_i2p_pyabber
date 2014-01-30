@@ -1,16 +1,15 @@
 
-import threading
 import logging
 import os.path
+import threading
 
 from gi.repository import Gtk
-
-import org.wayround.utils.gtk
 
 import org.wayround.pyabber.connection_window
 import org.wayround.pyabber.icondb
 import org.wayround.pyabber.profile_window
 import org.wayround.pyabber.status_icon
+import org.wayround.utils.gtk
 
 
 class Main:
@@ -122,6 +121,8 @@ class ProfileSession:
 
 
 def main(opts, args):
+
+#    Gtk.init([])
 
     org.wayround.pyabber.icondb.set_dir(
         org.wayround.utils.path.join(

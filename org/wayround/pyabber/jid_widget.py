@@ -212,7 +212,7 @@ class JIDWidget:
         self._subscription_i.set_tooltip_text(value)
 
     def destroy(self):
-        self._roster_storage.dissignal.connect(
+        self._roster_storage.signal.disconnect(
             self._roster_storage_listener
             )
         self._menu.destroy()
@@ -437,7 +437,7 @@ class MUCRosterJIDWidget:
             )
 
         muc_roster_storage.signal.connect(
-            True,
+            'set',
             self._on_storage_actions
             )
 
@@ -550,7 +550,7 @@ class MUCRosterJIDWidget:
         return self._main_widget
 
     def destroy(self):
-        self._muc_roster_storage.dissignal.connect(
+        self._muc_roster_storage.signal.disconnect(
             self._on_storage_actions
             )
         self._menu.destroy()
@@ -644,7 +644,7 @@ class GroupChatTabWidget:
             )
 
         muc_roster_storage.signal.connect(
-            True,
+            'set',
             self._on_storage_actions
             )
 
