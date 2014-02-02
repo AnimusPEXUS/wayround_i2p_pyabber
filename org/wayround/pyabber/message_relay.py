@@ -63,7 +63,7 @@ class MessageRelay:
                 if delay_message == None:
                     delay_message = ''
 
-            self.manual_addition(
+            self.internal_addition(
                 original_stanza=stanza,
                 date=date,
                 receive_date=receive_date,
@@ -82,9 +82,34 @@ class MessageRelay:
                 xhtml={}
                 )
 
-    # TODO: make new manual_addition() without original stanza and rename
-    # current method
     def manual_addition(
+        self,
+        date, receive_date, delay_from, delay_message, incomming,
+        connection_jid_obj, jid_obj, type_, parent_thread_id, thread_id,
+        subject, plain, xhtml
+        ):
+
+        original_stanza = org.wayround.xmpp.core.Stanza(tag='message')
+        original_stanza.set_from_jid(str(jid_obj))
+        original_stanza.set_to_jid(str(connection_jid_obj))
+        _t = type_
+        if _t.startswith('message_'):
+            _t = _t[len('message_'):]
+        if _t == 'normal':
+            _t = None
+        original_stanza.set_typ(_t)
+        original_stanza.set_body_dict(plain)
+        original_stanza.set_subject_dict(subject)
+
+        ret = self.internal_addition(
+            original_stanza, date, receive_date, delay_from, delay_message,
+            incomming, connection_jid_obj, jid_obj, type_, parent_thread_id,
+            thread_id, subject, plain, xhtml
+            )
+
+        return ret
+
+    def internal_addition(
         self,
         original_stanza,
         date, receive_date, delay_from, delay_message, incomming,
@@ -100,19 +125,6 @@ class MessageRelay:
 
         if not isinstance(xhtml, dict):
             raise TypeError("`xhtml' must be dict")
-
-        if original_stanza == None:
-            original_stanza = org.wayround.xmpp.core.Stanza(tag='message')
-            original_stanza.set_from_jid(str(jid_obj))
-            original_stanza.set_to_jid(str(connection_jid_obj))
-            _t = type_
-            if _t.startswith('message_'):
-                _t = _t[len('message_'):]
-            if _t == 'normal':
-                _t = None
-            original_stanza.set_typ(_t)
-            original_stanza.set_body_dict(plain)
-            original_stanza.set_subject_dict(subject)
 
         t = threading.Thread(
             target=self._controller.profile.data.add_history_record,

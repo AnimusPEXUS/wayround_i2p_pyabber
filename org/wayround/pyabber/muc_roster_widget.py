@@ -14,21 +14,22 @@ class MUCRosterWidget:
         self._controller = controller
         self._muc_roster_storage = muc_roster_storage
 
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
+        self._reordering_lock = threading.Lock()
 
         self._list = []
-
-        muc_roster_storage.signal.connect(
-            'set',
-            self._on_muc_roster_storage_event
-            )
 
         b = Gtk.Box()
         b.set_orientation(Gtk.Orientation.VERTICAL)
         b.set_spacing(5)
         self._b = b
 
-        self._reordering_lock = threading.Lock()
+        self.sync_with_storage()
+
+        muc_roster_storage.signal.connect(
+            'set',
+            self._on_muc_roster_storage_event
+            )
 
         return
 
@@ -76,10 +77,10 @@ class MUCRosterWidget:
             self._list.remove(i)
 
     def _on_muc_roster_storage_event(self, event, storage, nick, item):
-        self._lock.acquire()
-        self._sync_with_storage()
-        self.order_jid_widgets()
-        self._lock.release()
+        with self._lock:
+            self.sync_with_storage()
+            self.sort_jid_widgets()
+        return
 
     def _get_nicks_in_list(self):
 
@@ -99,60 +100,59 @@ class MUCRosterWidget:
 
         return list(set(ret))
 
-    def _sync_with_storage(self):
+    def sync_with_storage(self):
 
-        items = self._muc_roster_storage.get_items()
+        with self._lock:
+            items = self._muc_roster_storage.get_items()
 
-        i_n = self._get_nicks_in_items(items)
-        l_n = self._get_nicks_in_list()
+            i_n = self._get_nicks_in_items(items)
+            l_n = self._get_nicks_in_list()
 
-        for i in l_n:
-            if not i in i_n:
-                self._remove_item(i)
+            for i in l_n:
+                if not i in i_n:
+                    self._remove_item(i)
 
-        for i in i_n:
-            if not i in l_n:
-                self._add_item(i)
+            for i in i_n:
+                if not i in l_n:
+                    self._add_item(i)
 
         return
 
-    def order_jid_widgets(self):
+    def sort_jid_widgets(self):
 
-        self._reordering_lock.acquire()
+        with self._reordering_lock:
 
-        initial_sorting_list = []
-        for i in self._list:
-            t = i.get_nick()
-            if t:
-                t = self._muc_roster_storage.get_item(t)
+            initial_sorting_list = []
+            for i in self._list:
+                t = i.get_nick()
                 if t:
-                    initial_sorting_list.append(t)
+                    t = self._muc_roster_storage.get_item(t)
+                    if t:
+                        initial_sorting_list.append(t)
 
-        final_sorting_list = []
-        for i in ['moderator', 'none', 'participant', 'visitor', None]:
-            rollers = []
-            for j in initial_sorting_list:
-                if j.get_role() == i:
-                    rollers.append(j)
+            final_sorting_list = []
+            for i in ['moderator', 'none', 'participant', 'visitor', None]:
+                rollers = []
+                for j in initial_sorting_list:
+                    if j.get_role() == i:
+                        rollers.append(j)
 
-            for j in ['owner', 'admin', 'member', 'outcast', 'none', None]:
-                affillers = []
+                for j in ['owner', 'admin', 'member', 'outcast', 'none', None]:
+                    affillers = []
 
-                for k in rollers:
-                    if k.get_affiliation() == j:
-                        affillers.append(k)
+                    for k in rollers:
+                        if k.get_affiliation() == j:
+                            affillers.append(k)
 
-                affillers.sort(key=lambda x: x.get_nick())
-                final_sorting_list += affillers
+                    affillers.sort(key=lambda x: x.get_nick())
+                    final_sorting_list += affillers
 
-        for i in final_sorting_list:
-            for j in self._list:
-                if j.get_nick() == i.get_nick():
-                    self._b.reorder_child(j.get_widget(), -1)
-
-        self._reordering_lock.release()
+            for i in final_sorting_list:
+                for j in self._list:
+                    if j.get_nick() == i.get_nick():
+                        self._b.reorder_child(j.get_widget(), -1)
 
         return
 
     def _widget_changed(self):
-        self.order_jid_widgets()
+        self.sort_jid_widgets()

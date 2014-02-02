@@ -1,8 +1,12 @@
 
+import threading
+
 from gi.repository import Gtk, Gdk, Pango
 
+import org.wayround.pyabber.ccc
 import org.wayround.pyabber.contact_popup_menu
 import org.wayround.pyabber.icondb
+import org.wayround.pyabber.roster_storage
 
 
 class JIDWidget:
@@ -11,6 +15,27 @@ class JIDWidget:
         self,
         controller, roster_storage, bare_jid
         ):
+
+        if not isinstance(
+            controller,
+            org.wayround.pyabber.ccc.ClientConnectionController
+            ):
+            raise ValueError(
+                "`controller' must be "
+                "org.wayround.pyabber.ccc.ClientConnectionController"
+                )
+
+        if not isinstance(
+            roster_storage,
+            org.wayround.pyabber.roster_storage.RosterStorage
+            ):
+            raise ValueError(
+                "`roster_storage' must be "
+                "org.wayround.pyabber.roster_storage.RosterStorage"
+                )
+
+        if not isinstance(bare_jid, str):
+            raise ValueError("`bare_jid' must be str")
 
         self._controller = controller
         self._roster_storage = roster_storage
@@ -47,6 +72,7 @@ class JIDWidget:
         self._title_label.set_alignment(0, 0.5)
 
         self._jid_label = Gtk.Label()
+        self._jid_label.set_ellipsize(Pango.EllipsizeMode.MIDDLE)
         self._jid_label.set_alignment(0, 0.5)
 
         self._status_text_label = Gtk.Label()
@@ -351,140 +377,164 @@ class MUCRosterJIDWidget:
 
     def __init__(self, room_bare_jid, nick, controller, muc_roster_storage):
 
-        self._room_bare_jid = room_bare_jid
-        self._controller = controller
-        self._nick = nick
-        self._muc_roster_storage = muc_roster_storage
+        self._lock = threading.RLock()
 
-        b = Gtk.Box()
-        b.set_orientation(Gtk.Orientation.HORIZONTAL)
+        with self._lock:
 
-        user_pic = Gtk.Image()
-        self._user_pic = user_pic
+            self._room_bare_jid = room_bare_jid
+            self._controller = controller
+            self._nick = nick
+            self._muc_roster_storage = muc_roster_storage
 
-        title_label = Gtk.Label(nick)
-        title_label.set_alignment(0.0, 0.0)
-        self._title_label = title_label
+            b = Gtk.Box()
+            b.set_orientation(Gtk.Orientation.HORIZONTAL)
 
-        b3 = Gtk.Box()
-        b3.set_orientation(Gtk.Orientation.HORIZONTAL)
-        b3.set_spacing(5)
+            user_pic = Gtk.Image()
+            self._user_pic = user_pic
 
-        event_box2 = Gtk.EventBox()
+            title_label = Gtk.Label()
+            self._title_label = title_label
+            title_label.set_ellipsize(Pango.EllipsizeMode.END)
+            title_label.set_size_request(50, -1)
+            title_label.set_alignment(0.0, 0.0)
 
-        jid_label = Gtk.Label()
-        jid_label.set_alignment(0.0, 0.0)
-        jid_label.set_ellipsize(Pango.EllipsizeMode.END)
-        jid_label.set_no_show_all(True)
-        self._jid_label = jid_label
+            b3 = Gtk.Box()
+            b3.set_orientation(Gtk.Orientation.HORIZONTAL)
+            b3.set_spacing(5)
 
-        event_box2.add(jid_label)
+            event_box2 = Gtk.EventBox()
 
-        online_icon = Gtk.Image()
-        self._online_icon = online_icon
+            jid_label = Gtk.Label()
+            jid_label.set_alignment(0.0, 0.0)
+            jid_label.set_ellipsize(Pango.EllipsizeMode.END)
+            jid_label.set_no_show_all(True)
+            self._jid_label = jid_label
 
-        show_icon = Gtk.Image()
-        self._show_icon = show_icon
+            event_box2.add(jid_label)
 
-        affiliation_icon = Gtk.Image()
-        self._affiliation_icon = affiliation_icon
+            online_icon = Gtk.Image()
+            self._online_icon = online_icon
 
-        role_icon = Gtk.Image()
-        self._role_icon = role_icon
+            show_icon = Gtk.Image()
+            self._show_icon = show_icon
 
-        b4 = Gtk.Box()
-        b4.set_orientation(Gtk.Orientation.VERTICAL)
+            affiliation_icon = Gtk.Image()
+            self._affiliation_icon = affiliation_icon
 
-        icon_grid = Gtk.Grid()
-        icon_grid.attach(online_icon, 0, 0, 1, 1)
-        icon_grid.attach(show_icon, 1, 0, 1, 1)
-        icon_grid.attach(affiliation_icon, 0, 1, 1, 1)
-        icon_grid.attach(role_icon, 1, 1, 1, 1)
+            role_icon = Gtk.Image()
+            self._role_icon = role_icon
 
-        b4.pack_start(title_label, True, True, 0)
-        b4.pack_start(event_box2, False, False, 0)
+            b4 = Gtk.Box()
+            b4.set_orientation(Gtk.Orientation.VERTICAL)
 
-        b3.pack_start(user_pic, False, False, 0)
-        b3.pack_start(icon_grid, False, False, 0)
-        b3.pack_start(b4, False, False, 0)
+            icon_grid = Gtk.Grid()
+            icon_grid.attach(online_icon, 0, 0, 1, 1)
+            icon_grid.attach(show_icon, 1, 0, 1, 1)
+            icon_grid.attach(affiliation_icon, 0, 1, 1, 1)
+            icon_grid.attach(role_icon, 1, 1, 1, 1)
 
-        self._menu = \
-            MUCRosterJIDWidgetMenu(
-                controller,
-                muc_roster_storage
+            b4.pack_start(title_label, True, True, 0)
+            b4.pack_start(event_box2, False, False, 0)
+
+            b3.pack_start(user_pic, False, False, 0)
+            b3.pack_start(icon_grid, False, False, 0)
+            b3.pack_start(b4, False, False, 0)
+
+            self._menu = \
+                MUCRosterJIDWidgetMenu(
+                    controller,
+                    muc_roster_storage
+                    )
+
+            self._jid_menu = \
+                org.wayround.pyabber.contact_popup_menu.ContactPopupMenu(
+                    controller
+                    )
+
+            event_box = Gtk.EventBox()
+            event_box.add(b3)
+
+            event_box.show_all()
+
+            self._main_widget = event_box
+
+            self.set_nick(nick)
+
+            event_box.connect(
+                'button-press-event',
+                self._on_widget_right_button
                 )
 
-        self._jid_menu = \
-            org.wayround.pyabber.contact_popup_menu.ContactPopupMenu(
-                controller
+            event_box2.connect(
+                'button-press-event',
+                self._on_jid_right_button
                 )
 
-        event_box = Gtk.EventBox()
-        event_box.add(b3)
+            muc_roster_storage.signal.connect(
+                'set',
+                self._on_storage_actions
+                )
 
-        event_box.show_all()
-
-        self._main_widget = event_box
-
-        event_box.connect(
-            'button-press-event',
-            self._on_widget_right_button
-            )
-
-        event_box2.connect(
-            'button-press-event',
-            self._on_jid_right_button
-            )
-
-        muc_roster_storage.signal.connect(
-            'set',
-            self._on_storage_actions
-            )
-
-        self.set_nick(nick)
+            muc_roster_storage.signal.connect(
+                'rename',
+                self._on_storage_rename
+                )
 
         return
 
     def get_nick(self):
-        return self._nick
+        with self._lock:
+            ret = self._nick
+        return ret
 
     def set_nick(self, value):
-        self._nick = value
-        self.reload_data()
+        with self._lock:
+            self._nick = value
+            self.reload_data()
+        return
 
     def reload_data(self, item=None):
 
-        if item == None:
-            item = self._muc_roster_storage.get_item(self.get_nick())
+        with self._lock:
 
-        self._user_pic.set_from_pixbuf(
-            org.wayround.pyabber.icondb.get('q_10x10')
-            )
-        self._affiliation_icon.set_from_pixbuf(
-            org.wayround.pyabber.icondb.get('q_10x10')
-            )
-        self._role_icon.set_from_pixbuf(
-            org.wayround.pyabber.icondb.get('q_10x10')
-            )
+            if item == None:
+                item = self._muc_roster_storage.get_item(self.get_nick())
 
-        if item != None:
+            self._user_pic.set_from_pixbuf(
+                org.wayround.pyabber.icondb.get('q_10x10')
+                )
+            self._affiliation_icon.set_from_pixbuf(
+                org.wayround.pyabber.icondb.get('q_10x10')
+                )
+            self._role_icon.set_from_pixbuf(
+                org.wayround.pyabber.icondb.get('q_10x10')
+                )
 
-            if item.get_nick() == self.get_nick():
-                self._set_available(item.get_available())
-                self._set_show(item.get_show())
-                self._set_affiliation(item.get_affiliation())
-                self._set_role(item.get_role())
-                self._set_jid(item.get_jid())
-                self._main_widget.set_tooltip_text(
-"""Status text: {}""".format(item.get_status())
-                    )
+            if item != None:
 
-        else:
-                self._set_available(False)
-                self._set_show('unknown')
-                self._main_widget.set_tooltip_text("No status")
+                if item.get_nick() == self.get_nick():
+                    self._set_title(self.get_nick())
+                    self._set_available(item.get_available())
+                    self._set_show(item.get_show())
+                    self._set_affiliation(item.get_affiliation())
+                    self._set_role(item.get_role())
+                    self._set_jid(item.get_jid())
+                    self._main_widget.set_tooltip_text(
+    """Status text: {}""".format(item.get_status())
+                        )
+
+            else:
+                    self._set_available(False)
+                    self._set_show('unknown')
+                    self._main_widget.set_tooltip_text("No status")
 
         return
+
+    def _set_title(self, value):
+        if value == None:
+            value = ''
+        self._title_label.set_text(value)
+        self._title_label.set_tooltip_text(value)
 
     def _set_jid(self, value):
 
@@ -496,9 +546,11 @@ class MUCRosterJIDWidget:
             self._jid_label.set_tooltip_text(value)
             self._jid_label.show()
             self._jid_menu.set(value)
+
         return
 
     def _set_available(self, value):
+
         if value:
             self._online_icon.set_from_pixbuf(
                 org.wayround.pyabber.icondb.get('contact_available')
@@ -510,7 +562,10 @@ class MUCRosterJIDWidget:
                 )
             self._online_icon.set_tooltip_text('Unavailable')
 
+        return
+
     def _set_show(self, value):
+
         if not value in [
                 'available', 'unavailable', 'dnd', 'away', 'xa', 'chat'
                 ]:
@@ -521,6 +576,8 @@ class MUCRosterJIDWidget:
             )
 
         self._show_icon.set_tooltip_text("Show: {}".format(value))
+
+        return
 
     def _set_affiliation(self, value):
 
@@ -535,6 +592,8 @@ class MUCRosterJIDWidget:
             "Affiliation: {}".format(value)
             )
 
+        return
+
     def _set_role(self, value):
 
         if value == None:
@@ -545,6 +604,8 @@ class MUCRosterJIDWidget:
             )
 
         self._role_icon.set_tooltip_text("Role: {}".format(value))
+
+        return
 
     def get_widget(self):
         return self._main_widget
@@ -557,13 +618,22 @@ class MUCRosterJIDWidget:
         self._jid_menu.destroy()
         self.get_widget().destroy()
 
+        return
+
     def _on_storage_actions(self, event, storage, nick, item):
-        if event == 'set':
-            if nick == self.get_nick():
-                new_nick = item.get_nick()
-                if new_nick != None:
-                    self.set_nick(new_nick)
-                self.reload_data(item)
+        with self._lock:
+            if event == 'set':
+                if nick == self.get_nick():
+                    self.reload_data(item)
+        return
+
+    def _on_storage_rename(self, event, storage, nick, new_nick):
+        with self._lock:
+            if event == 'rename':
+                if self.get_nick() != None:
+                    if nick == self.get_nick():
+                        if new_nick != None:
+                            self.set_nick(new_nick)
         return
 
     def _on_jid_right_button(self, widget, event):
@@ -609,79 +679,84 @@ class GroupChatTabWidget:
         self._presence_client = presence_client
         self._stanza_processor = stanza_processor
 
-        b = Gtk.Box()
-        b.set_orientation(Gtk.Orientation.VERTICAL)
+        self._lock = threading.RLock()
 
-        self._mrjw = MUCRosterJIDWidget(
-            room_bare_jid,
-            own_resource,
-            controller,
-            muc_roster_storage
-            )
-        self._title_label = Gtk.Label()
-        self._title_label.set_alignment(0.0, 0.0)
+        with self._lock:
 
-        b.pack_start(self._title_label, False, False, 0)
-        b.pack_start(self._mrjw.get_widget(), False, False, 0)
+            b = Gtk.Box()
+            b.set_orientation(Gtk.Orientation.VERTICAL)
 
-        self._menu = \
-            org.wayround.pyabber.muc.MUCPopupMenu(
-                controller
+            self._mrjw = MUCRosterJIDWidget(
+                room_bare_jid,
+                own_resource,
+                controller,
+                muc_roster_storage
                 )
+            self._title_label = Gtk.Label()
+            self._title_label.set_ellipsize(Pango.EllipsizeMode.MIDDLE)
+            self._title_label.set_size_request(50, -1)
+            self._title_label.set_alignment(0.0, 0.0)
 
-        event_box = Gtk.EventBox()
-        event_box.add(b)
+            b.pack_start(self._title_label, False, False, 0)
+            b.pack_start(self._mrjw.get_widget(), False, False, 0)
 
-        event_box.show_all()
+            self._menu = \
+                org.wayround.pyabber.muc.MUCPopupMenu(
+                    controller
+                    )
 
-        self._main_widget = event_box
+            event_box = Gtk.EventBox()
+            event_box.add(b)
 
-        self.set_own_resource(own_resource)
+            event_box.show_all()
 
-        event_box.connect(
-            'button-press-event',
-            self._on_widget_right_button
-            )
+            self._main_widget = event_box
 
-        muc_roster_storage.signal.connect(
-            'set',
-            self._on_storage_actions
-            )
+            self.set_own_resource(own_resource)
+
+            event_box.connect(
+                'button-press-event',
+                self._on_widget_right_button
+                )
 
         return
 
     def get_widget(self):
-        return self._main_widget
+        with self._lock:
+            ret = self._main_widget
+        return ret
 
     def destroy(self):
         self._mrjw.destroy()
         self._menu.destroy()
         self._title_label.destroy()
         self.get_widget().destroy()
-
-    def set_own_resource(self, value):
-        self._own_resource = value
-#        self._mrjw.set_nick(value)
-        self._menu.set(self._room_bare_jid)
-        self._title_label.set_text('MUC: {}'.format(self._room_bare_jid))
-
-    def get_own_resource(self):
-        return self._own_resource
-
-    def _on_widget_right_button(self, widget, event):
-
-        if event.button == Gdk.BUTTON_SECONDARY:
-
-            self._menu.set(self._room_bare_jid)
-            self._menu.show()
-
         return
 
-    def _on_storage_actions(self, event, storage, nick, item):
-        if event == 'set':
-            if nick == self.get_own_resource():
-                new_nick = item.get_nick()
-                if new_nick != None:
-                    self.set_own_resource(new_nick)
+    def set_own_resource(self, value):
+        with self._lock:
+            self._own_resource = value
+            self._mrjw.set_nick(value)
+            self._menu.set(self._room_bare_jid)
+            t = 'MUC: {}/{}'.format(
+                self._room_bare_jid,
+                self._own_resource
+                )
+            self._title_label.set_text(t)
+            self._title_label.set_tooltip_text(t)
+        return
+
+    def get_own_resource(self):
+        with self._lock:
+            ret = self._own_resource
+        return ret
+
+    def _on_widget_right_button(self, widget, event):
+        with self._lock:
+
+            if event.button == Gdk.BUTTON_SECONDARY:
+
+                self._menu.set(self._room_bare_jid)
+                self._menu.show()
 
         return

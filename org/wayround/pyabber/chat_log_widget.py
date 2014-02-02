@@ -313,49 +313,56 @@ class ChatLogWidget:
                 )
 
         self._incomming_messages_lock = threading.Lock()
-        self._incomming_messages_lock.acquire()
 
-        self._operation_mode = None
+        with self._incomming_messages_lock:
 
-        self._size_groups = []
-        for i in range(4):
-            sg = Gtk.SizeGroup()
-            sg.set_mode(Gtk.SizeGroupMode.HORIZONTAL)
-            self._size_groups.append(sg)
+            self._operation_mode = None
+            self.set_operation_mode(operation_mode)
 
-        self._controller = controller
-        self._chat = chat
+            self._size_groups = []
+            for i in range(4):
+                sg = Gtk.SizeGroup()
+                sg.set_mode(Gtk.SizeGroupMode.HORIZONTAL)
+                self._size_groups.append(sg)
 
-        main_box = Gtk.Box()
-        main_box.set_orientation(Gtk.Orientation.VERTICAL)
+            self._controller = controller
+            self._chat = chat
 
-        log_box = Gtk.Box()
-        self._log_box = log_box
-        log_box.set_orientation(Gtk.Orientation.VERTICAL)
+            main_box = Gtk.Box()
+            main_box.set_orientation(Gtk.Orientation.VERTICAL)
 
-        frame = Gtk.Frame()
-        sw = Gtk.ScrolledWindow()
-        self._sw = sw
-        frame.add(sw)
-        sw.add(log_box)
+            log_box = Gtk.Box()
+            self._log_box = log_box
+            log_box.set_orientation(Gtk.Orientation.VERTICAL)
 
-        main_box.pack_start(frame, True, True, 0)
+            frame = Gtk.Frame()
+            sw = Gtk.ScrolledWindow()
+            self._sw = sw
+            frame.add(sw)
+            sw.add(log_box)
 
-        self._root_widget = main_box
+            main_box.pack_start(frame, True, True, 0)
 
-        self._last_date = None
-        self._rows = []
-        self._lock = threading.Lock()
+            self._root_widget = main_box
 
-        if message_relay_listener_call_queue:
-            message_relay_listener_call_queue.set_callable_target(
-                self._message_relay_listener
-                )
-            message_relay_listener_call_queue.dump()
-        else:
-            self._controller.message_relay.signal.connect(
-                'new_message', self._message_relay_listener
-                )
+            self._last_date = None
+            self._rows = []
+            self._lock = threading.Lock()
+
+            if message_relay_listener_call_queue:
+                message_relay_listener_call_queue.set_callable_target(
+                    self._message_relay_listener
+                    )
+                message_relay_listener_call_queue.dump()
+            else:
+                self._controller.message_relay.signal.connect(
+                    'new_message', self._message_relay_listener
+                    )
+
+            self.load_history()
+
+        self._last_scroll_date = None
+        self.scroll_down()
 
         self._looped_timer = org.wayround.utils.timer.LoopedTimer(
             0.25,
@@ -363,14 +370,6 @@ class ChatLogWidget:
             tuple(),
             dict()
             )
-
-        self._last_scroll_date = None
-
-        self.set_operation_mode(operation_mode)
-
-        self.load_history()
-
-        self._incomming_messages_lock.release()
 
         self._looped_timer.start()
 
@@ -460,33 +459,34 @@ class ChatLogWidget:
         subject, plain, xhtml
         ):
 
-        if event == 'new_message':
-            if type_ in ['message_chat', 'message_groupchat']:
+        with self._incomming_messages_lock:
 
-                if org.wayround.pyabber.message_filter.is_message_acceptable(
-                    operation_mode=self._operation_mode,
-                    message_type=type_,
-                    contact_bare_jid=self._chat.contact_bare_jid,
-                    contact_resource=self._chat.contact_resource,
-                    active_bare_jid=jid_obj.bare(),
-                    active_resource=jid_obj.resource
-                    ):
+            if event == 'new_message':
+                if type_ in ['message_chat', 'message_groupchat']:
 
-                    self._incomming_messages_lock.acquire()
+                    if org.wayround.pyabber.message_filter.is_message_acceptable(
+                        operation_mode=self._operation_mode,
+                        message_type=type_,
+                        contact_bare_jid=self._chat.contact_bare_jid,
+                        contact_resource=self._chat.contact_resource,
+                        active_bare_jid=jid_obj.bare(),
+                        active_resource=jid_obj.resource
+                        ):
 
-                    if plain != {} or xhtml != {} or subject != {}:
+                        if plain != {} or xhtml != {} or subject != {}:
 
-                        self.add_record(
-                            date,
-                            self._jid(jid_obj.resource, incomming),
-                            plain,
-                            xhtml,
-                            delay_from,
-                            delay_message,
-                            subject
-                            )
-
-                    self._incomming_messages_lock.release()
+                            self.add_record(
+                                date,
+                                self._format_jid_text(
+                                    jid_obj.resource,
+                                    incomming
+                                    ),
+                                plain,
+                                xhtml,
+                                delay_from,
+                                delay_message,
+                                subject
+                                )
 
         return
 
@@ -551,7 +551,7 @@ class ChatLogWidget:
 
         return
 
-    def _jid(self, resource, is_incomming):
+    def _format_jid_text(self, resource, is_incomming):
         jid = ''
         if self._operation_mode == 'groupchat':
             jid = resource
@@ -564,16 +564,7 @@ class ChatLogWidget:
         return jid
 
     def _convert_record(self, rec):
-        jid = self._jid(rec['jid_resource'], rec['incomming'])
-
-#        plain = None
-#        xhtml = None
-#
-#        if rec['plain'] != None:
-#            plain = json.loads(rec['plain'])
-#
-#        if rec['xhtml'] != None:
-#            xhtml = json.loads(rec['xhtml'])
+        jid = self._format_jid_text(rec['jid_resource'], rec['incomming'])
 
         return \
             rec['date'], \

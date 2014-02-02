@@ -82,7 +82,7 @@ class Storage:
         self._room_jid = room_jid
         self._presence_client = presence_client
 
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
 
         self._items = []
 
@@ -90,104 +90,144 @@ class Storage:
 
         self.signal = org.wayround.utils.threading.Signal(
             self,
-            ['set',
-             'own_rename']
+            ['set', 'own_rename', 'rename']
             )
 
-        presence_client.signal.connect(
-            ['presence'], self._on_presence
-            )
+#        presence_client.signal.connect(
+#            ['presence'], self._on_presence
+#            )
 
         return
 
     def destroy(self):
-        self._presence_client.signal.disconnect(
-            self._on_presence
-            )
+#        self._presence_client.signal.disconnect(
+#            self._on_presence
+#            )
+        return
+
+    def get_own_resource(self):
+        with self._lock:
+            ret = self._own_resource
+        return ret
 
     def _on_presence(
         self, event, presence_client_obj, from_jid, to_jid, stanza
         ):
 
-        if event == 'presence':
+        with self._lock:
 
-            fj = org.wayround.xmpp.core.JID.new_from_str(from_jid)
+            if event == 'presence':
 
-            if fj.bare() == self._room_jid.bare():
+                fj = org.wayround.xmpp.core.JID.new_from_str(from_jid)
 
-                show = stanza.get_show()
-                show_val = None
-                if show:
-                    show_val = show.get_text()
-                else:
-                    show_val = 'available'
-                    if stanza.get_typ() == 'unavailable':
-                        show_val = 'unavailable'
+                if fj.bare() == self._room_jid.bare():
 
-                status = stanza.get_status()
-                status_val = None
-                if len(status) != 0:
-                    status_val = status[0].get_text()
-                else:
-                    status_val = ''
+                    show = stanza.get_show()
+                    show_val = None
+                    if show:
+                        show_val = show.get_text()
+                    else:
+                        show_val = 'available'
+                        if stanza.get_typ() == 'unavailable':
+                            show_val = 'unavailable'
 
-                available_val = stanza.get_typ() != 'unavailable'
+                    status = stanza.get_status()
+                    status_val = None
+                    if len(status) != 0:
+                        status_val = status[0].get_text()
+                    else:
+                        status_val = ''
 
-                self.set(
-                    nick=fj.resource,
-                    show=show_val,
-                    status=status_val,
-                    available=available_val
-                    )
+                    available_val = stanza.get_typ() != 'unavailable'
 
-                muc_elem_list = org.wayround.xmpp.muc.get_muc_elements(
-                    stanza.get_element()
-                    )
+                    self.set(
+                        nick=fj.resource,
+                        show=show_val,
+                        status=status_val,
+                        available=available_val
+                        )
 
-                logging.debug(
-                    "{}: found muc elements:\n{}".format(self, muc_elem_list)
-                    )
+                    muc_elem_list = org.wayround.xmpp.muc.get_muc_elements(
+                        stanza.get_element()
+                        )
 
-                len_muc_elem_list = len(muc_elem_list)
+                    len_muc_elem_list = len(muc_elem_list)
 
-                if len_muc_elem_list == 1:
+                    if len_muc_elem_list == 1:
 
-                    e = muc_elem_list[0]
+                        e = muc_elem_list[0]
 
-                    if e.tag == \
-                        '{http://jabber.org/protocol/muc#user}x':
+                        if e.tag == \
+                            '{http://jabber.org/protocol/muc#user}x':
 
-                        muc_obj = org.wayround.xmpp.muc.X.new_from_element(e)
+                            muc_obj = \
+                                org.wayround.xmpp.muc.X.new_from_element(e)
 
-                        item = muc_obj.get_item()
+                            item = muc_obj.get_item()
 
-                        self.set(
-                            nick=fj.resource,
-                            affiliation=item.get_affiliation(),
-                            role=item.get_role(),
-                            new_nick=item.get_nick(),
-                            jid=item.get_jid()
-                            )
-
-                        if 110 in muc_obj.get_status():
-                            if stanza.get_typ() != 'unavailable':
-                                self._own_resource = fj.resource
-                            else:
-                                self._own_resource = None
-
-                            self.signal.emit(
-                                'own_rename',
-                                self,
-                                self._own_resource
+                            self.set(
+                                nick=fj.resource,
+                                affiliation=item.get_affiliation(),
+                                role=item.get_role(),
+                                new_nick=item.get_nick(),
+                                jid=item.get_jid()
                                 )
 
-                elif len_muc_elem_list > 1:
-                    logging.error(
-                        "Not supported more then one muc element in stanza"
-                        ", error stanza is:\n----\n{}\n----".format(
-                            lxml.etree.tostring(stanza.get_element())
+                            # FIXME: this is ejabberd 2.1.11 hack. the later
+                            #        does not support xep-0045 correctly.
+                            #        please, somebody, make them suffer
+                            #        http://www.ejabberd.im/node/17036
+                            #        this comment was added 1 Feb 2014
+                            if (303 in muc_obj.get_status()
+                                and stanza.get_typ() == 'unavailable'
+                                and fj.resource == self._own_resource
+                                and self._own_resource != None
+                                ):
+
+                                nn = item.get_nick()
+
+                                if nn != None:
+                                    if self._own_resource != nn:
+                                        self._own_resource = nn
+                                        logging.debug(
+                                            "own_rename by 303 in {} to {}".format(
+                                                str(fj.bare()),
+                                                self._own_resource
+                                                )
+                                            )
+                                        self.signal.emit(
+                                            'own_rename',
+                                            self,
+                                            self._own_resource
+                                            )
+
+                            if (110 in muc_obj.get_status()
+                                and stanza.get_typ() != 'unavailable'
+                                ):
+
+                                nn = fj.resource
+
+                                if self._own_resource != nn:
+                                    self._own_resource = nn
+                                    logging.debug(
+                                        "own_rename by 110 in {} to {}".format(
+                                            str(fj.bare()),
+                                            self._own_resource
+                                            )
+                                        )
+                                    self.signal.emit(
+                                        'own_rename',
+                                        self,
+                                        self._own_resource
+                                        )
+
+                    elif len_muc_elem_list > 1:
+                        logging.error(
+                            "Not supported more then one muc element in stanza"
+                            ", error stanza is:\n----\n{}\n----".format(
+                                lxml.etree.tostring(stanza.get_element())
+                                )
                             )
-                        )
 
         return
 
@@ -200,44 +240,49 @@ class Storage:
         available=None, show=None, status=None, jid=None
         ):
 
-        d = None
+        with self._lock:
+            d = None
 
-        for i in self._items:
-            if i.get_nick() == nick:
-                d = i
+            for i in self._items:
+                if i.get_nick() == nick:
+                    d = i
 
-        if d == None:
-            d = Item(nick)
-            self._items.append(d)
+            if d == None:
+                d = Item(nick)
+                self._items.append(d)
 
-        for i in [
-            'affiliation',
-            'role',
-            'available',
-            'show',
-            'status',
-            'jid'
-            ]:
-            val = eval(i)
-            if val != None:
-                setter = getattr(d, 'set_{}'.format(i))
-                setter(val)
+            for i in [
+                'affiliation',
+                'role',
+                'available',
+                'show',
+                'status',
+                'jid'
+                ]:
+                val = eval(i)
+                if val != None:
+                    setter = getattr(d, 'set_{}'.format(i))
+                    setter(val)
 
-        if new_nick != None:
-            d.set_nick(new_nick)
+            if new_nick != None:
+                d.set_nick(new_nick)
 
-        self.signal.emit('set', self, nick, d)
+            self.signal.emit('set', self, nick, d)
+            if nick != self._own_resource and nick != new_nick:
+                self.signal.emit('rename', self, nick, new_nick)
 
         return
 
     def get_item(self, nick):
-        ret = None
-        for i in self._items:
-            if i.get_nick() == nick:
-                ret = copy.deepcopy(i)
-                break
+        with self._lock:
+            ret = None
+            for i in self._items:
+                if i.get_nick() == nick:
+                    ret = copy.deepcopy(i)
+                    break
         return ret
 
     def get_items(self):
-        ret = copy.deepcopy(self._items)
+        with self._lock:
+            ret = copy.deepcopy(self._items)
         return ret

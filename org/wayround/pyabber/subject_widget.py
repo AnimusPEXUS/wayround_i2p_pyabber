@@ -166,9 +166,10 @@ class SubjectWidget:
 
         self._last_date = None
 
-        b = Gtk.Box()
-        b.set_orientation(Gtk.Orientation.HORIZONTAL)
-        b.set_spacing(5)
+        b = Gtk.Grid()
+#        b.set_orientation(Gtk.Orientation.HORIZONTAL)
+        b.set_row_spacing(5)
+        b.set_column_spacing(5)
 
         self._text = Gtk.Label()
         self._text.set_alignment(0.0, 0.5)
@@ -182,15 +183,15 @@ class SubjectWidget:
 #        self._text.set_has_tooltip(True)
 
         self._edit_button = Gtk.Button("Edit..")
-        self._edit_button.set_valign(Gtk.Align.START)
+#        self._edit_button.set_valign(Gtk.Align.START)
         self._edit_button.connect('clicked', self._on_edit_button_clicked)
 
         self._delete_button = Gtk.Button("Del")
-        self._delete_button.set_valign(Gtk.Align.START)
+#        self._delete_button.set_valign(Gtk.Align.START)
         self._delete_button.connect('clicked', self._on_delete_button_clicked)
 
         self._lang_select_cb = Gtk.ComboBox()
-        self._lang_select_cb.set_valign(Gtk.Align.START)
+#        self._lang_select_cb.set_valign(Gtk.Align.START)
 
         renderer_text = Gtk.CellRendererText()
         self._lang_select_cb.pack_start(renderer_text, True)
@@ -200,13 +201,20 @@ class SubjectWidget:
         self._lang_select_cb.set_model(self._languages_model)
 
         text_scrolled_win = Gtk.ScrolledWindow()
+        text_scrolled_win.set_hexpand(True)
+        text_scrolled_win.set_halign(Gtk.Align.FILL)
         text_scrolled_win.add(self._text)
 #        text_scrolled_win.set_size_request(-1, 100)
 
-        b.pack_start(text_scrolled_win, True, True, 0)
-        b.pack_start(self._lang_select_cb, False, False, 0)
-        b.pack_start(self._edit_button, False, False, 0)
-        b.pack_start(self._delete_button, False, False, 0)
+#        b.pack_start(text_scrolled_win, True, True, 0)
+#        b.pack_start(self._lang_select_cb, False, False, 0)
+#        b.pack_start(self._edit_button, False, False, 0)
+#        b.pack_start(self._delete_button, False, False, 0)
+
+        b.attach(text_scrolled_win, 0, 0, 1, 3)
+        b.attach(self._lang_select_cb, 1, 0, 1, 1)
+        b.attach(self._edit_button, 1, 1, 1, 1)
+        b.attach(self._delete_button, 1, 2, 1, 1)
 
         self._main_widget = b
         self._main_widget.show_all()

@@ -251,8 +251,8 @@ class MUCMiniIdentityEditorWindow:
 
         stanza = org.wayround.xmpp.core.Stanza('iq')
 
-        stanza.set_from_jid(str(self._own_jid))
-        stanza.set_to_jid(self._target_jid)
+        stanza.set_from_jid(str(self._controller.jid))
+        stanza.set_to_jid(self._room_jid_entry.get_text())
         stanza.set_typ('set')
 
         stanza.get_objects().append(query)

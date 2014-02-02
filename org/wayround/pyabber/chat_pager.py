@@ -1,4 +1,5 @@
 
+import logging
 import datetime
 import threading
 
@@ -234,8 +235,8 @@ class Chat:
             self._message_relay_listener
             )
 
-#        if self._mode == 'groupchat':
-#            self.make_unavailable()
+        if self._mode == 'groupchat':
+            self.make_unavailable()
 
         self._jid_widget.destroy()
         self._subject_widget.destroy()
@@ -415,7 +416,7 @@ class ChatPager:
                 pager=self,
                 controller=self._controller,
                 room_bare_jid=jid_obj.bare(),
-                own_resource=jid_obj.resource,
+                own_resource=None,
                 message_relay_listener_call_queue=\
                     message_relay_listener_call_queue
                 )
@@ -588,166 +589,183 @@ class GroupChat:
         message_relay_listener_call_queue=None
         ):
 
-        self.contact_bare_jid = room_bare_jid
-        self.contact_resource = own_resource
-        self.thread_id = None
+        self._lock = threading.RLock()
 
-        self._pager = pager
+        with self._lock:
 
-        self._controller = controller
+            self._pager = pager
+            self._controller = controller
 
-        self._room_bare_jid_obj = org.wayround.xmpp.core.JID.new_from_str(
-            room_bare_jid
-            )
+            self.contact_bare_jid = room_bare_jid
+            self.contact_resource = own_resource
+            self.thread_id = None
 
-        self._storage = controller.roster_storage.get_muc_storage(
-            self._room_bare_jid_obj.bare()
-            )
-        self.pages = []
-
-        b = Gtk.Box()
-        b.set_orientation(Gtk.Orientation.VERTICAL)
-        b.set_margin_top(5)
-        b.set_margin_left(5)
-        b.set_margin_right(5)
-        b.set_margin_bottom(5)
-        b.set_spacing(5)
-
-        self._roster_widget = \
-            org.wayround.pyabber.muc_roster_widget.MUCRosterWidget(
-                self._room_bare_jid_obj,
-                controller,
-                self._storage
+            self._room_bare_jid_obj = org.wayround.xmpp.core.JID.new_from_str(
+                room_bare_jid
                 )
 
-        # save it to not be distracted by GC
-        self._message_relay_listener_call_queue = \
-            message_relay_listener_call_queue
+            self._storage = controller.roster_storage.get_muc_storage(
+                self._room_bare_jid_obj.bare()
+                )
+            self.pages = []
 
-        main_chat_page = Chat(
-            controller,
-            pager,
-            self,
-            contact_bare_jid=self._room_bare_jid_obj.bare(),
-            contact_resource=own_resource,
-            thread_id=None,
-            mode='groupchat',
-            muc_roster_storage=self._storage,
-            message_relay_listener_call_queue=\
+            b = Gtk.Box()
+            b.set_orientation(Gtk.Orientation.VERTICAL)
+            b.set_margin_top(5)
+            b.set_margin_left(5)
+            b.set_margin_right(5)
+            b.set_margin_bottom(5)
+            b.set_spacing(5)
+
+            self._roster_widget = \
+                org.wayround.pyabber.muc_roster_widget.MUCRosterWidget(
+                    self._room_bare_jid_obj,
+                    controller,
+                    self._storage
+                    )
+
+            # save it to not be distracted by GC
+            self._message_relay_listener_call_queue = \
                 message_relay_listener_call_queue
-            )
-        self._main_chat_page = main_chat_page
 
-        self._notebook = Gtk.Notebook()
-        self._notebook.set_scrollable(True)
-        self._notebook.set_tab_pos(Gtk.PositionType.TOP)
-        self._notebook.append_page(
-            main_chat_page.get_page_widget(),
-            main_chat_page.get_tab_title_widget()
-            )
-        self._notebook.set_tab_reorderable(
-            main_chat_page.get_page_widget(),
-            True
-            )
+            main_chat_page = Chat(
+                controller,
+                pager,
+                self,
+                contact_bare_jid=self._room_bare_jid_obj.bare(),
+                contact_resource=own_resource,
+                thread_id=None,
+                mode='groupchat',
+                muc_roster_storage=self._storage,
+                message_relay_listener_call_queue=\
+                    message_relay_listener_call_queue
+                )
+            self._main_chat_page = main_chat_page
 
-        paned = Gtk.Paned()
+            self._notebook = Gtk.Notebook()
+            self._notebook.set_scrollable(True)
+            self._notebook.set_tab_pos(Gtk.PositionType.TOP)
+            self._notebook.append_page(
+                main_chat_page.get_page_widget(),
+                main_chat_page.get_tab_title_widget()
+                )
+            self._notebook.set_tab_reorderable(
+                main_chat_page.get_page_widget(),
+                True
+                )
 
-        rw_rw = self._roster_widget.get_widget()
-        rw_rw.set_margin_top(5)
-        rw_rw.set_margin_left(5)
-        rw_rw.set_margin_right(5)
-        rw_rw.set_margin_bottom(5)
+            paned = Gtk.Paned()
 
-        rw_f = Gtk.Frame()
-        rw_sw = Gtk.ScrolledWindow()
-        rw_f.add(rw_sw)
-        rw_sw.add(rw_rw)
+            rw_rw = self._roster_widget.get_widget()
+            rw_rw.set_margin_top(5)
+            rw_rw.set_margin_left(5)
+            rw_rw.set_margin_right(5)
+            rw_rw.set_margin_bottom(5)
 
-        paned.add1(self._notebook)
-        paned.add2(rw_f)
+            rw_f = Gtk.Frame()
+            rw_sw = Gtk.ScrolledWindow()
+            rw_f.add(rw_sw)
+            rw_sw.add(rw_rw)
 
-        paned.child_set_property(self._notebook, 'shrink', False)
-        paned.child_set_property(rw_f, 'shrink', False)
-        paned.child_set_property(rw_f, 'resize', False)
+            paned.add1(self._notebook)
+            paned.add2(rw_f)
 
-        b.pack_start(paned, True, True, 0)
+            paned.child_set_property(self._notebook, 'shrink', False)
+            paned.child_set_property(rw_f, 'shrink', False)
+            paned.child_set_property(rw_f, 'resize', False)
 
-        self._tab_widget = org.wayround.pyabber.jid_widget.GroupChatTabWidget(
-            room_bare_jid,
-            own_resource,
-            self._controller,
-            self._storage,
-            self._controller.presence_client,
-            self._controller.client.stanza_processor
-            )
+            b.pack_start(paned, True, True, 0)
 
-        self._title_label = Gtk.Box()
-        self._title_label.set_orientation(Gtk.Orientation.HORIZONTAL)
+            self._tab_widget = \
+                org.wayround.pyabber.jid_widget.GroupChatTabWidget(
+                    room_bare_jid,
+                    own_resource,
+                    self._controller,
+                    self._storage,
+                    self._controller.presence_client,
+                    self._controller.client.stanza_processor
+                    )
 
-        tab_close_button = Gtk.Button('x')
-        tab_close_button.connect('clicked', self._on_tab_close_button_clicked)
+            self._title_label = Gtk.Box()
+            self._title_label.set_orientation(Gtk.Orientation.HORIZONTAL)
 
-        self._title_label.pack_start(
-            self._tab_widget.get_widget(), True, True, 0
-            )
+            tab_close_button = Gtk.Button('x')
+            tab_close_button.connect(
+                'clicked',
+                self._on_tab_close_button_clicked
+                )
 
-        self._title_label.pack_start(
-            tab_close_button, False, False, 0
-            )
+            self._title_label.pack_start(
+                self._tab_widget.get_widget(), True, True, 0
+                )
 
-        self._title_label.show_all()
+            self._title_label.pack_start(
+                tab_close_button, False, False, 0
+                )
 
-        self._root_widget = b
+            self._title_label.show_all()
 
-        self._root_widget.show_all()
+            self._root_widget = b
 
-        self._controller.message_relay.signal.connect(
-            'new_message', self._message_relay_listener
-            )
+            self._root_widget.show_all()
 
-        self._storage.signal.connect(
-            'own_rename', self._on_own_rename_storage_action
-            )
+            self.set_own_resource(self._storage.get_own_resource())
 
-        self.set_own_resource(own_resource)
+            self._roster_widget.sync_with_storage()
+            self._roster_widget.sort_jid_widgets()
 
-        self._sync_pages_with_list()
+            self._controller.message_relay.signal.connect(
+                'new_message',
+                self._message_relay_listener
+                )
+
+            self._storage.signal.connect(
+                'own_rename',
+                self._on_own_rename_storage_action
+                )
+
+            self._sync_pages_with_list()
 
         return
 
     def set_own_resource(self, value):
-        self.contact_resource = value
-        self._main_chat_page.set_resource(value)
-#        self._tab_widget.set_own_resource(value)
+        with self._lock:
+            logging.debug(
+                "Setting GroupChat '{}' own resource '{}'".format(
+                    self.contact_bare_jid,
+                    value
+                    )
+                )
+            self.contact_resource = value
+            self._main_chat_page.set_resource(value)
+            self._tab_widget.set_own_resource(value)
 
     def get_own_resource(self):
-        return self.contact_resource
+        with self._lock:
+            ret = self.contact_resource
+        return ret
 
     def destroy(self):
-#        print("111 1")
         self._controller.message_relay.signal.disconnect(
             self._message_relay_listener
             )
-#        print("111 2")
         self._storage.destroy()
-#        print("111 3")
         self._main_chat_page.destroy()
-#        print("111 4")
         self.remove_all_pages()
-#        print("111 5")
         self._roster_widget.destroy()
-#        print("111 6")
         self._tab_widget.destroy()
-#        print("111 7")
         self.get_tab_title_widget().destroy()
-#        print("111 8")
         self.get_page_widget().destroy()
 
     def get_tab_title_widget(self):
-        return self._title_label
+        with self._lock:
+            ret = self._title_label
+        return ret
 
     def get_page_widget(self):
-        return self._root_widget
+        with self._lock:
+            ret = self._root_widget
+        return ret
 
     add_page = ChatPager.add_page
 
@@ -771,76 +789,82 @@ class GroupChat:
 
     def search_page(self, resource):
 
-        if not isinstance(resource, str):
-            raise ValueError("`resource' must be str")
+        with self._lock:
 
-        ret = []
+            if not isinstance(resource, str):
+                raise ValueError("`resource' must be str")
 
-        for i in self.pages:
+            ret = []
 
-            if i.contact_resource == resource:
+            for i in self.pages:
 
-                ret.append(i)
+                if i.contact_resource == resource:
+
+                    ret.append(i)
 
         return ret
 
     def _sync_pages_with_list(self):
 
-        _notebook_pages = self._get_all_notebook_pages()
-        _list_pages = self._get_all_list_pages()
+        with self._lock:
 
-        for i in self.pages:
-            p = i.get_page_widget()
-            pp = i.get_tab_title_widget()
-            if not p in _notebook_pages:
-                self._notebook.append_page(p, pp)
-                p.show_all()
-                pp.show_all()
-                self._notebook.set_tab_reorderable(p, True)
+            _notebook_pages = self._get_all_notebook_pages()
+            _list_pages = self._get_all_list_pages()
 
-        for i in _notebook_pages:
-            if not i in _list_pages:
-                page_n = self._notebook.page_num(i)
-                self._notebook.remove_page(page_n)
+            for i in self.pages:
+                p = i.get_page_widget()
+                pp = i.get_tab_title_widget()
+                if not p in _notebook_pages:
+                    self._notebook.append_page(p, pp)
+                    p.show_all()
+                    pp.show_all()
+                    self._notebook.set_tab_reorderable(p, True)
 
-        _notebook_pages = self._get_all_notebook_pages()
-        w = self._main_chat_page.get_page_widget()
-        if len(_notebook_pages) != 0:
-            w.set_margin_top(5)
-            w.set_margin_left(5)
-            w.set_margin_right(5)
-            w.set_margin_bottom(5)
-            self._notebook.set_show_tabs(True)
-            self._notebook.set_show_border(True)
-        else:
-            w.set_margin_top(0)
-            w.set_margin_left(0)
-            w.set_margin_right(0)
-            w.set_margin_bottom(0)
-            self._notebook.set_show_tabs(False)
-            self._notebook.set_show_border(False)
+            for i in _notebook_pages:
+                if not i in _list_pages:
+                    page_n = self._notebook.page_num(i)
+                    self._notebook.remove_page(page_n)
+
+            _notebook_pages = self._get_all_notebook_pages()
+            w = self._main_chat_page.get_page_widget()
+            if len(_notebook_pages) != 0:
+                w.set_margin_top(5)
+                w.set_margin_left(5)
+                w.set_margin_right(5)
+                w.set_margin_bottom(5)
+                self._notebook.set_show_tabs(True)
+                self._notebook.set_show_border(True)
+            else:
+                w.set_margin_top(0)
+                w.set_margin_left(0)
+                w.set_margin_right(0)
+                w.set_margin_bottom(0)
+                self._notebook.set_show_tabs(False)
+                self._notebook.set_show_border(False)
 
         return
 
     def add_private(self, jid_obj):
 
-        res = self.search_page(jid_obj.resource)
+        with self._lock:
 
-        ret = None
+            res = self.search_page(jid_obj.resource)
 
-        if len(res) == 0:
-            p = Chat(
-                controller=self._controller,
-                pager=self,
-                groupchat=None,
-                contact_bare_jid=jid_obj.bare(),
-                contact_resource=jid_obj.resource,
-                thread_id=None,
-                mode='private',
-                muc_roster_storage=self._storage, \
-                )
-            self.add_page(p)
-            ret = p
+            ret = None
+
+            if len(res) == 0:
+                p = Chat(
+                    controller=self._controller,
+                    pager=self,
+                    groupchat=None,
+                    contact_bare_jid=jid_obj.bare(),
+                    contact_resource=jid_obj.resource,
+                    thread_id=None,
+                    mode='private',
+                    muc_roster_storage=self._storage
+                    )
+                self.add_page(p)
+                ret = p
 
         return ret
 
@@ -852,24 +876,31 @@ class GroupChat:
         subject, plain, xhtml
         ):
 
-        if event == 'new_message':
+        with self._lock:
 
-            if type_ == 'message_chat':
+            if event == 'new_message':
 
-                if self.contact_bare_jid == jid_obj.bare():
+                if type_ == 'message_chat':
 
-                    self.add_private(jid_obj)
+                    if self.contact_bare_jid == jid_obj.bare():
+
+                        self.add_private(jid_obj)
 
         return
 
     def _on_tab_close_button_clicked(self, button):
-        self._pager.remove_page(self)
+        with self._lock:
+            self._pager.remove_page(self)
 
     def _on_own_rename_storage_action(self, event, storage, own_nick):
-        if event == 'own_rename':
-            if own_nick != None:
-                self.set_own_resource(own_nick)
+        with self._lock:
+            if event == 'own_rename':
+                if own_nick != None:
+                    logging.debug(
+                        "{} Received new own nick {}".format(
+                            self.contact_bare_jid,
+                            own_nick
+                            )
+                        )
+                    self.set_own_resource(own_nick)
         return
-
-    def pass_presence_signal(self, *args, **kwargs):
-        self._storage.pass_presence_signal(*args, **kwargs)
