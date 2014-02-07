@@ -45,15 +45,10 @@ class Chat:
 
         self._unread = False
 
-        # do not do this automatically
-        #        if thread_id == None:
-        #            thread_id = uuid.uuid4().hex
-
         self._controller = controller
 
         self.contact_bare_jid = contact_bare_jid
         self.contact_resource = contact_resource
-        self.thread_id = thread_id
 
         # as queue objects connected to signal objects weakly, firsts can not
         # survive the end of this method: GC destroys them. firsts must live,
@@ -169,6 +164,7 @@ class Chat:
         send_button.connect('clicked', self._on_send_button_clicked)
 
         self._update_jid_widget()
+        self._thread_widget.set_data(thread_id)
 
         if message_relay_listener_call_queue:
             message_relay_listener_call_queue.set_callable_target(
@@ -297,11 +293,13 @@ class Chat:
         if self._mode == 'private':
             to_jid += '/{}'.format(self.contact_resource)
 
+        thread = self._thread_widget.get_data()
+
         self._controller.message_client.message(
             to_jid=to_jid,
             from_jid=False,
             typ=message_type,
-            thread=self.thread_id,
+            thread=thread,
             subject=None,
             body=plain,
             xhtml=xhtml
@@ -318,7 +316,6 @@ class Chat:
 
             self._controller.message_relay.manual_addition(
                 date=d,
-                original_stanza=None,
                 receive_date=d,
                 delay_from=None,
                 delay_message=None,
@@ -327,7 +324,7 @@ class Chat:
                 jid_obj=jid_obj,
                 type_=type_,
                 parent_thread_id=None,
-                thread_id=self.thread_id,
+                thread_id=thread,
                 subject={},
                 plain=plain,
                 xhtml=xhtml
@@ -374,10 +371,6 @@ class ChatPager:
         self._notebook.set_tab_pos(Gtk.PositionType.LEFT)
 
         self._root_widget = self._notebook
-
-        self._controller.message_relay.signal.connect(
-            'new_message', self._message_relay_listener
-            )
 
         self._groupchat_addition_lock = threading.Lock()
 
@@ -466,9 +459,6 @@ class ChatPager:
             self.remove_page(i)
 
     def destroy(self):
-        self._controller.message_relay.signal.disconnect(
-            self._message_relay_listener
-            )
         self.remove_all_pages()
         self.get_widget().destroy()
 
@@ -545,39 +535,6 @@ class ChatPager:
 
         return ret
 
-    def _message_relay_listener(
-        self,
-        event, storage, original_stanza,
-        date, receive_date, delay_from, delay_message, incomming,
-        connection_jid_obj, jid_obj, type_, parent_thread_id, thread_id,
-        subject, plain, xhtml
-        ):
-
-        if event == 'new_message':
-
-            if type_ in ['message_chat', 'message_groupchat']:
-
-                if type_ == 'message_chat':
-
-                    # TODO: rework this shet
-
-                    group_chat_found = None
-                    for i in self.pages:
-                        if i.contact_bare_jid == jid_obj.bare():
-                            group_chat_found = i
-                            break
-
-                    if group_chat_found == None:
-                        self.add_chat(jid_obj, thread_id)
-
-                if type_ == 'message_groupchat':
-                    #                    jo = jid_obj.copy()
-                    #                    jo.resource = None
-                    #                    self.add_groupchat(jo)
-                    self.add_groupchat(jid_obj)
-
-        return
-
 
 class GroupChat:
 
@@ -598,7 +555,6 @@ class GroupChat:
 
             self.contact_bare_jid = room_bare_jid
             self.contact_resource = own_resource
-            self.thread_id = None
 
             self._room_bare_jid_obj = org.wayround.xmpp.core.JID.new_from_str(
                 room_bare_jid
@@ -714,11 +670,6 @@ class GroupChat:
             self._roster_widget.sync_with_storage()
             self._roster_widget.sort_jid_widgets()
 
-            self._controller.message_relay.signal.connect(
-                'new_message',
-                self._message_relay_listener
-                )
-
             self._storage.signal.connect(
                 'own_rename',
                 self._on_own_rename_storage_action
@@ -746,9 +697,6 @@ class GroupChat:
         return ret
 
     def destroy(self):
-        self._controller.message_relay.signal.disconnect(
-            self._message_relay_listener
-            )
         self._storage.destroy()
         self._main_chat_page.destroy()
         self.remove_all_pages()
@@ -867,26 +815,6 @@ class GroupChat:
                 ret = p
 
         return ret
-
-    def _message_relay_listener(
-        self,
-        event, storage, original_stanza,
-        date, receive_date, delay_from, delay_message, incomming,
-        connection_jid_obj, jid_obj, type_, parent_thread_id, thread_id,
-        subject, plain, xhtml
-        ):
-
-        with self._lock:
-
-            if event == 'new_message':
-
-                if type_ == 'message_chat':
-
-                    if self.contact_bare_jid == jid_obj.bare():
-
-                        self.add_private(jid_obj)
-
-        return
 
     def _on_tab_close_button_clicked(self, button):
         with self._lock:

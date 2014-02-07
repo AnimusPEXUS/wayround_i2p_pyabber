@@ -43,9 +43,15 @@ class SubjectTooltip:
 
 class SubjectEditor:
 
-    def __init__(self, controller):
+    def __init__(self, controller, operation_mode='chat'):
+
+        if not operation_mode in ['chat', 'groupchat', 'private']:
+            raise ValueError(
+                "`operation_mode' must be in ['chat', 'groupchat', 'private']"
+                )
 
         self._controller = controller
+        self._operation_mode = operation_mode
 
         window = Gtk.Window()
         window.connect('destroy', self._on_destroy)
@@ -92,7 +98,9 @@ class SubjectEditor:
 
         return
 
-    def run(self, data, target_jid):
+    def run(self, data, target_jid, operation_mode):
+
+        self._operation_mode = operation_mode
 
         self._target_entry.set_text(target_jid)
 
@@ -109,8 +117,8 @@ class SubjectEditor:
 
     def destroy(self):
         self._window.hide()
-        self._window.destroy()
         self._editor.destroy()
+        self._window.destroy()
         self._iterated_loop.stop()
 
     def _on_destroy(self, window):
@@ -120,10 +128,14 @@ class SubjectEditor:
 
         subject = self._editor.get_data()[0]
 
+        typ = 'chat'
+        if self._operation_mode == 'groupchat':
+            typ = 'groupchat'
+
         self._controller.message_client.message(
             to_jid=self._target_entry.get_text(),
             from_jid=False,
-            typ='groupchat',
+            typ=typ,
             thread=None,
             subject=subject,
             body=None,
@@ -166,10 +178,10 @@ class SubjectWidget:
 
         self._last_date = None
 
-        b = Gtk.Grid()
-#        b.set_orientation(Gtk.Orientation.HORIZONTAL)
-        b.set_row_spacing(5)
-        b.set_column_spacing(5)
+        grid = Gtk.Grid()
+#        grid.set_orientation(Gtk.Orientation.HORIZONTAL)
+        grid.set_row_spacing(5)
+        grid.set_column_spacing(5)
 
         self._text = Gtk.Label()
         self._text.set_alignment(0.0, 0.5)
@@ -206,17 +218,17 @@ class SubjectWidget:
         text_scrolled_win.add(self._text)
 #        text_scrolled_win.set_size_request(-1, 100)
 
-#        b.pack_start(text_scrolled_win, True, True, 0)
-#        b.pack_start(self._lang_select_cb, False, False, 0)
-#        b.pack_start(self._edit_button, False, False, 0)
-#        b.pack_start(self._delete_button, False, False, 0)
+#        grid.pack_start(text_scrolled_win, True, True, 0)
+#        grid.pack_start(self._lang_select_cb, False, False, 0)
+#        grid.pack_start(self._edit_button, False, False, 0)
+#        grid.pack_start(self._delete_button, False, False, 0)
 
-        b.attach(text_scrolled_win, 0, 0, 1, 3)
-        b.attach(self._lang_select_cb, 1, 0, 1, 1)
-        b.attach(self._edit_button, 1, 1, 1, 1)
-        b.attach(self._delete_button, 1, 2, 1, 1)
+        grid.attach(text_scrolled_win, 0, 0, 1, 3)
+        grid.attach(self._lang_select_cb, 1, 0, 1, 1)
+        grid.attach(self._edit_button, 1, 1, 1, 1)
+        grid.attach(self._delete_button, 1, 2, 1, 1)
 
-        self._main_widget = b
+        self._main_widget = grid
         self._main_widget.show_all()
 
         self._lang_select_cb.connect('changed', self._on_lang_switch_chenged)
@@ -406,10 +418,13 @@ class SubjectWidget:
     def _on_edit_button_clicked(self, button):
 
         j = org.wayround.xmpp.core.JID.new_from_string(self._contact_bare_jid)
+        if self._operation_mode != 'groupchat':
+            j.resource = self._contact_resource
 
         self._controller.show_subject_edit_window(
             self._data,
-            str(j)
+            str(j),
+            self._operation_mode
             )
 
         return

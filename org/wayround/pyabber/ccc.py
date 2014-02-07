@@ -22,6 +22,7 @@ import org.wayround.pyabber.roster_storage
 import org.wayround.pyabber.roster_window
 import org.wayround.pyabber.single_message_window
 import org.wayround.pyabber.subject_widget
+import org.wayround.pyabber.thread_widget
 import org.wayround.utils.gtk
 import org.wayround.utils.threading
 import org.wayround.xmpp.client
@@ -37,7 +38,7 @@ SUBWINDOWS = [
     # 3. threaded?.
     ('add_mode_language_window', False, False),
     ('adhoc_response_window', False, True),
-    ('adhoc_window', False, True,),
+    ('adhoc_window', False, True),
     ('chat_window', True, True),
     ('contact_editor_window', False, True),
     ('disco_window', False, True),
@@ -53,7 +54,8 @@ SUBWINDOWS = [
     ('registration_window_threaded', False, True),
     ('roster_window', True, True),
     ('single_message_window', False, True),
-    ('subject_edit_window', False, True)
+    ('subject_edit_window', False, True),
+    ('thread_edit_window', False, False)
     ]
 
 
@@ -272,6 +274,9 @@ self._rel_win_ctl.set_constructor_cb(
     def _subject_edit_window_constructor(self):
         return org.wayround.pyabber.subject_widget.SubjectEditor(self)
 
+    def _thread_edit_window_constructor(self):
+        return org.wayround.pyabber.thread_widget.ThreadEditor(self)
+
     def _muc_voice_request_window_constructor(self):
         return org.wayround.pyabber.muc.MUCVoiceRequestWindow(self)
 
@@ -321,6 +326,8 @@ def show_{i}(self, *args, **kwargs):
             self._disconnection_flag = threading.Event()
         else:
             self._disconnection_flag.clear()
+
+        self._incomming_message_lock = threading.RLock()
 
     def destroy(self):
         self.destroy_chat_window()
@@ -583,7 +590,7 @@ def show_{i}(self, *args, **kwargs):
                     )
 
                 self.message_relay.signal.connect(
-                    'new_message', self.message_relay_listener
+                    'new_message', self._message_relay_listener
                     )
 
         self.is_driven = False
@@ -875,7 +882,7 @@ def show_{i}(self, *args, **kwargs):
 
         return ret
 
-    def message_relay_listener(
+    def _message_relay_listener(
         self,
         event, storage, original_stanza,
         date, receive_date, delay_from, delay_message, incomming,
@@ -883,32 +890,70 @@ def show_{i}(self, *args, **kwargs):
         subject, plain, xhtml
         ):
 
-        if event == 'new_message':
-            if type_ in ['message_normal', 'message_error']:
-                self.show_single_message_window(
-                    'view',
-                    original_stanza,
-                    receive_date
-                    )
+        with self._incomming_message_lock:
+
+            if event == 'new_message':
+                if type_ in ['message_normal', 'message_error']:
+                    self.show_single_message_window(
+                        'view',
+                        original_stanza,
+                        receive_date
+                        )
+
+                elif type_ in ['message_chat', 'message_groupchat']:
+                    self.show_chat_window()
+                    w = self.get_chat_window()
+                    cw = w.chat_pager
+
+                    if type_ == 'message_chat':
+
+                        group_chat_found = None
+                        for i in cw.pages:
+                            if (type(i) == \
+                                org.wayround.pyabber.chat_pager.GroupChat
+                                and i.contact_bare_jid == jid_obj.bare()):
+                                group_chat_found = i
+                                break
+
+                        if group_chat_found == None:
+                            cw.add_chat(jid_obj, thread_id)
+                        else:
+                            cw.add_private(str(jid_obj))
+
+                    if type_ == 'message_groupchat':
+                        message_relay_listener_call_queue = \
+                            self.message_relay.signal.gen_call_queue(
+                                ['new_message']
+                                )
+                        cw.add_groupchat(
+                            jid_obj,
+                            message_relay_listener_call_queue=
+                                message_relay_listener_call_queue
+                            )
+
+        return
 
     def _on_presence(self, event, presence_obj, from_jid, to_jid, stanza):
 
-        if event == 'presence':
-            if org.wayround.xmpp.muc.has_muc_elements(
-                stanza.get_element()
-                ):
-                message_relay_listener_call_queue = \
-                    self.message_relay.signal.gen_call_queue(
-                        ['new_message']
+        with self._incomming_message_lock:
+
+            if event == 'presence':
+                if org.wayround.xmpp.muc.has_muc_elements(
+                    stanza.get_element()
+                    ):
+                    message_relay_listener_call_queue = \
+                        self.message_relay.signal.gen_call_queue(
+                            ['new_message']
+                            )
+                    self.show_chat_window()
+                    w = self.get_chat_window()
+                    jid = org.wayround.xmpp.core.JID.new_from_str(
+                        stanza.get_from_jid()
                         )
-                w = self.get_chat_window()
-                jid = org.wayround.xmpp.core.JID.new_from_str(
-                    stanza.get_from_jid()
-                    )
-                w.chat_pager.add_groupchat(
-                    jid,
-                    message_relay_listener_call_queue=\
-                        message_relay_listener_call_queue
-                    )
+                    w.chat_pager.add_groupchat(
+                        jid,
+                        message_relay_listener_call_queue=
+                            message_relay_listener_call_queue
+                        )
 
         return

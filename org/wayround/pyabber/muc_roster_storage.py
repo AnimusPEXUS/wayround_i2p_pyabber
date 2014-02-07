@@ -201,7 +201,8 @@ class Storage:
                                             self._own_resource
                                             )
 
-                            if (110 in muc_obj.get_status()
+                            if ((110 in muc_obj.get_status()
+                                 or 210 in muc_obj.get_status())
                                 and stanza.get_typ() != 'unavailable'
                                 ):
 
@@ -210,7 +211,7 @@ class Storage:
                                 if self._own_resource != nn:
                                     self._own_resource = nn
                                     logging.debug(
-                                        "own_rename by 110 in {} to {}".format(
+                                        "own_rename by 110 or 210 in {} to {}".format(
                                             str(fj.bare()),
                                             self._own_resource
                                             )
