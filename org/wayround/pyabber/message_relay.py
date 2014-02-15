@@ -21,7 +21,7 @@ class MessageRelay:
 
         if event == 'message':
 
-            logging.debug("Received stanza for relay: {}".format(stanza))
+#            logging.debug("Received stanza for relay: {}".format(stanza))
 
             type_ = 'message_normal'
             typ = stanza.get_typ()
@@ -59,6 +59,10 @@ class MessageRelay:
                 delay_from = delay_object.get_from_()
                 delay_message = delay_object.get_text()
                 date = delay_object.get_stamp()
+
+                if date.tzinfo != None:
+                    date = date.astimezone(datetime.timezone.utc)
+                    date = date.replace(tzinfo=None)
 
                 if delay_message == None:
                     delay_message = ''

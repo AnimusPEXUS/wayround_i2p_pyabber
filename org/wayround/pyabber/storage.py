@@ -304,6 +304,54 @@ class StorageDB(org.wayround.utils.db.BasicDB):
             nullable=True
             )
 
+    class VCard(Base):
+
+        __tablename__ = 'vcard'
+
+        id_ = sqlalchemy.Column(
+            name='id',
+            type_=sqlalchemy.Integer,
+            primary_key=True,
+            autoincrement=True
+            )
+
+        connection_bare_jid = sqlalchemy.Column(
+            type_=sqlalchemy.UnicodeText,
+            nullable=False,
+            index=True
+            )
+
+        bare_jid = sqlalchemy.Column(
+            type_=sqlalchemy.UnicodeText,
+            nullable=False,
+            index=True
+            )
+
+        version = sqlalchemy.Column(
+            type_=sqlalchemy.DateTime,
+            nullable=False,
+            index=True
+            )
+
+        photo = sqlalchemy.Column(
+            type_=sqlalchemy.LargeBinary,
+            nullable=True
+            )
+
+        data = sqlalchemy.Column(
+            type_=sqlalchemy.PickleType,
+            nullable=True
+            )
+
+#        for i in [
+#            'source', 'kind', 'xml', 'fn', 'n', 'nickname', 'photo', 'bday',
+#            'anniversary', 'gender', 'adr', 'tel', 'email', 'impp', 'lang',
+#            'tz', 'geo', 'title', 'role', 'logo', 'org', 'member', 'related',
+#            'categories', 'note', 'prodid', 'rev', 'sound', 'uid',
+#            'clientpidmap', 'url', 'key', 'fburl', 'caladruri', 'caluri'
+#            ]:
+
+
 CONNECTION_PRESET_FIELDS = \
     org.wayround.utils.types.attrs_dict_to_object_same_names(
         org.wayround.utils.sqlalchemy.get_column_names(
@@ -351,6 +399,20 @@ for i in BOB_CACHE_FIELDS[:]:
         BOB_CACHE_FIELDS.append(('type_', 'type_',))
 
 
+VCARD_FIELDS = \
+    org.wayround.utils.types.attrs_dict_to_object_same_names(
+        org.wayround.utils.sqlalchemy.get_column_names(
+            StorageDB.Base.metadata,
+            'vcard'
+            )
+        )
+
+for i in VCARD_FIELDS[:]:
+    if i[0] == 'id':
+        VCARD_FIELDS.remove(i)
+        VCARD_FIELDS.append(('id_', 'id_',))
+
+
 class Storage:
 
     def __init__(self, *args, **kwargs):
@@ -362,7 +424,7 @@ class Storage:
             )
         self._db = StorageDB(*args, **kwargs)
 
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
 
         self._cleaning_bob = False
 
@@ -436,20 +498,21 @@ class Storage:
         connection_jid_obj, jid_obj
         ):
 
-        self._lock.acquire()
+        with self._lock:
 
-        try:
+            try:
 
-            ret = None
+                ret = None
 
-            res = self._get_message_last_read_date(connection_jid_obj, jid_obj)
-            if res != None:
-                ret = res.date
+                res = self._get_message_last_read_date(
+                    connection_jid_obj,
+                    jid_obj
+                    )
+                if res != None:
+                    ret = res.date
 
-        except:
-            logging.exception("Error getting last read date")
-
-        self._lock.release()
+            except:
+                logging.exception("Error getting last read date")
 
         return ret
 
@@ -459,18 +522,20 @@ class Storage:
         date
         ):
 
-        self._lock.acquire()
+        with self._lock:
 
-        try:
-            res = self._get_message_last_read_date(connection_jid_obj, jid_obj)
-            res.date = date
+            try:
+                res = self._get_message_last_read_date(
+                    connection_jid_obj,
+                    jid_obj
+                    )
+                res.date = date
 
-            self._db.commit()
+                self._db.commit()
 
-        except:
-            logging.exception("Error setting last read date")
+            except:
+                logging.exception("Error setting last read date")
 
-        self._lock.release()
         return
 
     def add_history_record(
@@ -480,61 +545,59 @@ class Storage:
         subject, plain, xhtml
         ):
 
-        self._lock.acquire()
+        with self._lock:
 
-        try:
+            try:
 
-            connection_bare_jid = connection_jid_obj.bare()
-            connection_jid_resource = connection_jid_obj.resource
-            bare_jid = jid_obj.bare()
-            jid_resource = jid_obj.resource
+                connection_bare_jid = connection_jid_obj.bare()
+                connection_jid_resource = connection_jid_obj.resource
+                bare_jid = jid_obj.bare()
+                jid_resource = jid_obj.resource
 
-            if self._is_history_record_already_in(
-                date,
-                connection_bare_jid, connection_jid_resource,
-                bare_jid, jid_resource,
-                subject, plain, xhtml
-                ):
-                logging.debug(
-                    "Message dated {} assumed to be already in DB".format(
-                        date
+                if self._is_history_record_already_in(
+                    date,
+                    connection_bare_jid, connection_jid_resource,
+                    bare_jid, jid_resource,
+                    subject, plain, xhtml
+                    ):
+                    logging.debug(
+                        "Message dated {} assumed to be already in DB".format(
+                            date
+                            )
                         )
-                    )
-            else:
+                else:
 
-                h = self._db.History()
-                h.date = date
-                h.receive_date = receive_date
-                h.delay_from = delay_from
-                h.delay_message = delay_message
-                h.incomming = incomming
-                h.connection_bare_jid = connection_bare_jid
-                h.connection_jid_resource = connection_jid_resource
-                h.bare_jid = bare_jid
-                h.jid_resource = jid_resource
-                h.type_ = type_
-                h.thread_id = thread_id
-                h.parent_thread_id = parent_thread_id
-                h.subject = subject
-                h.plain = plain
-                h.xhtml = xhtml
+                    h = self._db.History()
+                    h.date = date
+                    h.receive_date = receive_date
+                    h.delay_from = delay_from
+                    h.delay_message = delay_message
+                    h.incomming = incomming
+                    h.connection_bare_jid = connection_bare_jid
+                    h.connection_jid_resource = connection_jid_resource
+                    h.bare_jid = bare_jid
+                    h.jid_resource = jid_resource
+                    h.type_ = type_
+                    h.thread_id = thread_id
+                    h.parent_thread_id = parent_thread_id
+                    h.subject = subject
+                    h.plain = plain
+                    h.xhtml = xhtml
 
-                self._db.session.add(h)
+                    self._db.session.add(h)
 
-                self._db.session.commit()
+                    self._db.session.commit()
 
-                self.signal.emit(
-                    'history_update',
-                    self,
-                    date, receive_date, delay_from, delay_message, incomming,
-                    connection_jid_obj, jid_obj, type_, parent_thread_id,
-                    thread_id, subject, plain, xhtml
-                    )
+                    self.signal.emit(
+                        'history_update',
+                        self,
+                        date, receive_date, delay_from, delay_message,
+                        incomming, connection_jid_obj, jid_obj, type_,
+                        parent_thread_id, thread_id, subject, plain, xhtml
+                        )
 
-        except:
-            logging.exception("Error adding history record")
-
-        self._lock.release()
+            except:
+                logging.exception("Error adding history record")
 
         return
 
@@ -587,128 +650,129 @@ class Storage:
         types=None
         ):
 
-        self._lock.acquire()
+        with self._lock:
 
-        try:
+            try:
 
-            if types == None:
-                types = []
+                if types == None:
+                    types = []
 
-            q = self._db.session.query(self._db.History)
+                q = self._db.session.query(self._db.History)
 
-            q = q.filter(
-                self._db.History.connection_bare_jid
-                    == connection_bare_jid,
-                self._db.History.bare_jid == bare_jid
-                )
-
-            if connection_jid_resource != None:
                 q = q.filter(
-                    self._db.History.connection_jid_resource
-                        == connection_jid_resource
+                    self._db.History.connection_bare_jid
+                        == connection_bare_jid,
+                    self._db.History.bare_jid == bare_jid
                     )
 
-            if jid_resource != None:
-                q = q.filter(
-                    self._db.History.jid_resource
-                        == jid_resource
-                    )
+                if connection_jid_resource != None:
+                    q = q.filter(
+                        self._db.History.connection_jid_resource
+                            == connection_jid_resource
+                        )
 
-            if starting_from_date != None:
+                if jid_resource != None:
+                    q = q.filter(
+                        self._db.History.jid_resource
+                            == jid_resource
+                        )
 
-                if starting_includingly:
-                    q = q.filter(self._db.History.date >= starting_from_date)
-                else:
-                    q = q.filter(self._db.History.date > starting_from_date)
+                if starting_from_date != None:
 
-            if ending_with_date != None:
+                    if starting_includingly:
+                        q = q.filter(
+                            self._db.History.date >= starting_from_date
+                            )
+                    else:
+                        q = q.filter(
+                            self._db.History.date > starting_from_date
+                            )
 
-                if ending_includingly:
-                    q = q.filter(self._db.History.date <= ending_with_date)
-                else:
-                    q = q.filter(self._db.History.date < ending_with_date)
+                if ending_with_date != None:
 
-            if len(types) != 0:
-                q = q.filter(self._db.History.type_.in_(types))
+                    if ending_includingly:
+                        q = q.filter(self._db.History.date <= ending_with_date)
+                    else:
+                        q = q.filter(self._db.History.date < ending_with_date)
 
-            q = q.order_by(self._db.History.date.desc())
+                if len(types) != 0:
+                    q = q.filter(self._db.History.type_.in_(types))
 
-            if limit != None:
-                q = q.limit(limit)
+                q = q.order_by(self._db.History.date.desc())
 
-            if offset != None:
-                q = q.offset(offset)
+                if limit != None:
+                    q = q.limit(limit)
 
-            q = q.from_self()
+                if offset != None:
+                    q = q.offset(offset)
 
-            q = q.order_by(self._db.History.date)
+                q = q.from_self()
 
-        except:
-            logging.exception("Error getting history record")
+                q = q.order_by(self._db.History.date)
 
-        ret = convert_history_query_result_list(q.all())
+            except:
+                logging.exception("Error getting history record")
 
-        self._lock.release()
+            ret = convert_history_query_result_list(q.all())
 
         return ret
 
     def get_connection_presets_count(self):
         ret = None
-        self._lock.acquire()
 
-        try:
-            ret = self._db.session.query(self.ConnectionPreset).count()
-        except:
-            logging.exception("Error getting connection presets count")
+        with self._lock:
 
-        self._lock.release()
+            try:
+                ret = self._db.session.query(self.ConnectionPreset).count()
+            except:
+                logging.exception("Error getting connection presets count")
+
         return ret
 
     def get_connection_presets_list(self):
         ret = []
 
-        self._lock.acquire()
-        try:
-            res = self._db.session.query(self._db.ConnectionPreset).\
-                add_columns(self._db.ConnectionPreset.name).\
-                all()
-            for i in res:
-                ret.append(i.name)
-        except:
-            logging.exception("Error connection presets list")
+        with self._lock:
 
-        self._lock.release()
+            try:
+                res = self._db.session.query(self._db.ConnectionPreset).\
+                    add_columns(self._db.ConnectionPreset.name).\
+                    all()
+                for i in res:
+                    ret.append(i.name)
+            except:
+                logging.exception("Error connection presets list")
+
         return ret
 
     def get_connection_preset_by_name(self, name):
         ret = None
 
-        self._lock.acquire()
-        try:
-            res = self._db.session.query(self._db.ConnectionPreset).\
-                filter(self._db.ConnectionPreset.name == name).\
-                all()
+        with self._lock:
 
-            if len(res) != 0:
-                ret = res[0]
+            try:
+                res = self._db.session.query(self._db.ConnectionPreset).\
+                    filter(self._db.ConnectionPreset.name == name).\
+                    all()
 
-            if len(res) > 1:
+                if len(res) != 0:
+                    ret = res[0]
 
-                for i in res[1:]:
-                    self._db.session.delete(i)
+                if len(res) > 1:
 
-                self._db.commit()
+                    for i in res[1:]:
+                        self._db.session.delete(i)
 
-            if ret != None:
-                res = {}
-                org.wayround.utils.types.attrs_object_to_dict(
-                    ret, res, CONNECTION_PRESET_FIELDS
-                    )
-                ret = res
-        except:
-            logging.exception("Error getting connection preset by name")
+                    self._db.commit()
 
-        self._lock.release()
+                if ret != None:
+                    res = {}
+                    org.wayround.utils.types.attrs_object_to_dict(
+                        ret, res, CONNECTION_PRESET_FIELDS
+                        )
+                    ret = res
+            except:
+                logging.exception("Error getting connection preset by name")
 
         return ret
 
@@ -717,38 +781,34 @@ class Storage:
         if p != None:
             self.del_connection_preset(name)
 
-        self._lock.acquire()
-        try:
+        with self._lock:
 
-            new_preset = self._db.ConnectionPreset()
+            try:
 
-            org.wayround.utils.types.attrs_dict_to_object(
-                preset, new_preset, CONNECTION_PRESET_FIELDS
-                )
+                new_preset = self._db.ConnectionPreset()
 
-            self._db.session.add(new_preset)
-            self._db.commit()
-        except:
-            logging.exception("Error setting connection preset")
+                org.wayround.utils.types.attrs_dict_to_object(
+                    preset, new_preset, CONNECTION_PRESET_FIELDS
+                    )
 
-        self._lock.release()
+                self._db.session.add(new_preset)
+                self._db.commit()
+            except:
+                logging.exception("Error setting connection preset")
 
         return
 
     def del_connection_preset(self, name):
-        self._lock.acquire()
-        try:
-            p = self._db.session.query(self._db.ConnectionPreset).\
-                filter(self._db.ConnectionPreset.name == name).\
-                all()
-            for i in p:
-                self._db.session.delete(i)
-            self._db.commit()
-        except:
-            logging.exception("Error deleting connection preset")
-
-        self._lock.release()
-
+        with self._lock:
+            try:
+                p = self._db.session.query(self._db.ConnectionPreset).\
+                    filter(self._db.ConnectionPreset.name == name).\
+                    all()
+                for i in p:
+                    self._db.session.delete(i)
+                self._db.commit()
+            except:
+                logging.exception("Error deleting connection preset")
         return
 
     def _get_count_bob_data(self, method, sum_val, _mode='count'):
@@ -767,35 +827,33 @@ class Storage:
         if _mode == 'get':
             ret = None
 
-        self._lock.acquire()
+        with self._lock:
 
-        try:
-            ret = self._db.session.query(self._db.BoBCache).\
-                filter(table_field == sum_val)
+            try:
+                ret = self._db.session.query(self._db.BoBCache).\
+                    filter(table_field == sum_val)
 
-            if _mode == 'count':
-                ret = ret.count()
-            elif _mode == 'get':
-                ret = ret.all()
-                if len(ret) > 0:
-                    ret = ret[0]
-                else:
-                    ret = None
+                if _mode == 'count':
+                    ret = ret.count()
+                elif _mode == 'get':
+                    ret = ret.all()
+                    if len(ret) > 0:
+                        ret = ret[0]
+                    else:
+                        ret = None
 
-        except:
-            logging.exception("Error '{}' bob data".format(_mode))
-        else:
-            if _mode == 'get' and ret != None:
-                res = org.wayround.xmpp.bob.Data(
-                    org.wayround.xmpp.bob.format_cid(method, sum_val)
-                    )
-                res.set_type_(ret.type_)
-                res.set_data(ret.data)
-                res.set_maxage(ret.maxage)
+            except:
+                logging.exception("Error '{}' bob data".format(_mode))
+            else:
+                if _mode == 'get' and ret != None:
+                    res = org.wayround.xmpp.bob.Data(
+                        org.wayround.xmpp.bob.format_cid(method, sum_val)
+                        )
+                    res.set_type_(ret.type_)
+                    res.set_data(ret.data)
+                    res.set_maxage(ret.maxage)
 
-                ret = res
-
-        self._lock.release()
+                    ret = res
 
         return ret
 
@@ -819,22 +877,20 @@ class Storage:
 
         if self.count_bob_data('sha1', sha1) == 0:
 
-            self._lock.acquire()
+            with self._lock:
 
-            try:
-                n = self._db.BoBCache()
-                n.data = bob.get_data()
-                n.date = date
-                n.maxage = int(bob.get_maxage())
-                n.sha1 = sha1
-                n.type_ = bob.get_type_()
+                try:
+                    n = self._db.BoBCache()
+                    n.data = bob.get_data()
+                    n.date = date
+                    n.maxage = int(bob.get_maxage())
+                    n.sha1 = sha1
+                    n.type_ = bob.get_type_()
 
-                self._db.session.add(n)
-                self._db.commit()
-            except:
-                logging.exception("Error adding bob data")
-
-            self._lock.release()
+                    self._db.session.add(n)
+                    self._db.commit()
+                except:
+                    logging.exception("Error adding bob data")
 
         return
 
@@ -844,23 +900,77 @@ class Storage:
 
             self._cleaning_bob = True
 
-            self._lock.acquire()
-            try:
-                all1 = self._db.session.query(self._db.BoBCache).all()
-                curdat = datetime.datetime.utcnow()
-                for i in all1:
-                    if (i.date + datetime.timedelta(seconds=int(i.maxage))
-                        < curdat):
-                        self._db.session.delete(i)
-                self._db.commit()
+            with self._lock:
 
-            except:
-                logging.exception("Error cleaning bob data")
-            self._lock.release()
+                try:
+                    all1 = self._db.session.query(self._db.BoBCache).all()
+                    curdat = datetime.datetime.utcnow()
+                    for i in all1:
+                        if (i.date + datetime.timedelta(seconds=int(i.maxage))
+                            < curdat):
+                            self._db.session.delete(i)
+                    self._db.commit()
+
+                except:
+                    logging.exception("Error cleaning bob data")
 
             self._cleaning_bob = False
 
         return
+
+    def get_latest_vcard(
+        self, connection_bare_jid, bare_jid
+        ):
+
+        connection_bare_jid = connection_bare_jid.lower()
+        bare_jid = bare_jid.lower()
+
+        with self._lock:
+
+            res = self._db.session.query(self._db.VCard).\
+                filter(
+                    self._db.VCard.connection_bare_jid == connection_bare_jid,
+                    self._db.VCard.bare_jid == bare_jid
+                    ).\
+                orded_by(
+                    self._db.VCard.version.desc()
+                    ).\
+                limit(1).\
+                all()
+
+            ret = None
+            if len(res) != 0:
+                ret = {}
+                org.wayround.utils.types.attrs_object_to_dict(
+                    res, ret, VCARD_FIELDS
+                    )
+
+        return ret
+
+    def set_vcard(
+        self,
+        connection_bare_jid, bare_jid,
+        data
+        ):
+
+        with self._lock:
+            if (data
+                != self.get_latest_vcard(
+                    connection_bare_jid,
+                    bare_jid)['data']
+                ):
+
+                vcard = self._db.VCard()
+                vcard.connection_bare_jid = connection_bare_jid
+                vcard.bare_jid = bare_jid
+                vcard.data = data
+
+                self._db.session.add(vcard)
+
+                self._db.session.commit()
+
+        return
+
 
 
 def convert_history_query_result_list(lst):

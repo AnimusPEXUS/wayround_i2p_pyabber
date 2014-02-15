@@ -402,8 +402,7 @@ class SubjectWidget:
 
         res = self._controller.client.stanza_processor.send(
             s,
-            wait=True,
-            pass_new_stanza_anyway=True
+            wait=True
             )
         if res != None:
             if res.is_error():

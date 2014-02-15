@@ -443,8 +443,7 @@ class MUCVoiceRequestWindow:
 
         self._controller.client.stanza_processor.send(
             stanza,
-            wait=False,
-            pass_new_stanza_anyway=True
+            wait=False
             )
 
         return

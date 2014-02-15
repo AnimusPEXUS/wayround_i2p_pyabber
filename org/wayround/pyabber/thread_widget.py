@@ -240,6 +240,9 @@ class ThreadWidget:
 
         return
 
+    def generate_new_thread_entry(self):
+        self.set_data(uuid.uuid4().hex)
+
     def _message_relay_listener(
         self,
         event, storage, original_stanza,

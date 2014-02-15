@@ -107,8 +107,8 @@ class DiscoMenu:
         self._commands_mi.set_sensitive(False)
         self._error_mi.set_sensitive(False)
         self._muc_mi.set_sensitive(False)
-        self._registration_mi.set_sensitive(False)
 
+#        self._registration_mi.set_sensitive(False)
 #        privacy_mi.set_sensitive(False)
 
         if stanza.is_error():
@@ -131,9 +131,9 @@ class DiscoMenu:
                 q.has_feature('http://jabber.org/protocol/muc')
                 )
 
-            self._registration_mi.set_sensitive(
-                q.has_feature('jabber:iq:register')
-                )
+            #            self._registration_mi.set_sensitive(
+            #                q.has_feature('jabber:iq:register')
+            #                )
 
             #            self._privacy_mi.set_sensitive(
             #                q.has_feature('jabber:iq:privacy')
@@ -424,33 +424,34 @@ class Disco:
                 stanza_processor=self._client.stanza_processor
                 )
 
-            x = res['info'][0].get_xdata()
+            if res['info'][0] != None:
+                x = res['info'][0].get_xdata()
 
-            for i in x:
+                for i in x:
 
-                itera = None
-                if path != None:
-                    itera = self._view_model.get_iter(
-                        path.get_path()
+                    itera = None
+                    if path != None:
+                        itera = self._view_model.get_iter(
+                            path.get_path()
+                            )
+
+                    self._view_model.append(
+                        itera,
+                        [
+                         "[jabber:x:data]\n    {}".format(
+                            '\n    '.join(i.gen_info_text().splitlines())
+                            ),
+                         None,
+                         None,
+                         None,
+                         None,
+                         None,
+                         None,
+                         None,
+                         None,
+                         None
+                         ]
                         )
-
-                self._view_model.append(
-                    itera,
-                    [
-                     "[jabber:x:data]\n    {}".format(
-                        '\n    '.join(i.gen_info_text().splitlines())
-                        ),
-                     None,
-                     None,
-                     None,
-                     None,
-                     None,
-                     None,
-                     None,
-                     None,
-                     None
-                     ]
-                    )
 
             identities = []
             features = []
@@ -484,25 +485,11 @@ class Disco:
                 0, "Adding idents ({} records to add)".format(len(identities))
                 )
 
-            if res['info'][1].is_error():
-                itera = None
-                if path != None:
-                    itera = self._view_model.get_iter(
-                        path.get_path()
-                        )
-
-                err_dict = res['info'][1].gen_error()
-
+            if res['info'][1] == False:
                 self._view_model.append(
                     itera,
                     [
-                     "[info error] error type: {},"
-                     " condition: {}, code: {}, text: {}".format(
-                        err_dict.get_error_type(),
-                        err_dict.get_condition(),
-                        err_dict.get_code(),
-                        err_dict.get_text()
-                        ),
+                     "[info error] request timeout",
                      None,
                      None,
                      None,
@@ -514,6 +501,37 @@ class Disco:
                      None
                      ]
                     )
+            else:
+                if res['info'][1].is_error():
+                    itera = None
+                    if path != None:
+                        itera = self._view_model.get_iter(
+                            path.get_path()
+                            )
+
+                    err_dict = res['info'][1].gen_error()
+
+                    self._view_model.append(
+                        itera,
+                        [
+                         "[info error] error type: {},"
+                         " condition: {}, code: {}, text: {}".format(
+                            err_dict.get_error_type(),
+                            err_dict.get_condition(),
+                            err_dict.get_code(),
+                            err_dict.get_text()
+                            ),
+                         None,
+                         None,
+                         None,
+                         None,
+                         None,
+                         None,
+                         None,
+                         None,
+                         None
+                         ]
+                        )
 
             for i in identities:
 
@@ -583,25 +601,11 @@ class Disco:
                 0, "Adding items ({} records to add)".format(len(items))
                 )
 
-            if res['items'][1].is_error():
-                itera = None
-                if path != None:
-                    itera = self._view_model.get_iter(
-                        path.get_path()
-                        )
-
-                err_dict = res['items'][1].gen_error()
-
+            if res['items'][1] == False:
                 self._view_model.append(
                     itera,
                     [
-                     "[items error] error type: {}, condition:"
-                     " {}, code: {}, text: {}".format(
-                        err_dict.get_error_type(),
-                        err_dict.get_condition(),
-                        err_dict.get_code(),
-                        err_dict.get_text()
-                        ),
+                     "[items error] request timeout",
                      None,
                      None,
                      None,
@@ -613,6 +617,37 @@ class Disco:
                      None
                      ]
                     )
+            else:
+                if res['items'][1].is_error():
+                    itera = None
+                    if path != None:
+                        itera = self._view_model.get_iter(
+                            path.get_path()
+                            )
+
+                    err_dict = res['items'][1].gen_error()
+
+                    self._view_model.append(
+                        itera,
+                        [
+                         "[items error] error type: {}, condition:"
+                         " {}, code: {}, text: {}".format(
+                            err_dict.get_error_type(),
+                            err_dict.get_condition(),
+                            err_dict.get_code(),
+                            err_dict.get_text()
+                            ),
+                         None,
+                         None,
+                         None,
+                         None,
+                         None,
+                         None,
+                         None,
+                         None,
+                         None
+                         ]
+                        )
 
             for i in items:
 

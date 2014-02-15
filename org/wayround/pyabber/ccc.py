@@ -893,7 +893,11 @@ def show_{i}(self, *args, **kwargs):
         with self._incomming_message_lock:
 
             if event == 'new_message':
-                if type_ in ['message_normal', 'message_error']:
+                if type_ in [
+                    'message_normal',
+                    'message_error',
+                    'message_headline'
+                    ]:
                     self.show_single_message_window(
                         'view',
                         original_stanza,

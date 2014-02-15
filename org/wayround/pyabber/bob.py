@@ -53,7 +53,7 @@ class BOBMgr:
         if stanza_with_bob_data != None:
 
             bob_elements = stanza_with_bob_data.get_element().findall(
-                '{urn:xmpp:bob}data'
+                './/{urn:xmpp:bob}data'
                 )
 
             for i in bob_elements:
@@ -181,6 +181,8 @@ class BOBWidget:
                 self._image.set_from_pixbuf(pb)
 
                 stream.close(None)
+
+        return
 
     def get_widget(self):
         return self._b

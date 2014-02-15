@@ -26,8 +26,6 @@ class XDataFormWidget:
         x_data is deepcopied internally
         """
 
-        # FIXME: provide origin_stanza==None
-
         if not isinstance(x_data, org.wayround.xmpp.xdata.XData):
             raise TypeError("`x_data' must be org.wayround.xmpp.xdata.XData")
 
@@ -37,6 +35,12 @@ class XDataFormWidget:
             ):
             raise TypeError(
     "`controller' must be org.wayround.pyabber.ccc.ClientConnectionController"
+                )
+
+        if (origin_stanza != None
+            and not isinstance(origin_stanza, org.wayround.xmpp.core.Stanza)):
+            raise ValueError(
+                "`origin_stanza' must be None or org.wayround.xmpp.core.Stanza"
                 )
 
         self._controller = controller

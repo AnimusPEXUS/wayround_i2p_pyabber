@@ -1,4 +1,6 @@
 
+import logging
+
 from gi.repository import Gtk
 
 import org.wayround.pyabber.ccc
@@ -62,6 +64,8 @@ class RegistrationWidget:
         b.set_orientation(Gtk.Orientation.VERTICAL)
         b.set_spacing(5)
 
+        self._custom_content = []
+
         b.pack_start(self._registered_label, False, False, 0)
         b.pack_start(self._insructions_label, False, False, 0)
 
@@ -69,7 +73,7 @@ class RegistrationWidget:
 
         return
 
-    def set_form(self, form):
+    def set_form(self, form, original_stanza):
 
         while len(self._fields) != 0:
             self._fields[0].destroy()
@@ -83,6 +87,10 @@ class RegistrationWidget:
             self._xdata.destroy()
             self._xdata = None
 
+        for i in self._custom_content[:]:
+            i.destroy()
+            self._custom_content.remove(i)
+
         if form.get_registered():
             self._registered_label.set_text("ALREADY REGISTERED")
         else:
@@ -93,7 +101,9 @@ class RegistrationWidget:
         if instructions != None:
             self._insructions_label.set_text(instructions)
         else:
-            self._insructions_label.set_text("(instructions not provided)")
+            self._insructions_label.set_text(
+                "(additional instructions not provided by service)"
+                )
 
         fields = form.get_input_fields()
 
@@ -123,7 +133,7 @@ class RegistrationWidget:
             self._xdata = org.wayround.pyabber.xdata.XDataFormWidget(
                 self._controller,
                 xdata,
-                None
+                original_stanza
                 )
             _f = Gtk.Frame()
             _f.set_label("Additional Form Supplied")
@@ -135,12 +145,13 @@ class RegistrationWidget:
             _w.set_margin_right(5)
             _w.set_margin_bottom(5)
             self._b.pack_start(_f, True, True, 0)
+            self._custom_content.append(_f)
 
         self._b.show_all()
 
         return
 
-    def get_form(self):
+    def get_query(self):
 
         form = org.wayround.xmpp.registration.Query()
 
@@ -253,7 +264,7 @@ This text will be returned to caller.
         bb2 = Gtk.ButtonBox()
         bb2.set_orientation(Gtk.Orientation.HORIZONTAL)
 
-        get_data_button = Gtk.Button("Get Registration Form")
+        get_data_button = Gtk.Button("(re)Get Registration Form")
         get_data_button.connect('clicked', self._on_get_form_button_clicked)
 
         send_button = Gtk.Button("Send this Form")
@@ -263,7 +274,6 @@ This text will be returned to caller.
         remove_button.connect('clicked', self._on_remove_button_clicked)
 
         bb2.pack_start(get_data_button, False, False, 0)
-        bb2.pack_start(send_button, False, False, 0)
         bb2.pack_start(
             Gtk.Separator.new(Gtk.Orientation.VERTICAL), False, False, 0
             )
@@ -278,6 +288,7 @@ This text will be returned to caller.
         bb = Gtk.ButtonBox()
         bb.set_orientation(Gtk.Orientation.HORIZONTAL)
 
+        bb.pack_start(send_button, False, False, 0)
         bb.pack_start(close_button, False, False, 0)
 
         sw = Gtk.ScrolledWindow()
@@ -308,7 +319,8 @@ This text will be returned to caller.
         self,
         target_jid_obj=None, from_jid_obj=None, get_reg_form=False,
         predefined_form=None,
-        pred_username=None, pred_password=None
+        pred_username=None, pred_password=None,
+        original_stanza=None
         ):
 
         if isinstance(pred_username, str):
@@ -332,7 +344,7 @@ This text will be returned to caller.
             self._from_cb.set_active(False)
 
         if predefined_form != None:
-            self._reg_widget_ins.set_form(predefined_form)
+            self._reg_widget_ins.set_form(predefined_form, original_stanza)
         else:
             if get_reg_form == True:
                 self.get_registration_form()
@@ -369,22 +381,20 @@ This text will be returned to caller.
 
         t, f = self.get_to_and_from()
 
-        res = org.wayround.xmpp.registration.get_form(
+        res, stanza = org.wayround.xmpp.registration.get_query(
             f,
             t,
             self._controller.client.stanza_processor,
             True
             )
 
-        if res == None:
-            self._resolution_label.set_text("Unknown Error")
+        if (stanza.is_error()):
+            self._resolution_label.set_text(
+                stanza.gen_error().gen_text()
+                )
         else:
-            if res.is_error():
-                self._resolution_label.set_text(
-                    res.gen_error().gen_text()
-                    )
-            else:
-                self._reg_widget_ins.set_form(res)
+            self._reg_widget_ins.set_form(res, stanza)
+            self._resolution_label.set_text('waiting for Your actions')
 
         return
 
@@ -393,10 +403,11 @@ This text will be returned to caller.
 
     def _on_send_button_clicked(self, widget):
         t, f = self.get_to_and_from()
-        form = self._reg_widget_ins.get_form()
-        res = org.wayround.xmpp.registration.set_form(
-            t,
+        form = self._reg_widget_ins.get_query()
+        form.get_xdata().set_typ('submit')
+        res = org.wayround.xmpp.registration.set_query(
             f,
+            t,
             form,
             self._controller.client.stanza_processor,
             True
@@ -404,7 +415,8 @@ This text will be returned to caller.
         if res == None:
             self._resolution_label.set_text("Unknown Error")
         else:
-            if res.is_error():
+            if (isinstance(res, org.wayround.xmpp.core.Stanza)
+                and res.is_error()):
                 self._resolution_label.set_text(
                     res.gen_error().gen_text()
                     )
@@ -415,15 +427,17 @@ This text will be returned to caller.
     def _on_remove_button_clicked(self, widget):
         t, f = self.get_to_and_from()
         res = org.wayround.xmpp.registration.unregister(
-            t,
             f,
+            t,
             self._controller.client.stanza_processor,
             True
             )
         if res == None:
             self._resolution_label.set_text("Unknown Error")
         else:
-            if res.is_error():
+            if (isinstance(res, org.wayround.xmpp.core.Stanza)
+                and res.is_error()):
+
                 self._resolution_label.set_text(
                     res.gen_error().gen_text()
                     )
