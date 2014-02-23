@@ -253,7 +253,7 @@ class RegistrationWindow:
         #        _reg_widget_ins_widg.set_margin_right(5)
         #        _reg_widget_ins_widg.set_margin_bottom(5)
 
-        self._resolution_label = Gtk.Label('waiting for Your actions')
+        self._resolution_label = Gtk.Label()
         self._resolution_label.set_tooltip_text(
             """\
 This text will be returned to caller.
