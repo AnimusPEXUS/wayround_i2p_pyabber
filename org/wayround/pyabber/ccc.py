@@ -907,12 +907,12 @@ def show_{i}(self, *args, **kwargs):
                 elif type_ in ['message_chat', 'message_groupchat']:
                     self.show_chat_window()
                     w = self.get_chat_window()
-                    cw = w.chat_pager
+                    cp = w.chat_pager
 
                     if type_ == 'message_chat':
 
                         group_chat_found = None
-                        for i in cw.pages:
+                        for i in cp.pages:
                             if (type(i) == \
                                 org.wayround.pyabber.chat_pager.GroupChat
                                 and i.contact_bare_jid == jid_obj.bare()):
@@ -920,20 +920,24 @@ def show_{i}(self, *args, **kwargs):
                                 break
 
                         if group_chat_found == None:
-                            cw.add_chat(jid_obj, thread_id)
+                            cp.add_chat(jid_obj, thread_id)
                         else:
-                            cw.add_private(str(jid_obj))
+                            cp.add_private(str(jid_obj))
 
                     if type_ == 'message_groupchat':
                         message_relay_listener_call_queue = \
                             self.message_relay.signal.gen_call_queue(
                                 ['new_message']
                                 )
-                        cw.add_groupchat(
+                        cp.add_groupchat(
                             jid_obj,
                             message_relay_listener_call_queue=
                                 message_relay_listener_call_queue
                             )
+
+                    win = w.get_window_widget()
+                    win.set_title("Message from {}".format(jid_obj))
+                    win.present()
 
         return
 

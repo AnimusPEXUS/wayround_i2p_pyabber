@@ -59,3 +59,6 @@ class ChatWindow:
 
     def _on_destroy(self, window):
         self.destroy()
+
+    def get_window_widget(self):
+        return self._window

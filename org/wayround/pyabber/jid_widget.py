@@ -196,6 +196,7 @@ class JIDWidget:
             title_label_text = bare_jid
 
         self._title_label.set_text(title_label_text)
+        self._title_label.set_tooltip_text(title_label_text)
 
     def _set_jid_label(self, bare_jid):
         l = bare_jid
@@ -206,6 +207,7 @@ class JIDWidget:
         if value == None:
             value = ''
         self._status_text_label.set_text(value)
+        self._status_text_label.set_tooltip_text(value)
 
     def _set_userpic_image(self, userpic):
         if not userpic:
