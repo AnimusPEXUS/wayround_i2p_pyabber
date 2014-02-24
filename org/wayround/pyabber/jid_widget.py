@@ -656,7 +656,7 @@ class MUCRosterJIDWidget:
 
         if event.button == Gdk.BUTTON_SECONDARY:
 
-            l = self._room_bare_jid + '/' + self._nick
+            l = '{}/{}'.format(self._room_bare_jid, self._nick)
 
             self._menu.set(l)
             self._menu.show()
@@ -695,7 +695,7 @@ class GroupChatTabWidget:
                 muc_roster_storage
                 )
             self._title_label = Gtk.Label()
-            self._title_label.set_ellipsize(Pango.EllipsizeMode.MIDDLE)
+            self._title_label.set_ellipsize(Pango.EllipsizeMode.END)
             self._title_label.set_size_request(50, -1)
             self._title_label.set_alignment(0.0, 0.0)
 

@@ -67,12 +67,16 @@ class PresenceControlWindow:
 
         status_sw = Gtk.ScrolledWindow()
 
-        text_view = Gtk.TextView()
-        status_sw.add(text_view)
-        text_view.set_margin_top(5)
-        text_view.set_margin_bottom(5)
-        text_view.set_margin_left(5)
-        text_view.set_margin_right(5)
+        status_text_view = Gtk.TextView()
+        status_text_view.get_buffer().connect(
+            'changed',
+            self._on_status_text_view_changed
+            )
+        status_sw.add(status_text_view)
+        status_text_view.set_margin_top(5)
+        status_text_view.set_margin_bottom(5)
+        status_text_view.set_margin_left(5)
+        status_text_view.set_margin_right(5)
         status_frame.add(status_sw)
 
         to_entry = Gtk.Entry()
@@ -80,6 +84,8 @@ class PresenceControlWindow:
         to_entry.set_margin_bottom(5)
         to_entry.set_margin_left(5)
         to_entry.set_margin_right(5)
+
+        to_entry.connect('changed', self._on_to_entry_changed)
 
         to_cb = Gtk.CheckButton()
         to_cb.set_label("Add `to' destination")
@@ -114,7 +120,7 @@ class PresenceControlWindow:
 
         self._iterated_loop = org.wayround.utils.gtk.GtkIteratedLoop()
         self._presence_client = self._controller.presence_client
-        self._status = text_view
+        self._status = status_text_view
         self._status_cb = status_cb
         self._to = to_entry
         self._to_cb = to_cb
@@ -193,3 +199,11 @@ class PresenceControlWindow:
                 typ=typ,
                 options=options
                 )
+
+        return
+
+    def _on_to_entry_changed(self, widget):
+        self._to_cb.set_active(True)
+
+    def _on_status_text_view_changed(self, widget):
+        self._status_cb.set_active(True)

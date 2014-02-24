@@ -19,10 +19,17 @@ class MUCRosterWidget:
 
         self._list = []
 
+        self._sw = Gtk.ScrolledWindow()
+
         b = Gtk.Box()
+        b.set_margin_top(5)
+        b.set_margin_left(5)
+        b.set_margin_right(5)
+        b.set_margin_bottom(5)
         b.set_orientation(Gtk.Orientation.VERTICAL)
         b.set_spacing(5)
         self._b = b
+        self._sw.add(b)
 
         self.sync_with_storage()
 
@@ -34,7 +41,7 @@ class MUCRosterWidget:
         return
 
     def get_widget(self):
-        return self._b
+        return self._sw
 
     def destroy(self):
         self._muc_roster_storage.signal.disconnect(
@@ -103,6 +110,9 @@ class MUCRosterWidget:
     def sync_with_storage(self):
 
         with self._lock:
+
+            scroll_value = self._get_scroll_value()
+
             items = self._muc_roster_storage.get_items()
 
             i_n = self._get_nicks_in_items(items)
@@ -116,11 +126,15 @@ class MUCRosterWidget:
                 if not i in l_n:
                     self._add_item(i)
 
+            self._set_scroll_value(scroll_value)
+
         return
 
     def sort_jid_widgets(self):
 
         with self._reordering_lock:
+
+            scroll_value = self._get_scroll_value()
 
             initial_sorting_list = []
             for i in self._list:
@@ -144,7 +158,7 @@ class MUCRosterWidget:
                         if k.get_affiliation() == j:
                             affillers.append(k)
 
-                    affillers.sort(key=lambda x: x.get_nick())
+                    affillers.sort(key=lambda x: str(x.get_nick()).lower())
                     final_sorting_list += affillers
 
             for i in final_sorting_list:
@@ -152,7 +166,27 @@ class MUCRosterWidget:
                     if j.get_nick() == i.get_nick():
                         self._b.reorder_child(j.get_widget(), -1)
 
+            self._set_scroll_value(scroll_value)
+
         return
 
     def _widget_changed(self):
         self.sort_jid_widgets()
+
+    def _get_scroll_value(self):
+        ret = None
+        sb = self._sw.get_vscrollbar()
+        if sb:
+            adj = sb.get_adjustment()
+            if adj:
+                ret = adj.get_value()
+        return ret
+
+    def _set_scroll_value(self, value):
+        if value != None:
+            sb = self._sw.get_vscrollbar()
+            if sb:
+                adj = sb.get_adjustment()
+                if adj:
+                    adj.set_value(value)
+        return

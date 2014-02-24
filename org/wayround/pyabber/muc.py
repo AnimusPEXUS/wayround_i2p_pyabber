@@ -257,7 +257,7 @@ class MUCMiniIdentityEditorWindow:
 
         stanza.get_objects().append(query)
 
-        res = self._stanza_processor.send(stanza, wait=None)
+        res = self._controller.client.stanza_processor.send(stanza, wait=None)
         if res.is_error():
             org.wayround.pyabber.misc.stanza_error_message(
                 self._window,

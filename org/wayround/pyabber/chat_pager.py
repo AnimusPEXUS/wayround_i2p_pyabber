@@ -1,6 +1,6 @@
 
-import logging
 import datetime
+import logging
 import threading
 
 from gi.repository import Gdk, Gtk
@@ -612,16 +612,8 @@ class GroupChat:
 
             paned = Gtk.Paned()
 
-            rw_rw = self._roster_widget.get_widget()
-            rw_rw.set_margin_top(5)
-            rw_rw.set_margin_left(5)
-            rw_rw.set_margin_right(5)
-            rw_rw.set_margin_bottom(5)
-
             rw_f = Gtk.Frame()
-            rw_sw = Gtk.ScrolledWindow()
-            rw_f.add(rw_sw)
-            rw_sw.add(rw_rw)
+            rw_f.add(self._roster_widget.get_widget())
 
             paned.add1(self._notebook)
             paned.add2(rw_f)
