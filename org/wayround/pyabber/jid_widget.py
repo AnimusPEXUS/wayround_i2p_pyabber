@@ -54,7 +54,10 @@ class JIDWidget:
         status_box.set_orientation(Gtk.Orientation.HORIZONTAL)
 
         self._ask_label = Gtk.Label()
+        self._ask_label.set_tooltip_text("Askings")
+
         self._approved_label = Gtk.Label()
+        self._approved_label.set_tooltip_text("Approvements")
 
         self._subscription_i = Gtk.Image()
 
@@ -78,6 +81,8 @@ class JIDWidget:
         self._status_text_label = Gtk.Label()
         self._status_text_label.set_ellipsize(Pango.EllipsizeMode.END)
         self._status_text_label.set_alignment(0, 0)
+        self._status_text_label.set_no_show_all(True)
+        self._status_text_label.hide()
 
         self._userpic_i = Gtk.Image()
         self._userpic_i.set_alignment(0.5, 0)
@@ -169,10 +174,12 @@ class JIDWidget:
         return self._main_widget
 
     def _set_ask(self, value):
-        self._ask_label.set_text("ask: " + str(value))
+        self._ask_label.set_text(str(value))
+        return
 
     def _set_approved(self, value):
-        self._approved_label.set_text("approved: " + str(value))
+        self._approved_label.set_text(str(value))
+        return
 
     def _set_available(self, value):
         if value:
@@ -197,17 +204,20 @@ class JIDWidget:
 
         self._title_label.set_text(title_label_text)
         self._title_label.set_tooltip_text(title_label_text)
+        return
 
     def _set_jid_label(self, bare_jid):
         l = bare_jid
-
         self._jid_label.set_text(l)
+        return
 
     def _set_status(self, value):
         if value == None:
             value = ''
         self._status_text_label.set_text(value)
         self._status_text_label.set_tooltip_text(value)
+        self._status_text_label.set_visible(value != '')
+        return
 
     def _set_userpic_image(self, userpic):
         if not userpic:
@@ -216,6 +226,7 @@ class JIDWidget:
                 )
         else:
             self._userpic_i.set_from_pixbuf(userpic)
+        return
 
     def _set_show(self, value):
         if not value in [
@@ -228,6 +239,7 @@ class JIDWidget:
             )
 
         self._show_i.set_tooltip_text(value)
+        return
 
     def _set_subscription(self, value):
         if value == None:
@@ -238,6 +250,7 @@ class JIDWidget:
             )
 
         self._subscription_i.set_tooltip_text(value)
+        return
 
     def destroy(self):
         self._roster_storage.signal.disconnect(

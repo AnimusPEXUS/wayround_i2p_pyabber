@@ -8,6 +8,9 @@ import org.wayround.pyabber.message_filter
 import org.wayround.pyabber.message_edit_widget
 
 
+# TODO: make classes in this module better
+
+
 class SubjectTooltip:
 
     def __init__(self):
@@ -17,7 +20,7 @@ class SubjectTooltip:
         self._label = Gtk.Label()
         font_desc = Pango.FontDescription.from_string("Clean 9")
         self._label.override_font(font_desc)
-        self._label.set_ellipsize(Pango.EllipsizeMode.END)
+#        self._label.set_ellipsize(Pango.EllipsizeMode.END)
         self._label.set_alignment(0.0, 0.0)
         self._label.set_line_wrap(True)
         self._label.set_line_wrap_mode(Pango.WrapMode.WORD)
@@ -45,9 +48,10 @@ class SubjectEditor:
 
     def __init__(self, controller, operation_mode='chat'):
 
-        if not operation_mode in ['chat', 'groupchat', 'private']:
+        if not operation_mode in ['normal', 'chat', 'groupchat', 'private']:
             raise ValueError(
-                "`operation_mode' must be in ['chat', 'groupchat', 'private']"
+                "`operation_mode' must be in "
+                "['normal', 'chat', 'groupchat', 'private']"
                 )
 
         self._controller = controller
@@ -71,6 +75,7 @@ class SubjectEditor:
         bb.set_orientation(Gtk.Orientation.HORIZONTAL)
 
         ok_button = Gtk.Button("Send")
+        self._ok_button = ok_button
         ok_button.connect('clicked', self._on_ok_button_clicked)
 
         cancel_button = Gtk.Button("Cancel")
@@ -94,6 +99,8 @@ class SubjectEditor:
 
         self._window = window
 
+        self._result = {'button': 'cancel'}
+
         self._iterated_loop = org.wayround.utils.gtk.GtkIteratedLoop()
 
         return
@@ -101,6 +108,10 @@ class SubjectEditor:
     def run(self, data, target_jid, operation_mode):
 
         self._operation_mode = operation_mode
+        if operation_mode != 'normal':
+            self._ok_button.set_label("Send")
+        else:
+            self._ok_button.set_label("Set")
 
         self._target_entry.set_text(target_jid)
 
@@ -108,9 +119,11 @@ class SubjectEditor:
 
         self.show()
 
+        ret = self._result
+
         self._iterated_loop.wait()
 
-        return
+        return ret
 
     def show(self):
         self._window.show_all()
@@ -129,24 +142,29 @@ class SubjectEditor:
         subject = self._editor.get_data()[0]
 
         typ = 'chat'
-        if self._operation_mode == 'groupchat':
-            typ = 'groupchat'
+        if self._operation_mode in  ['groupchat', 'normal']:
+            typ = self._operation_mode
 
-        self._controller.message_client.message(
-            to_jid=self._target_entry.get_text(),
-            from_jid=False,
-            typ=typ,
-            thread=None,
-            subject=subject,
-            body=None,
-            xhtml=None
-            )
+        if self._operation_mode != 'normal':
+            self._controller.message_client.message(
+                to_jid=self._target_entry.get_text(),
+                from_jid=False,
+                typ=typ,
+                thread=None,
+                subject=subject,
+                body=None,
+                xhtml=None
+                )
+
+        self._result = {'button': 'ok', 'data': subject}
 
         self.destroy()
         return
 
     def _on_cancel_button_clicked(self, button):
+        self._result = {'button': 'cancel'}
         self.destroy()
+        return
 
 
 class SubjectWidget:
@@ -159,9 +177,10 @@ class SubjectWidget:
         message_relay_listener_call_queue=None
         ):
 
-        if not operation_mode in ['chat', 'groupchat', 'private']:
+        if not operation_mode in ['normal', 'chat', 'groupchat', 'private']:
             raise ValueError(
-                "`operation_mode' must be in ['chat', 'groupchat', 'private']"
+                "`operation_mode' must be in "
+                "['normal', 'chat', 'groupchat', 'private']"
                 )
 
         self._controller = controller
@@ -178,21 +197,27 @@ class SubjectWidget:
 
         self._last_date = None
 
-        grid = Gtk.Grid()
-#        grid.set_orientation(Gtk.Orientation.HORIZONTAL)
-        grid.set_row_spacing(5)
-        grid.set_column_spacing(5)
+        grid = Gtk.Box()
+        grid.set_orientation(Gtk.Orientation.HORIZONTAL)
+        grid.set_spacing(5)
 
         self._text = Gtk.Label()
         self._text.set_alignment(0.0, 0.5)
         font_desc = Pango.FontDescription.from_string("Clean 9")
         self._text.override_font(font_desc)
-        self._text.set_line_wrap(True)
-        self._text.set_line_wrap_mode(Pango.WrapMode.WORD)
+#        self._text.set_line_wrap(True)
+#        self._text.set_line_wrap_mode(Pango.WrapMode.WORD)
+        self._text.set_ellipsize(Pango.EllipsizeMode.MIDDLE)
         self._text.set_selectable(True)
         self._text.set_justify(Gtk.Justification.LEFT)
 #        self._text.set_tooltip_window(self._tooltip.get_window())
 #        self._text.set_has_tooltip(True)
+
+#        self._send_button = Gtk.Button("Send")
+##        self._edit_button.set_valign(Gtk.Align.START)
+#        self._send_button.connect('clicked', self._on_send_button_clicked)
+#        self._send_button.set_no_show_all(True)
+#        self._send_button.set_visible(operation_mode == 'normal')
 
         self._edit_button = Gtk.Button("Edit..")
 #        self._edit_button.set_valign(Gtk.Align.START)
@@ -212,10 +237,10 @@ class SubjectWidget:
         self._languages_model = Gtk.ListStore(str)
         self._lang_select_cb.set_model(self._languages_model)
 
-        text_scrolled_win = Gtk.ScrolledWindow()
-        text_scrolled_win.set_hexpand(True)
-        text_scrolled_win.set_halign(Gtk.Align.FILL)
-        text_scrolled_win.add(self._text)
+#        text_scrolled_win = Gtk.ScrolledWindow()
+#        text_scrolled_win.set_hexpand(True)
+#        text_scrolled_win.set_halign(Gtk.Align.FILL)
+#        text_scrolled_win.add()
 #        text_scrolled_win.set_size_request(-1, 100)
 
 #        grid.pack_start(text_scrolled_win, True, True, 0)
@@ -223,10 +248,16 @@ class SubjectWidget:
 #        grid.pack_start(self._edit_button, False, False, 0)
 #        grid.pack_start(self._delete_button, False, False, 0)
 
-        grid.attach(text_scrolled_win, 0, 0, 1, 3)
-        grid.attach(self._lang_select_cb, 1, 0, 1, 1)
-        grid.attach(self._edit_button, 1, 1, 1, 1)
-        grid.attach(self._delete_button, 1, 2, 1, 1)
+        bb = Gtk.Box()
+        bb.set_spacing(5)
+        bb.set_orientation(Gtk.Orientation.HORIZONTAL)
+        bb.pack_start(self._lang_select_cb, False, False, 0)
+        bb.pack_start(self._edit_button, False, False, 0)
+#        bb.pack_start(self._send_button, False, False, 0)
+        bb.pack_start(self._delete_button, False, False, 0)
+
+        grid.pack_start(self._text, True, True, 0)
+        grid.pack_start(bb, False, False, 0)
 
         self._main_widget = grid
         self._main_widget.show_all()
@@ -275,42 +306,43 @@ class SubjectWidget:
 
     def set_data(self, data):
 
-        if len(data.keys()) != 0:
+        if not isinstance(data, dict):
+            raise TypeError("input data must be dict")
 
-            lang = self.get_selected_language()
+        lang = self.get_selected_language()
 
-            self._data = data
+        self._data = data
 
-            plain_langs = list(self._data.keys())
-            plain_langs.sort()
+        plain_langs = list(self._data.keys())
+        plain_langs.sort()
 
-            while len(self._languages_model) != 0:
-                del self._languages_model[0]
+        while len(self._languages_model) != 0:
+            del self._languages_model[0]
 
-            for i in plain_langs:
-                self._languages_model.append([i])
+        for i in plain_langs:
+            self._languages_model.append([i])
 
-            l = len(self._data.keys())
+        l = len(self._data.keys())
 
-            if l == 1:
-                self.set_selected_language(
-                    self._data[list(self._data.keys())[0]]
-                    )
-                self._lang_select_cb.set_sensitive(False)
+        if l == 1:
+            self.set_selected_language(
+                self._data[list(self._data.keys())[0]]
+                )
+            self._lang_select_cb.set_sensitive(True)
 
-            elif l == 0:
-                self.set_selected_language('')
-                self._lang_select_cb.set_sensitive(False)
+        elif l == 0:
+            self.set_selected_language('')
+            self._lang_select_cb.set_sensitive(False)
 
+        else:
+            if lang in self._data:
+                self.set_selected_language(lang)
             else:
-                if lang in self._data:
-                    self.set_selected_language(lang)
-                else:
-                    self.set_selected_language('')
+                self.set_selected_language('')
 
-                self._lang_select_cb.set_sensitive(True)
+            self._lang_select_cb.set_sensitive(True)
 
-            self._update_text()
+        self._update_text()
 
         return
 
@@ -347,13 +379,13 @@ class SubjectWidget:
 
         lang = self.get_selected_language()
 
-        if self._data[lang] in ['', None]:
+        if not lang in self._data or self._data[lang] in ['', None]:
             self._text.set_text('')
+            self._text.set_tooltip_text('')
         else:
-            self._text.set_text(
-                self._data[lang]
-                )
-#            self._tooltip.set_text(self._data[lang])
+            t = self._data[lang]
+            self._text.set_text(t.replace('\n', r'\n'))
+            self._text.set_tooltip_text(t)
 
         return
 
@@ -368,49 +400,58 @@ class SubjectWidget:
         subject, plain, xhtml
         ):
 
-        if event == 'new_message':
-            if type_ in ['message_chat', 'message_groupchat']:
+        if self._operation_mode != 'message_normal':
+            if event == 'new_message':
+                if type_ in ['message_chat', 'message_groupchat']:
 
-                if org.wayround.pyabber.message_filter.is_message_acceptable(
-                    operation_mode=self._operation_mode,
-                    message_type=type_,
-                    contact_bare_jid=self._contact_bare_jid,
-                    contact_resource=self._contact_resource,
-                    active_bare_jid=jid_obj.bare(),
-                    active_resource=jid_obj.resource
-                    ):
+                    if org.wayround.pyabber.message_filter.\
+                        is_message_acceptable(
+                            operation_mode=self._operation_mode,
+                            message_type=type_,
+                            contact_bare_jid=self._contact_bare_jid,
+                            contact_resource=self._contact_resource,
+                            active_bare_jid=jid_obj.bare(),
+                            active_resource=jid_obj.resource
+                            ):
 
-                    self._incomming_messages_lock.acquire()
+                            self._incomming_messages_lock.acquire()
 
-                    if self._last_date == None or date > self._last_date:
-                        self.set_data(subject)
-                        self._last_date = date
+                            if (self._last_date == None
+                                or date > self._last_date):
+                                self.set_data(subject)
+                                self._last_date = date
 
-                    self._incomming_messages_lock.release()
+                            self._incomming_messages_lock.release()
 
         return
 
     def _on_delete_button_clicked(self, button):
 
-        s = org.wayround.xmpp.core.Stanza(tag='message')
-        s.set_to_jid(self._contact_bare_jid)
-        s.set_subject([org.wayround.xmpp.core.MessageSubject(None)])
-        if self._operation_mode == 'groupchat':
-            s.set_typ('groupchat')
-        else:
-            s.set_typ('chat')
+        if self._operation_mode != 'normal':
 
-        res = self._controller.client.stanza_processor.send(
-            s,
-            wait=True
-            )
-        if res != None:
-            if res.is_error():
-                org.wayround.pyabber.misc.stanza_error_error_message(
-                    None,
-                    res.gen_error(),
-                    "Can't delete subject"
-                    )
+            s = org.wayround.xmpp.core.Stanza(tag='message')
+            s.set_to_jid(self._contact_bare_jid)
+            s.set_subject([org.wayround.xmpp.core.MessageSubject(None)])
+            if self._operation_mode == 'groupchat':
+                s.set_typ('groupchat')
+            elif self._operation_mode in ['chat', 'private']:
+                s.set_typ('chat')
+            else:
+                s.set_typ('normal')
+
+            res = self._controller.client.stanza_processor.send(
+                s,
+                wait=True
+                )
+            if res != None:
+                if res.is_error():
+                    org.wayround.pyabber.misc.stanza_error_error_message(
+                        None,
+                        res.gen_error(),
+                        "Can't delete subject"
+                        )
+        else:
+            self.set_data({})
 
         return
 
@@ -420,10 +461,18 @@ class SubjectWidget:
         if self._operation_mode != 'groupchat':
             j.resource = self._contact_resource
 
-        self._controller.show_subject_edit_window(
-            self._data,
-            str(j),
-            self._operation_mode
-            )
-
+        if self._operation_mode != 'normal':
+            self._controller.show_subject_edit_window(
+                self._data,
+                str(j),
+                self._operation_mode
+                )
+        else:
+            res = self._controller.show_subject_edit_window_modal(
+                self._data,
+                str(j),
+                self._operation_mode
+                )
+            if res['button'] == 'ok':
+                self.set_data(res['data'])
         return

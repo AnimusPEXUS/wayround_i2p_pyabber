@@ -128,7 +128,7 @@ class ThreadWidget:
         message_relay_listener_call_queue=None
         ):
 
-        if not operation_mode in ['chat', 'groupchat', 'private']:
+        if not operation_mode in ['normal', 'chat', 'groupchat', 'private']:
             raise ValueError(
                 "`operation_mode' must be in ['chat', 'groupchat', 'private']"
                 )
@@ -160,13 +160,17 @@ class ThreadWidget:
         self._main_widget = b
         self._main_widget.show_all()
 
-        edit_button = Gtk.Button("Edit")
+        edit_button = Gtk.Button("Edit..")
+        self._edit_button = edit_button
         edit_button.connect(
             'clicked',
             self._on_edit_button_clicked
             )
 
         send_button = Gtk.Button("Send")
+        self._send_button = send_button
+        send_button.set_no_show_all(True)
+        send_button.set_visible(operation_mode != 'normal')
         send_button.connect(
             'clicked',
             self._on_send_button_clicked
@@ -208,6 +212,8 @@ class ThreadWidget:
         self.get_widget().destroy()
 
     def set_editable(self, value):
+        self._edit_button.set_sensitive(value)
+        self._send_button.set_sensitive(value)
         return
 
     def get_editable(self):
@@ -251,29 +257,32 @@ class ThreadWidget:
         subject, plain, xhtml
         ):
 
-        if event == 'new_message':
-            if type_ in ['message_chat', 'message_groupchat']:
+        if self._operation_mode != 'message_normal':
+            if event == 'new_message':
+                if type_ in ['message_chat', 'message_groupchat']:
 
-                if org.wayround.pyabber.message_filter.is_message_acceptable(
-                    operation_mode=self._operation_mode,
-                    message_type=type_,
-                    contact_bare_jid=self._contact_bare_jid,
-                    contact_resource=self._contact_resource,
-                    active_bare_jid=jid_obj.bare(),
-                    active_resource=jid_obj.resource
-                    ):
+                    if org.wayround.pyabber.message_filter.\
+                        is_message_acceptable(
+                            operation_mode=self._operation_mode,
+                            message_type=type_,
+                            contact_bare_jid=self._contact_bare_jid,
+                            contact_resource=self._contact_resource,
+                            active_bare_jid=jid_obj.bare(),
+                            active_resource=jid_obj.resource
+                            ):
 
-                    with self._incomming_messages_lock:
+                            with self._incomming_messages_lock:
 
-                        if self._last_date == None or date > self._last_date:
+                                if (self._last_date == None
+                                    or date > self._last_date):
 
-                            if thread_id != None:
-                                if thread_id != '':
-                                    self.set_data(thread_id)
-                                else:
-                                    self.set_data(None)
+                                    if thread_id != None:
+                                        if thread_id != '':
+                                            self.set_data(thread_id)
+                                        else:
+                                            self.set_data(None)
 
-                            self._last_date = date
+                                    self._last_date = date
 
         return
 

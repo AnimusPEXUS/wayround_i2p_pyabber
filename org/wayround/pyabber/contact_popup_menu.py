@@ -1,12 +1,9 @@
 
-from gi.repository import Gtk
 from gi.repository import Gdk
+from gi.repository import Gtk
 
-import org.wayround.xmpp.core
-import org.wayround.pyabber.contact_editor
-import org.wayround.pyabber.single_message_window
-import org.wayround.pyabber.chat_pager
 import org.wayround.pyabber.disco
+import org.wayround.xmpp.core
 
 
 class ContactPopupMenu:
@@ -125,6 +122,11 @@ class ContactPopupMenu:
             self._send_custom_presence_activate
             )
 
+        vcard_mi.connect(
+            'activate',
+            self._vcard_activate
+            )
+
         self._menu.show_all()
 
     def destroy(self):
@@ -211,3 +213,6 @@ class ContactPopupMenu:
     def _send_custom_presence_activate(self, mi):
 
         self._controller.show_presence_control_window(to_=str(self._jid))
+
+    def _vcard_activate(self, mi):
+        self._controller.show_xcard_window('')

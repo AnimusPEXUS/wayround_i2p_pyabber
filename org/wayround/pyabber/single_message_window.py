@@ -1,4 +1,6 @@
 
+import copy
+
 from gi.repository import Gtk
 
 import org.wayround.pyabber.captcha
@@ -96,7 +98,7 @@ class SingleMessageWindow:
                 controller,
                 contact_bare_jid=self._controller.jid.bare(),
                 contact_resource=self._controller.jid.resource,
-                operation_mode='chat'
+                operation_mode='normal'
                 )
 
         subject_entry = self._subject_widget.get_widget()
@@ -130,7 +132,7 @@ class SingleMessageWindow:
             controller,
             contact_bare_jid=self._controller.jid.bare(),
             contact_resource=self._controller.jid.resource,
-            operation_mode='chat'
+            operation_mode='normal'
             )
 
         thread_entry = self._thread_widget.get_widget()
@@ -371,13 +373,19 @@ class SingleMessageWindow:
 
         self._window.destroy()
 
+        return
+
     def _on_reply_button_clicked(self, button):
+
+        cp = copy.copy(self._msg_edit_widget.get_data()[0])
+        for i in list(cp.keys()):
+            cp[i] = '>{}\n'.format(cp[i].replace('\n', '\n>'))
 
         stanza = org.wayround.xmpp.core.Stanza(tag='message')
         stanza.set_to_jid(self._from_entry.get_text())
         stanza.set_from_jid(str(self._controller.jid))
         stanza.set_subject_dict(self._subject_widget.get_data())
-        stanza.set_body_dict(self._msg_edit_widget.get_data()[0])
+        stanza.set_body_dict(cp)
         stanza.set_element(self._original_stanza.get_element())
 
         # TODO: add XHTML processing
@@ -386,5 +394,7 @@ class SingleMessageWindow:
             mode='new',
             stanza=stanza
             )
+
+        self._window.destroy()
 
         return

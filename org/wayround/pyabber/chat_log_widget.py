@@ -20,7 +20,6 @@ class ChatLogTableRow:
         self,
         date, jid_to_display,
         plain, xhtml,
-        column_size_groups,
         delay_from,
         delay_message,
         subject
@@ -116,11 +115,6 @@ class ChatLogTableRow:
         b.pack_start(date_label, False, False, 0)
         b.pack_start(mode_lang_switch_combo, False, False, 0)
         b.pack_start(delay_label, False, False, 0)
-
-        column_size_groups[0].add_widget(jid_label)
-        column_size_groups[1].add_widget(date_label)
-        column_size_groups[2].add_widget(mode_lang_switch_combo)
-        column_size_groups[3].add_widget(delay_label)
 
         b2 = Gtk.Box()
         b2.set_margin_top(5)
@@ -319,12 +313,6 @@ class ChatLogWidget:
             self._operation_mode = None
             self.set_operation_mode(operation_mode)
 
-            self._size_groups = []
-            for i in range(4):
-                sg = Gtk.SizeGroup()
-                sg.set_mode(Gtk.SizeGroupMode.HORIZONTAL)
-                self._size_groups.append(sg)
-
             self._controller = controller
             self._chat = chat
 
@@ -413,7 +401,6 @@ class ChatLogWidget:
                 jid,
                 plain,
                 xhtml,
-                column_size_groups=self._size_groups,
                 delay_from=delay_from,
                 delay_message=delay_message,
                 subject=subject

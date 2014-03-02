@@ -23,6 +23,7 @@ import org.wayround.pyabber.roster_window
 import org.wayround.pyabber.single_message_window
 import org.wayround.pyabber.subject_widget
 import org.wayround.pyabber.thread_widget
+import org.wayround.pyabber.xcard
 import org.wayround.utils.gtk
 import org.wayround.utils.threading
 import org.wayround.xmpp.client
@@ -55,7 +56,9 @@ SUBWINDOWS = [
     ('roster_window', True, True),
     ('single_message_window', False, True),
     ('subject_edit_window', False, True),
-    ('thread_edit_window', False, False)
+    ('subject_edit_window_modal', False, False),
+    ('thread_edit_window', False, False),
+    ('xcard_window', False, True)
     ]
 
 
@@ -274,6 +277,9 @@ self._rel_win_ctl.set_constructor_cb(
     def _subject_edit_window_constructor(self):
         return org.wayround.pyabber.subject_widget.SubjectEditor(self)
 
+    def _subject_edit_window_modal_constructor(self):
+        return org.wayround.pyabber.subject_widget.SubjectEditor(self)
+
     def _thread_edit_window_constructor(self):
         return org.wayround.pyabber.thread_widget.ThreadEditor(self)
 
@@ -282,6 +288,9 @@ self._rel_win_ctl.set_constructor_cb(
 
     def _muc_mini_identity_editor_window_constructor(self):
         return org.wayround.pyabber.muc.MUCMiniIdentityEditorWindow(self)
+
+    def _xcard_window_constructor(self):
+        return org.wayround.pyabber.xcard.XCardWindow(self)
 
     for i in SUBWINDOWS:
         exec(
