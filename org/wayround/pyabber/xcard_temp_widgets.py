@@ -1,5 +1,5 @@
 
-from gi.repository import Gtk
+from gi.repository import Gtk, Pango
 
 import org.wayround.utils.factory
 import org.wayround.xmpp.xcard_temp
@@ -97,6 +97,8 @@ class ValuePCDataWidget:
             self._value_widget = Gtk.Entry()
         else:
             self._value_widget = Gtk.Label()
+            self._value_widget.set_selectable(True)
+            self._value_widget.set_ellipsize(Pango.EllipsizeMode.MIDDLE)
 
         self._value_widget.set_text(val)
 
@@ -191,7 +193,7 @@ class N:
         value = ''
         if not deleted:
             value = data.get_family().get_text()
-        self._family = ValuePCDataWidget(
+        self._value_field = ValuePCDataWidget(
             value, 'Family', '', editable, True, deleted
             )
 
@@ -238,7 +240,7 @@ class N:
         self._b.pack_start(self._prefix.get_widget(), True, True, 0)
         self._b.pack_start(self._given.get_widget(), True, True, 0)
         self._b.pack_start(self._middle.get_widget(), True, True, 0)
-        self._b.pack_start(self._family.get_widget(), True, True, 0)
+        self._b.pack_start(self._value_field.get_widget(), True, True, 0)
         self._b.pack_start(self._suffix.get_widget(), True, True, 0)
 
         self._frame = Gtk.Frame()
@@ -254,8 +256,12 @@ class N:
     def get_widget(self):
         return self._frame
 
+    @classmethod
+    def corresponding_tag(cls):
+        return 'N'
+
     def set_editable(self, value):
-        self._family.set_editable(value)
+        self._value_field.set_editable(value)
         self._given.set_editable(value)
         self._middle.set_editable(value)
         self._prefix.set_editable(value)
@@ -267,7 +273,7 @@ class N:
         return
 
     def destroy(self):
-        self._family.destroy()
+        self._value_field.destroy()
         self._given.destroy()
         self._middle.destroy()
         self._prefix.destroy()
@@ -281,11 +287,11 @@ class N:
         ret = org.wayround.xmpp.xcard_temp.N()
 
         ret.set_family(None)
-        if not self._family.get_deleted():
+        if not self._value_field.get_deleted():
             ret.set_family(
                 org.wayround.xmpp.xcard_temp.PCData(
                     'FAMILY',
-                    self._family.get_value()
+                    self._value_field.get_value()
                     )
                 )
 
@@ -325,4 +331,65 @@ class N:
                     )
                 )
 
+        return ret
+
+
+class FN:
+
+    def __init__(self, controller, data, editable):
+
+        self._controller = controller
+        self._data = data
+
+        self._value_field = ValuePCDataWidget(
+            data.get_text(), '', '', editable, False, False
+            )
+
+        self._b = Gtk.Box()
+        self._b.set_orientation(Gtk.Orientation.HORIZONTAL)
+        self._b.set_margin_top(5)
+        self._b.set_margin_left(5)
+        self._b.set_margin_right(5)
+        self._b.set_margin_bottom(5)
+        self._b.set_spacing(5)
+
+        self._b.pack_start(self._value_field.get_widget(), True, True, 0)
+
+        self._frame = Gtk.Frame()
+        self._frame.set_label("FN (Full Name)")
+        self._frame.add(self._b)
+
+        self._frame.show_all()
+
+        self.set_editable(editable)
+
+        return
+
+    def get_widget(self):
+        return self._frame
+
+    @classmethod
+    def corresponding_tag(cls):
+        return 'FN'
+
+    def set_editable(self, value):
+        self._value_field.set_editable(value)
+        if value:
+            self._b.set_orientation(Gtk.Orientation.VERTICAL)
+        else:
+            self._b.set_orientation(Gtk.Orientation.HORIZONTAL)
+        return
+
+    def destroy(self):
+        self._value_field.destroy()
+        return
+
+    def get_data(self):
+        return self._data
+
+    def gen_data(self):
+        ret = org.wayround.xmpp.xcard_temp.PCData(
+            'FN',
+            self._value_field.get_value()
+            )
         return ret

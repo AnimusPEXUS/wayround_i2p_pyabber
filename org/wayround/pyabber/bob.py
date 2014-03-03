@@ -57,18 +57,19 @@ class BOBMgr:
                 )
 
             for i in bob_elements:
+                if org.wayround.utils.lxml.is_lxml_tag_element(i):
 
-                i_cid = org.wayround.xmpp.bob.parse_cid(i.get('cid'))
-                req_cid = {'method': method, 'value': value}
+                    i_cid = org.wayround.xmpp.bob.parse_cid(i.get('cid'))
+                    req_cid = {'method': method, 'value': value}
 
-                logging.debug(
-                    "Comparing {} with {}".format(i_cid, req_cid)
-                    )
+                    logging.debug(
+                        "Comparing {} with {}".format(i_cid, req_cid)
+                        )
 
-                if i_cid == req_cid:
-                    bob = org.wayround.xmpp.bob.Data.new_from_element(i)
-                    ret = bob
-                    break
+                    if i_cid == req_cid:
+                        bob = org.wayround.xmpp.bob.Data.new_from_element(i)
+                        ret = bob
+                        break
 
         if ret == None:
 
