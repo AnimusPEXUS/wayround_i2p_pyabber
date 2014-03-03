@@ -4,16 +4,18 @@ widget and window for displaying and editing both new vcard and old vcard-temp
 """
 
 import logging
+import sys
 
 from gi.repository import Gtk
 
 import lxml.etree
-
 import org.wayround.pyabber.xcard_temp_widgets
+import org.wayround.utils.error
+import org.wayround.utils.gtk
 import org.wayround.xmpp.core
 import org.wayround.xmpp.xcard_4
 import org.wayround.xmpp.xcard_temp
-import org.wayround.utils.gtk
+
 
 OPERATION_MODES = Gtk.ListStore(str)
 for i in ['vcard-temp', 'vcard-4.0']:
@@ -744,7 +746,7 @@ class XCardWindow:
                 org.wayround.pyabber.misc.stanza_error_message(
                     None,
                     res,
-                    "Failed to get vcard-temo"
+                    "Failed to get vcard-temp"
                     )
             else:
 
@@ -755,8 +757,29 @@ class XCardWindow:
                     for i in res.get_element():
                         if org.wayround.utils.lxml.is_lxml_tag_element(i):
                             if org.wayround.xmpp.xcard_temp.is_xcard(i):
-                                obj = org.wayround.xmpp.xcard_temp.XCardTemp.\
-                                    new_from_element(i)
+                                try:
+                                    obj = \
+                                        org.wayround.xmpp.xcard_temp.\
+                                            XCardTemp.\
+                                            new_from_element(i)
+                                except:
+                                    error = "Can't parse XCard:\n{}".format(
+                                        org.wayround.utils.error.\
+                                            return_exception_info(
+                                                sys.exc_info()
+                                                )
+                                        )
+                                    logging.exception(error)
+                                    d = org.wayround.utils.gtk.MessageDialog(
+                                        None,
+                                        0,
+                                        Gtk.MessageType.ERROR,
+                                        Gtk.ButtonsType.OK,
+                                        error
+                                        )
+                                    d.run()
+                                    d.destroy()
+
                                 break
 
                     if obj == None:
@@ -836,7 +859,7 @@ class XCardWindow:
                     org.wayround.pyabber.misc.stanza_error_message(
                         None,
                         res,
-                        "Failed to set vcard-temo"
+                        "Failed to set vcard-temp"
                         )
                 else:
                     d = org.wayround.utils.gtk.MessageDialog(
@@ -844,7 +867,8 @@ class XCardWindow:
                         0,
                         Gtk.MessageType.INFO,
                         Gtk.ButtonsType.OK,
-                        "No error returned by server. vcard-temp set successfully"
+                        "No error returned by server. "
+                        "vcard-temp set successfully"
                         )
                     d.run()
                     d.destroy()
