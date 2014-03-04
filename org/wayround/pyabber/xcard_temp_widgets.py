@@ -1,5 +1,7 @@
 
-from gi.repository import Gtk, Pango
+from gi.repository import Gtk, Pango, GLib
+
+import lxml.etree
 
 import org.wayround.utils.factory
 import org.wayround.xmpp.xcard_temp
@@ -149,8 +151,7 @@ class ValuePCDataWidget:
         return
 
     def get_title(self, value):
-        self._title.get_text()
-        return
+        return self._title.get_text()
 
     def check_description(self, value):
         if not isinstance(value, str):
@@ -164,8 +165,7 @@ class ValuePCDataWidget:
         return
 
     def get_description(self, value):
-        self._description.get_text()
-        return
+        return self._description.get_text()
 
     def check_deletable(self, value):
         if not isinstance(value, bool):
@@ -182,159 +182,412 @@ class ValuePCDataWidget:
         return self._deletable
 
 
-class N:
+class ValueEmptyWidget:
 
-    def __init__(self, controller, data, editable):
+    def __init__(
+        self,
+        value=False, title='', description='', editable=True
+        ):
 
-        self._controller = controller
-        self._data = data
+        self._value_widget = Gtk.CheckButton()
 
-        deleted = data.get_family() == None
-        value = ''
-        if not deleted:
-            value = data.get_family().get_text()
-        self._value_field = ValuePCDataWidget(
-            value, 'Family', '', editable, True, deleted
-            )
+        self._value_widget.show_all()
+        self._value_widget.set_no_show_all(True)
+        self._value_widget.hide()
 
-        deleted = data.get_given() == None
-        value = ''
-        if not deleted:
-            value = data.get_given().get_text()
-        self._given = ValuePCDataWidget(
-            value, 'Given', '', editable, True, deleted
-            )
-
-        deleted = data.get_middle() == None
-        value = ''
-        if not deleted:
-            value = data.get_middle().get_text()
-        self._middle = ValuePCDataWidget(
-            value, 'Middle', '', editable, True, deleted
-            )
-
-        deleted = data.get_prefix() == None
-        value = ''
-        if not deleted:
-            value = data.get_prefix().get_text()
-        self._prefix = ValuePCDataWidget(
-            value, 'Prefix', '', editable, True, deleted
-            )
-
-        deleted = data.get_suffix() == None
-        value = ''
-        if not deleted:
-            value = data.get_suffix().get_text()
-        self._suffix = ValuePCDataWidget(
-            value, 'Suffix', '', editable, True, deleted
-            )
-
-        self._b = Gtk.Box()
-        self._b.set_orientation(Gtk.Orientation.HORIZONTAL)
-        self._b.set_margin_top(5)
-        self._b.set_margin_left(5)
-        self._b.set_margin_right(5)
-        self._b.set_margin_bottom(5)
-        self._b.set_spacing(5)
-
-        self._b.pack_start(self._prefix.get_widget(), True, True, 0)
-        self._b.pack_start(self._given.get_widget(), True, True, 0)
-        self._b.pack_start(self._middle.get_widget(), True, True, 0)
-        self._b.pack_start(self._value_field.get_widget(), True, True, 0)
-        self._b.pack_start(self._suffix.get_widget(), True, True, 0)
-
-        self._frame = Gtk.Frame()
-        self._frame.set_label("N (Name)")
-        self._frame.add(self._b)
-
-        self._frame.show_all()
-
+        self.set_value(value)
+        self.set_title(title)
+        self.set_description(description)
         self.set_editable(editable)
 
         return
 
     def get_widget(self):
-        return self._frame
-
-    @classmethod
-    def corresponding_tag(cls):
-        return 'N'
-
-    def set_editable(self, value):
-        self._value_field.set_editable(value)
-        self._given.set_editable(value)
-        self._middle.set_editable(value)
-        self._prefix.set_editable(value)
-        self._suffix.set_editable(value)
-        if value:
-            self._b.set_orientation(Gtk.Orientation.VERTICAL)
-        else:
-            self._b.set_orientation(Gtk.Orientation.HORIZONTAL)
-        return
+        return self._value_widget
 
     def destroy(self):
-        self._value_field.destroy()
-        self._given.destroy()
-        self._middle.destroy()
-        self._prefix.destroy()
-        self._suffix.destroy()
+        self.get_widget().destroy()
         return
 
-    def get_data(self):
-        return self._data
-
-    def gen_data(self):
-        ret = org.wayround.xmpp.xcard_temp.N()
-
-        ret.set_family(None)
-        if not self._value_field.get_deleted():
-            ret.set_family(
-                org.wayround.xmpp.xcard_temp.PCData(
-                    'FAMILY',
-                    self._value_field.get_value()
-                    )
-                )
-
-        ret.set_given(None)
-        if not self._given.get_deleted():
-            ret.set_given(
-                org.wayround.xmpp.xcard_temp.PCData(
-                    'GIVEN',
-                    self._given.get_value()
-                    )
-                )
-
-        ret.set_middle(None)
-        if not self._middle.get_deleted():
-            ret.set_middle(
-                org.wayround.xmpp.xcard_temp.PCData(
-                    'MIDDLE',
-                    self._middle.get_value()
-                    )
-                )
-
-        ret.set_prefix(None)
-        if not self._prefix.get_deleted():
-            ret.set_prefix(
-                org.wayround.xmpp.xcard_temp.PCData(
-                    'PREFIX',
-                    self._prefix.get_value()
-                    )
-                )
-
-        ret.set_suffix(None)
-        if not self._suffix.get_deleted():
-            ret.set_suffix(
-                org.wayround.xmpp.xcard_temp.PCData(
-                    'SUFFIX',
-                    self._suffix.get_value()
-                    )
-                )
-
+    def get_group(self):
+        ret = None
+        if type(self._value_widget) == Gtk.RadioButton:
+            ret = self._value_widget.get_group()
         return ret
 
+    def check_editable(self, value):
+        if not isinstance(value, bool):
+            raise TypeError("`editable' value must be bool")
+        return
 
-class FN:
+    def set_editable(self, value):
+
+        if value:
+            self._value_widget.set_visible(True)
+        else:
+            self._value_widget.set_visible(self.get_value())
+
+        self._value_widget.set_sensitive(value)
+
+        return
+
+    def get_editable(self):
+        return type(self._value_widget) == Gtk.Entry
+
+    def set_value(self, value):
+        self.check_value(value)
+        self._value_widget.set_active(value)
+        return
+
+    def get_value(self):
+        ret = False
+        if self._value_widget:
+            ret = self._value_widget.get_active()
+        return ret
+
+    def check_value(self, value):
+        if not isinstance(value, bool):
+            raise ValueError("`value' must be bool")
+        return
+
+    def check_title(self, value):
+        if not isinstance(value, str):
+            raise ValueError("`title' must be str")
+        return
+
+    def set_title(self, value):
+        self.check_title(value)
+        txt = ''
+        if value != '':
+            txt = value
+        self._value_widget.set_label(txt)
+        return
+
+    def get_title(self, value):
+        return self._value_widget.get_label()
+
+    def check_description(self, value):
+        if not isinstance(value, str):
+            raise ValueError("`description' must be str")
+        return
+
+    def set_description(self, value):
+        self.check_description(value)
+        txt = None
+        if value != '':
+            txt = value
+        self._value_widget.set_tooltip_text(txt)
+        return
+
+    def get_description(self, value):
+        return self._value_widget.get_tooltip_text()
+
+
+#class N:
+#
+#    def __init__(self, controller, data, editable):
+#
+#        self._controller = controller
+#        self._data = data
+#
+#        deleted = data.get_family() == None
+#        value = ''
+#        if not deleted:
+#            value = data.get_family().get_text()
+#        self._family = ValuePCDataWidget(
+#            value, 'Family', '', editable, True, deleted
+#            )
+#
+#        deleted = data.get_given() == None
+#        value = ''
+#        if not deleted:
+#            value = data.get_given().get_text()
+#        self._given = ValuePCDataWidget(
+#            value, 'Given', '', editable, True, deleted
+#            )
+#
+#        deleted = data.get_middle() == None
+#        value = ''
+#        if not deleted:
+#            value = data.get_middle().get_text()
+#        self._middle = ValuePCDataWidget(
+#            value, 'Middle', '', editable, True, deleted
+#            )
+#
+#        deleted = data.get_prefix() == None
+#        value = ''
+#        if not deleted:
+#            value = data.get_prefix().get_text()
+#        self._prefix = ValuePCDataWidget(
+#            value, 'Prefix', '', editable, True, deleted
+#            )
+#
+#        deleted = data.get_suffix() == None
+#        value = ''
+#        if not deleted:
+#            value = data.get_suffix().get_text()
+#        self._suffix = ValuePCDataWidget(
+#            value, 'Suffix', '', editable, True, deleted
+#            )
+#
+#        self._b = Gtk.Box()
+#        self._b.set_orientation(Gtk.Orientation.HORIZONTAL)
+#        self._b.set_margin_top(5)
+#        self._b.set_margin_left(5)
+#        self._b.set_margin_right(5)
+#        self._b.set_margin_bottom(5)
+#        self._b.set_spacing(5)
+#
+#        self._b.pack_start(self._prefix.get_widget(), True, True, 0)
+#        self._b.pack_start(self._given.get_widget(), True, True, 0)
+#        self._b.pack_start(self._middle.get_widget(), True, True, 0)
+#        self._b.pack_start(self._family.get_widget(), True, True, 0)
+#        self._b.pack_start(self._suffix.get_widget(), True, True, 0)
+#
+#        self._frame = Gtk.Frame()
+#        self._frame.set_label("N (Name)")
+#        self._frame.add(self._b)
+#
+#        self._frame.show_all()
+#
+#        self.set_editable(editable)
+#
+#        return
+#
+#    def get_widget(self):
+#        return self._frame
+#
+#    @classmethod
+#    def corresponding_tag(cls):
+#        return 'N'
+#
+#    def set_editable(self, value):
+#        self._family.set_editable(value)
+#        self._given.set_editable(value)
+#        self._middle.set_editable(value)
+#        self._prefix.set_editable(value)
+#        self._suffix.set_editable(value)
+#        if value:
+#            self._b.set_orientation(Gtk.Orientation.VERTICAL)
+#        else:
+#            self._b.set_orientation(Gtk.Orientation.HORIZONTAL)
+#        return
+#
+#    def destroy(self):
+#        self._family.destroy()
+#        self._given.destroy()
+#        self._middle.destroy()
+#        self._prefix.destroy()
+#        self._suffix.destroy()
+#        return
+#
+#    def get_data(self):
+#        return self._data
+#
+#    def gen_data(self):
+#        ret = org.wayround.xmpp.xcard_temp.N()
+#
+#        ret.set_family(None)
+#        if not self._family.get_deleted():
+#            ret.set_family(
+#                org.wayround.xmpp.xcard_temp.PCData(
+#                    'FAMILY',
+#                    self._family.get_value()
+#                    )
+#                )
+#
+#        ret.set_given(None)
+#        if not self._given.get_deleted():
+#            ret.set_given(
+#                org.wayround.xmpp.xcard_temp.PCData(
+#                    'GIVEN',
+#                    self._given.get_value()
+#                    )
+#                )
+#
+#        ret.set_middle(None)
+#        if not self._middle.get_deleted():
+#            ret.set_middle(
+#                org.wayround.xmpp.xcard_temp.PCData(
+#                    'MIDDLE',
+#                    self._middle.get_value()
+#                    )
+#                )
+#
+#        ret.set_prefix(None)
+#        if not self._prefix.get_deleted():
+#            ret.set_prefix(
+#                org.wayround.xmpp.xcard_temp.PCData(
+#                    'PREFIX',
+#                    self._prefix.get_value()
+#                    )
+#                )
+#
+#        ret.set_suffix(None)
+#        if not self._suffix.get_deleted():
+#            ret.set_suffix(
+#                org.wayround.xmpp.xcard_temp.PCData(
+#                    'SUFFIX',
+#                    self._suffix.get_value()
+#                    )
+#                )
+#
+#        return ret
+#
+#
+#class ADR:
+#
+#    def __init__(self, controller, data, editable):
+#
+#        self._controller = controller
+#        self._data = data
+#
+#        self._b = Gtk.Box()
+#        self._b.set_orientation(Gtk.Orientation.VERTICAL)
+#        self._b.set_margin_top(5)
+#        self._b.set_margin_left(5)
+#        self._b.set_margin_right(5)
+#        self._b.set_margin_bottom(5)
+#        self._b.set_spacing(5)
+#
+#        self._b1 = Gtk.Box()
+#        self._b1.set_orientation(Gtk.Orientation.HORIZONTAL)
+#        self._b1.set_spacing(5)
+#
+#        self._b2 = Gtk.Box()
+#        self._b2.set_orientation(Gtk.Orientation.HORIZONTAL)
+#        self._b2.set_spacing(5)
+#
+#        for i in ['pref', 'home', 'work', 'postal', 'parcel', 'dom', 'intl']:
+#            value = getattr(data, 'get_{}'.format(i), False)() != None
+#            field = ValueEmptyWidget(value, i, '', editable)
+#            setattr(self, '_{}'.format(i), field)
+#            self._b1.pack_start(field.get_widget(), True, True, 0)
+#
+#        for i in ['ctry', 'region', 'locality', 'street', 'extadd',
+#                  'pcode', 'pobox']:
+#            deleted = getattr(data, 'get_{}'.format(i), False)() == None
+#            value = ''
+#            if not deleted:
+#                value = getattr(data, 'get_{}'.format(i))().get_text()
+#            field = ValuePCDataWidget(
+#                value, i, '', editable, True, deleted
+#                )
+#            setattr(self, '_{}'.format(i), field)
+#            self._b2.pack_start(field.get_widget(), True, True, 0)
+#
+#        self._frame = Gtk.Frame()
+#        self._frame.set_label("ADR (Address)")
+#        self._frame.add(self._b)
+#
+#        self._b.pack_start(self._b1, False, False, 0)
+#        self._b.pack_start(self._b2, False, False, 0)
+#
+#        self._frame.show_all()
+#
+#        self.set_editable(editable)
+#
+#        return
+#
+#    def get_widget(self):
+#        return self._frame
+#
+#    @classmethod
+#    def corresponding_tag(cls):
+#        return 'ADR'
+#
+#    def set_editable(self, value):
+#
+#        for i in [
+#            'pref', 'home', 'work', 'postal', 'parcel', 'dom', 'intl',
+#            'pobox', 'extadd', 'street',
+#            'locality', 'region', 'pcode', 'ctry'
+#            ]:
+#            field = getattr(self, '_{}'.format(i))
+#            field.set_editable(value)
+#
+#        if value:
+#            self._b1.set_orientation(Gtk.Orientation.VERTICAL)
+#            self._b2.set_orientation(Gtk.Orientation.VERTICAL)
+#        else:
+#            self._b1.set_orientation(Gtk.Orientation.HORIZONTAL)
+#            self._b2.set_orientation(Gtk.Orientation.HORIZONTAL)
+#        return
+#
+#    def destroy(self):
+#        for i in [
+#            'pref', 'home', 'work', 'postal', 'parcel', 'dom', 'intl',
+#            'pobox', 'extadd', 'street',
+#            'locality', 'region', 'pcode', 'ctry'
+#            ]:
+#            field = getattr(self, '_{}'.format(i))
+#            field.destroy()
+#        return
+#
+#    def get_data(self):
+#        return self._data
+#
+#    def gen_data(self):
+#
+#        ret = None
+#        error = False
+#
+#        if self._dom.get_value() and self._intl.get_value():
+#            d = org.wayround.utils.gtk.MessageDialog(
+#                None,
+#                0,
+#                Gtk.MessageType.ERROR,
+#                Gtk.ButtonsType.OK,
+#                "`dom' and `intl' can't be set both"
+#                )
+#            d.run()
+#            d.destroy()
+#
+#            error = True
+#
+#        if not error:
+#
+#            data = org.wayround.xmpp.xcard_temp.Adr()
+#
+#            for i in [
+#                'pref', 'home', 'work', 'postal', 'parcel', 'dom', 'intl'
+#                ]:
+#                field = getattr(self, '_{}'.format(i))
+#                value = field.get_value()
+#                if value:
+#                    getattr(data, 'set_{}'.format(i))(
+#                        org.wayround.xmpp.xcard_temp.Empty(i.upper())
+#                        )
+#                else:
+#                    getattr(data, 'set_{}'.format(i))(None)
+#
+#            for i in ['ctry', 'locality', 'region', 'street', 'extadd',
+#                      'pcode', 'pobox']:
+#                getattr(data, 'set_{}'.format(i))(None)
+#                field = getattr(self, '_{}'.format(i))
+#                if not field.get_deleted():
+#                    getattr(data, 'set_{}'.format(i))(
+#                        org.wayround.xmpp.xcard_temp.PCData(
+#                            i.upper(),
+#                            field.get_value()
+#                            )
+#                        )
+#
+#            ret = data
+#
+#        return ret
+
+
+for i in org.wayround.xmpp.xcard_temp.VCARD_ELEMENTS:
+
+    if i[1] == org.wayround.xmpp.xcard_temp.PCData:
+
+        tag = i[0].split('}')[1]
+        name = tag.replace('-', '')
+        title = i[4]
+
+        exec("""
+class {name}:
 
     def __init__(self, controller, data, editable):
 
@@ -356,7 +609,7 @@ class FN:
         self._b.pack_start(self._value_field.get_widget(), True, True, 0)
 
         self._frame = Gtk.Frame()
-        self._frame.set_label("FN (Full Name)")
+        self._frame.set_label("{title}")
         self._frame.add(self._b)
 
         self._frame.show_all()
@@ -370,7 +623,7 @@ class FN:
 
     @classmethod
     def corresponding_tag(cls):
-        return 'FN'
+        return '{tag}'
 
     def set_editable(self, value):
         self._value_field.set_editable(value)
@@ -389,7 +642,202 @@ class FN:
 
     def gen_data(self):
         ret = org.wayround.xmpp.xcard_temp.PCData(
-            'FN',
+            self.corresponding_tag(),
             self._value_field.get_value()
             )
         return ret
+""".format(name=name, tag=tag, title=title)
+    )
+
+    else:
+
+        tag = i[0].split('}')[1]
+        name = tag.replace('-', '')
+        title = i[4]
+        prot_class_name = i[1].__name__
+
+        exec("""
+class {name}:
+
+    def __init__(self, controller, data, editable):
+
+        self._controller = controller
+        self._data = data
+
+        self._b = Gtk.Box()
+        self._b.set_orientation(Gtk.Orientation.VERTICAL)
+        self._b.set_margin_top(5)
+        self._b.set_margin_left(5)
+        self._b.set_margin_right(5)
+        self._b.set_margin_bottom(5)
+        self._b.set_spacing(5)
+
+        self._b1 = Gtk.Box()
+        self._b1.set_orientation(Gtk.Orientation.HORIZONTAL)
+        self._b1.set_spacing(5)
+
+        self._b2 = Gtk.Box()
+        self._b2.set_orientation(Gtk.Orientation.HORIZONTAL)
+        self._b2.set_spacing(5)
+
+        init_fields(
+            self,
+            org.wayround.xmpp.xcard_temp.{name}_ELEMENTS,
+            data,
+            editable
+            )
+
+        self._frame = Gtk.Frame()
+        self._frame.set_label("{title}")
+        self._frame.add(self._b)
+
+        self._b.pack_start(self._b1, False, False, 0)
+        self._b.pack_start(self._b2, False, False, 0)
+
+        self._frame.show_all()
+
+        self.set_editable(editable)
+
+        return
+
+    def get_widget(self):
+        return self._frame
+
+    @classmethod
+    def corresponding_tag(cls):
+        return '{tag}'
+
+    def set_editable(self, value):
+
+        set_editable_fields(
+            self,
+            org.wayround.xmpp.xcard_temp.{name}_ELEMENTS,
+            value
+            )
+
+        if value:
+            self._b1.set_orientation(Gtk.Orientation.VERTICAL)
+            self._b2.set_orientation(Gtk.Orientation.VERTICAL)
+        else:
+            self._b1.set_orientation(Gtk.Orientation.HORIZONTAL)
+            self._b2.set_orientation(Gtk.Orientation.HORIZONTAL)
+        return
+
+    def destroy(self):
+        destroy_fields(
+            self,
+            org.wayround.xmpp.xcard_temp.{name}_ELEMENTS
+            )
+        return
+
+    def get_data(self):
+        return self._data
+
+    def gen_data(self):
+
+        data = org.wayround.xmpp.xcard_temp.{prot_class_name}()
+
+        gen_data_fields(
+            self,
+            org.wayround.xmpp.xcard_temp.{name}_ELEMENT,
+            data
+            )
+
+        ret = data
+
+        return ret
+""".format(prot_class_name=prot_class_name, name=name, tag=tag, title=title))
+
+
+def init_fields(inst, elements_struct, data, editable):
+
+    for i in elements_struct:
+
+        if i[1] == org.wayround.xmpp.xcard_temp.Empty:
+            value = getattr(data, 'get_{}'.format(i[2]))() != None
+            field = ValueEmptyWidget(value, i[4], i[5], editable)
+            setattr(inst, '_{}'.format(i[2]), field)
+            inst._b1.pack_start(field.get_widget(), True, True, 0)
+
+        elif i[1] == org.wayround.xmpp.xcard_temp.PCData:
+
+            deleted = getattr(data, 'get_{}'.format(i[2]))() == None
+            value = ''
+            if not deleted:
+                value = getattr(data, 'get_{}'.format(i[2]))().get_text()
+            field = ValuePCDataWidget(
+                value, i[4], i[5], editable, i[3] != '', deleted
+                )
+            setattr(inst, '_{}'.format(i[2]), field)
+            inst._b2.pack_start(field.get_widget(), True, True, 0)
+
+        else:
+            d = org.wayround.utils.gtk.MessageDialog(
+                None,
+                0,
+                Gtk.MessageType.ERROR,
+                Gtk.ButtonsType.OK,
+                "Not supported field type: {}".format(i[1])
+                )
+            d.run()
+            d.destroy()
+
+    return
+
+
+def gen_data_fields(inst, elements_struct, data):
+
+    for i in elements_struct:
+
+        if i[1] == org.wayround.xmpp.xcard_temp.Empty:
+            field = getattr(inst, '_{}'.format(i[2]))
+            value = field.get_value()
+            if value:
+                getattr(data, 'set_{}'.format(i[2]))(
+                    org.wayround.xmpp.xcard_temp.Empty(
+                        lxml.etree.QName(i[0]).local
+                        )
+                    )
+            else:
+                getattr(data, 'set_{}'.format(i[2]))(None)
+
+        elif i[1] == org.wayround.xmpp.xcard_temp.PCData:
+            getattr(data, 'set_{}'.format(i[2]))(None)
+            field = getattr(inst, '_{}'.format(i[2]))
+            if not field.get_deleted():
+                getattr(data, 'set_{}'.format(i[2]))(
+                    org.wayround.xmpp.xcard_temp.PCData(
+                        lxml.etree.QName(i[0]).local,
+                        field.get_value()
+                        )
+                    )
+
+        else:
+            d = org.wayround.utils.gtk.MessageDialog(
+                None,
+                0,
+                Gtk.MessageType.ERROR,
+                Gtk.ButtonsType.OK,
+                "Not supported field type: {}".format(i[1])
+                )
+            d.run()
+            d.destroy()
+
+    return
+
+
+def set_editable_fields(inst, elements_struct, value):
+
+    for i in elements_struct:
+        field = getattr(inst, '_{}'.format(i[2]))
+        field.set_editable(value)
+
+    return
+
+
+def destroy_fields(inst, elements_struct):
+    for i in elements_struct:
+        field = getattr(inst, '_{}'.format(i[2]))
+        field.destroy()
+
+    return

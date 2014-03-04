@@ -305,16 +305,16 @@ class XCardWidget:
                 self._clear_elements()
                 break
 
-        if error:
-            d = org.wayround.utils.gtk.MessageDialog(
-                None,
-                0,
-                Gtk.MessageType.ERROR,
-                Gtk.ButtonsType.OK,
-                "Can't add element. (Programming Error):\n{}".format(error)
-                )
-            d.run()
-            d.destroy()
+            if error:
+                d = org.wayround.utils.gtk.MessageDialog(
+                    None,
+                    0,
+                    Gtk.MessageType.ERROR,
+                    Gtk.ButtonsType.OK,
+                    "Can't add element. (Programming Error):\n{}".format(error)
+                    )
+                d.run()
+                d.destroy()
 
         self.get_widget().show_all()
 
@@ -404,7 +404,10 @@ class XCardWidget:
 
         children = self._element_box.get_children()
 
+        ret = None
+
         new_order = []
+        cancel = False
 
         for i in range(len(children)):
             obj = self._get_object_for_graphical_widget(children[i])
@@ -419,40 +422,48 @@ class XCardWidget:
                 obj_data = obj.gen_data()
                 obj_data_type = type(obj_data)
 
-                logging.debug("Looking for {} solution".format(obj_data))
-
-                if (obj_data_type.__module__
-                    == 'org.wayround.xmpp.xcard_temp'):
-
-                    for j in  org.wayround.xmpp.xcard_temp.VCARD_ELEMENTS:
-                        if (lxml.etree.QName(j[0]).localname
-                            == obj_data.corresponding_tag()):
-
-                            order_element = (j[0], obj_data, j[2])
-
-                elif (obj_data_type.__module__
-                    == 'org.wayround.xmpp.xcard_4'):
-
-                    for j in  org.wayround.xmpp.xcard_4.VCARD_ELEMENTS:
-                        if (lxml.etree.QName(j[0]).localname
-                            == obj_data.corresponding_tag()):
-
-                            order_element = (j[0], obj_data, j[2])
-
+                if obj_data == None:
+                    cancel = True
                 else:
-                    raise Exception("Programming error")
 
-                if order_element == None:
-                    logging.error(
-                        "Has no solution for order element {}".format(obj_data)
-                        )
-                else:
-                    new_order.append(order_element)
+                    logging.debug("Looking for {} solution".format(obj_data))
 
-        xcard = org.wayround.xmpp.xcard_temp.XCardTemp()
-        xcard.set_order(new_order)
+                    if (obj_data_type.__module__
+                        == 'org.wayround.xmpp.xcard_temp'):
 
-        return xcard
+                        for j in  org.wayround.xmpp.xcard_temp.VCARD_ELEMENTS:
+                            if (lxml.etree.QName(j[0]).localname
+                                == obj_data.corresponding_tag()):
+
+                                order_element = (j[0], obj_data, j[2])
+
+                    elif (obj_data_type.__module__
+                        == 'org.wayround.xmpp.xcard_4'):
+
+                        for j in  org.wayround.xmpp.xcard_4.VCARD_ELEMENTS:
+                            if (lxml.etree.QName(j[0]).localname
+                                == obj_data.corresponding_tag()):
+
+                                order_element = (j[0], obj_data, j[2])
+
+                    else:
+                        raise Exception("Programming error")
+
+                    if order_element == None:
+                        logging.error(
+                            "Has no solution for order element {}".format(
+                                obj_data
+                                )
+                            )
+                    else:
+                        new_order.append(order_element)
+
+        if not cancel:
+            xcard = org.wayround.xmpp.xcard_temp.XCardTemp()
+            xcard.set_order(new_order)
+            ret = xcard
+
+        return ret
 
     def _get_object_for_graphical_widget(self, widg):
         ret = None
@@ -482,7 +493,7 @@ class XCardWidget:
             try:
                 cls = getattr(
                     org.wayround.pyabber.xcard_temp_widgets,
-                    tag
+                    tag.replace('-', '')
                     )
 
                 cls2 = None
@@ -500,7 +511,7 @@ class XCardWidget:
                 else:
                     cw = cls(
                         self._controller,
-                        cls2(),
+                        cls2.new_empty(),
                         self.get_editable()
                         )
             except:
@@ -515,7 +526,7 @@ class XCardWidget:
             try:
                 cls = getattr(
                     org.wayround.pyabber.xcard_4_widgets,
-                    tag
+                    tag.replace('-', '')
                     )
 
                 cls2 = None
