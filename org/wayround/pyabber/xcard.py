@@ -265,7 +265,12 @@ class XCardWidget:
                     error = (
                         "Can't find class for "
                         "xcard-temp"
-                        " element `{}'".format(i)
+                        " element `{}'\n{}".format(
+                            i,
+                            org.wayround.utils.error.return_exception_info(
+                                sys.exc_info()
+                                )
+                            )
                         )
                     logging.exception(error)
 
@@ -284,7 +289,12 @@ class XCardWidget:
                     error = (
                         "Can't find class for "
                         "urn:ietf:params:xml:ns:vcard-4.0"
-                        " element `{}'".format(i)
+                        " element `{}'\n{}".format(
+                            i,
+                            org.wayround.utils.error.return_exception_info(
+                                sys.exc_info()
+                                )
+                            )
                         )
                     logging.exception(error)
             else:
@@ -300,10 +310,6 @@ class XCardWidget:
                     )
 
                 self._add_element(basic_elem)
-
-            if error:
-                self._clear_elements()
-                break
 
             if error:
                 d = org.wayround.utils.gtk.MessageDialog(
@@ -518,7 +524,12 @@ class XCardWidget:
                 error = (
                     "Can't find class for "
                     "xcard-temp"
-                    " element `{}'".format(name)
+                    " element `{}'.\n{}".format(
+                        name,
+                        org.wayround.utils.error.return_exception_info(
+                            sys.exc_info()
+                            )
+                        )
                     )
                 logging.exception(error)
 
@@ -544,7 +555,12 @@ class XCardWidget:
                 error = (
                     "Can't find class for "
                     "urn:ietf:params:xml:ns:vcard-4.0"
-                    " element `{}'".format(name)
+                    " element `{}'.\n{}".format(
+                        name,
+                        org.wayround.utils.error.return_exception_info(
+                            sys.exc_info()
+                            )
+                        )
                     )
                 logging.exception(error)
         else:
