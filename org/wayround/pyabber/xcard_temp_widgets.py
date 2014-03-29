@@ -14,6 +14,7 @@ class ValuePCDataWidgetGroup:
     def __init__(
         self,
         element_obj,
+        mode='*',
         value=None, title='', description='', editable=True
         ):
 
@@ -23,6 +24,8 @@ class ValuePCDataWidgetGroup:
 
         if value == None:
             value = []
+
+        self._mode = mode
 
         self._editable = editable
 
@@ -111,9 +114,28 @@ class ValuePCDataWidgetGroup:
         return
 
     def get_value(self):
-        ret = []
-        for i in self._subwidgets:
-            ret.append(i.get_value())
+
+        ret = None
+
+        if self._mode == '+':
+            if len(self._subwidgets) == 0:
+                d = org.wayround.utils.gtk.MessageDialog(
+                    None,
+                    0,
+                    Gtk.MessageType.ERROR,
+                    Gtk.ButtonsType.OK,
+                    "Widget group `{}' requires at least one value".format(
+                        self.get_title()
+                        )
+                    )
+                d.run()
+                d.destroy()
+        else:
+
+            ret = []
+            for i in self._subwidgets:
+                ret.append(i.get_value())
+
         return ret
 
     def set_title(self, value):
@@ -983,6 +1005,7 @@ def _init_fields(inst, elements_struct, data, editable, single_box):
                 attr = getattr(data, 'get_{}'.format(i[2]))
                 field = ValuePCDataWidgetGroup(
                     inst,
+                    i[3],
                     [x.get_text() for x in attr()],
                     i[4],
                     i[5],
@@ -1147,7 +1170,7 @@ def is_image_binval_error(self):
         d.destroy()
         ret = True
 
-    if not self._binval.get_deleted() and self._type.get_deleted():
+    if not self._binval.get_deleted() and self._type_.get_deleted():
         d = org.wayround.utils.gtk.MessageDialog(
             None,
             0,
@@ -1165,3 +1188,64 @@ def is_image_binval_error(self):
 PHOTO.is_values_error = is_image_binval_error
 LOGO.is_values_error = is_image_binval_error
 del is_image_binval_error
+
+
+def is_GEO_values_error(self):
+
+    ret = False
+
+    try:
+        float(self._lat.get_value())
+        float(self._lon.get_value())
+    except:
+        ret = True
+
+    if ret:
+        d = org.wayround.utils.gtk.MessageDialog(
+            None,
+            0,
+            Gtk.MessageType.ERROR,
+            Gtk.ButtonsType.OK,
+            "Both values of GEO must be float"
+            )
+        d.run()
+        d.destroy()
+        ret = True
+
+    return ret
+
+GEO.is_values_error = is_GEO_values_error
+del is_GEO_values_error
+
+
+def is_CLASS_values_error(self):
+
+    ret = False
+
+    c = 0
+
+    if self._public.get_value():
+        c += 1
+
+    if self._private.get_value():
+        c += 1
+
+    if self._confidential.get_value():
+        c += 1
+
+    if c:
+        d = org.wayround.utils.gtk.MessageDialog(
+            None,
+            0,
+            Gtk.MessageType.ERROR,
+            Gtk.ButtonsType.OK,
+            "There must be one and only one selection in CLASS property"
+            )
+        d.run()
+        d.destroy()
+        ret = True
+
+    return ret
+
+CLASS.is_values_error = is_CLASS_values_error
+del is_CLASS_values_error

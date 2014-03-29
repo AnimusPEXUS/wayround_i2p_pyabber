@@ -3,7 +3,7 @@ import logging
 import os.path
 import threading
 
-from gi.repository import Gtk
+from gi.repository import Gtk, Gdk, GObject
 
 import org.wayround.pyabber.connection_window
 import org.wayround.pyabber.icondb
@@ -122,7 +122,8 @@ class ProfileSession:
 
 def main(opts, args):
 
-#    Gtk.init([])
+#    Gdk.threads_init()
+    GObject.threads_init()
 
     org.wayround.pyabber.icondb.set_dir(
         org.wayround.utils.path.join(
