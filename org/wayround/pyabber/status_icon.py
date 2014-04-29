@@ -1,12 +1,11 @@
 
 import logging
-import gc
 import threading
 
 from gi.repository import Gtk
 
-import org.wayround.pyabber.icondb
 import org.wayround.pyabber.ccc
+import org.wayround.pyabber.icondb
 
 
 class MainStatusIconMenu:

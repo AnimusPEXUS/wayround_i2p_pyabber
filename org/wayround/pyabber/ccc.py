@@ -3,7 +3,7 @@ import logging
 import socket
 import threading
 
-from gi.repository import Gtk
+from gi.repository import Gtk, GLib
 
 import lxml.etree
 import org.wayround.gsasl.gsasl
@@ -119,6 +119,15 @@ class ConnectionStatusMenu:
 
     def _on_reconnect_mi_activated(self, mi):
         self._client_connetion_controller.disconnect()
+        #threading.Thread(
+        #    target=lambda: GLib.idle_add(
+        #        self._client_connetion_controller.connect
+        #        ),
+        #    name="Connection Thread {}".format(
+        #        self._client_connetion_controller
+        #        )
+        #    ).start()
+
         threading.Thread(
             target=self._client_connetion_controller.connect,
             name="Connection Thread {}".format(
@@ -370,6 +379,7 @@ def show_{i}(self, *args, **kwargs):
              )
             )
 
+        # make non-blocking socket
         self.sock.settimeout(0)
 
         self.message_relay = org.wayround.pyabber.message_relay.MessageRelay(

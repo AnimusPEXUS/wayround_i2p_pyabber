@@ -201,6 +201,7 @@ class RosterWindow:
 
     def show(self):
         self._window.show_all()
+        return
 
     def destroy(self):
         self._jid_widget.destroy()
@@ -211,29 +212,32 @@ class RosterWindow:
 
         self._window.destroy()
         self._iterated_loop.stop()
+        return
 
     def _on_destroy(self, window):
         self.destroy()
+        return
 
     def _on_get_roster_button_clicked(self, button):
-
         self._controller.load_roster_from_server(True, self._window)
-
         return
 
     def _on_add_contact_button_clicked(self, button):
-
         self._controller.show_contact_editor_window()
+        return
 
     def _on_initial_presence_button_clicked(self, button):
         self._presence_client.presence()
+        return
 
     def _on_change_presence_button_clicked(self, button):
-
         self._controller.show_presence_control_window()
+        return
 
     def _on_show_disco_button(self, button):
         self._controller.show_disco_window(self._own_jid.domain, None)
+        return
 
     def _on_send_space_button_clicked(self, button):
         self._client.io_machine.send(' ')
+        return
