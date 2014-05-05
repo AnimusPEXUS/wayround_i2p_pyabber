@@ -123,7 +123,7 @@ class ProfileSession:
 def main(opts, args):
 
 #    Gdk.threads_init()
-    GObject.threads_init()
+#    GObject.threads_init()
 
     org.wayround.pyabber.icondb.set_dir(
         org.wayround.utils.path.join(
