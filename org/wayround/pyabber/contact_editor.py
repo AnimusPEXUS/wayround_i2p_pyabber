@@ -243,8 +243,6 @@ class ContactEditor:
 
         self.show()
 
-        self._iterated_loop = org.wayround.utils.gtk.GtkIteratedLoop()
-
         return
 
     def show(self):
@@ -253,7 +251,6 @@ class ContactEditor:
     def destroy(self):
         self._window.hide()
         self._window.destroy()
-        self._iterated_loop.stop()
 
     def _on_destroy(self, window):
         self.destroy()

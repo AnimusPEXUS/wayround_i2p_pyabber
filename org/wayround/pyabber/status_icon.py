@@ -6,6 +6,7 @@ from gi.repository import Gtk
 
 import org.wayround.pyabber.ccc
 import org.wayround.pyabber.icondb
+import org.wayround.utils.gtk
 
 
 class MainStatusIconMenu:
@@ -43,13 +44,15 @@ class MainStatusIconMenu:
 
         m.show_all()
 
-        profiles_mi.connect('activate', self._on_open_activate)
+        profiles_mi.connect('activate', self._on_open_profile_activate)
+
         connection_presets_mi.connect(
             'activate',
             self._on_connection_presets_activate
             )
 
         exit_mi.connect('activate', self._on_exit_activate)
+
         close_profile_mi.connect(
             'activate',
             self._on_close_profile_mi_activate
@@ -89,20 +92,25 @@ class MainStatusIconMenu:
     def get_widget(self):
         return self._menu
 
-    def _on_open_activate(self, mi):
+    def _on_open_profile_activate(self, mi):
         self._main.show_profile_selection_dialog()
+        return
 
     def _on_connection_presets_activate(self, mi):
         self._main.profile.show_connection_mgr_dialog()
+        return
 
     def _on_exit_activate(self, mi):
         self._main.destroy()
+        return
 
     def _on_close_profile_mi_activate(self, mi):
         self._main.unset_profile()
+        return
 
     def _on_print_threads(self, mi):
         logging.debug(repr(threading.enumerate()))
+        return
 
 
 class MainStatusIcon:
@@ -114,19 +122,21 @@ class MainStatusIcon:
         icon.set_tooltip_text("main")
         icon.set_from_pixbuf(org.wayround.pyabber.icondb.get('main'))
         icon.set_visible(True)
+
         icon.connect('popup-menu', self._on_popup)
 
         menu = MainStatusIconMenu(main)
 
         self.menu = menu
         self.widget = icon
+        return
 
     def destroy(self):
         self.menu.destroy()
+        return
 
     def _on_popup(self, icon, button, activate_time):
         self.menu.get_widget().popup(
             None, None, self.widget.position_menu, icon, button, activate_time
             )
-
         return

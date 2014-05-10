@@ -3,6 +3,7 @@ from gi.repository import Gtk
 
 import org.wayround.pyabber.ccc
 import org.wayround.pyabber.chat_pager
+import org.wayround.utils.gtk
 
 
 class ChatWindow:
@@ -19,8 +20,6 @@ class ChatWindow:
 
         self._controller = controller
 
-        self._iterated_loop = org.wayround.utils.gtk.GtkIteratedLoop()
-
         window = Gtk.Window()
 
         b = Gtk.Box()
@@ -33,32 +32,34 @@ class ChatWindow:
 
         window.add(b)
         window.connect('destroy', self._on_destroy)
+        window.connect(
+            'delete-event', org.wayround.utils.gtk.hide_on_delete
+            )
 
         self.chat_pager = org.wayround.pyabber.chat_pager.ChatPager(controller)
 
         b.pack_start(self.chat_pager.get_widget(), True, True, 0)
 
         self._window = window
+        return
 
     def run(self):
-
         self.show()
-
-        self._iterated_loop.wait()
-
         return
 
     def show(self):
         self._window.show_all()
+        return
 
     def destroy(self):
         self.chat_pager.destroy()
         self._window.hide()
         self._window.destroy()
-        self._iterated_loop.stop()
+        return
 
     def _on_destroy(self, window):
         self.destroy()
+        return
 
     def get_window_widget(self):
         return self._window

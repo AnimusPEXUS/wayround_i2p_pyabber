@@ -629,8 +629,6 @@ class XCardWindow:
 
         self._controller = controller
 
-        self._iterated_loop = org.wayround.utils.gtk.GtkIteratedLoop()
-
         window = Gtk.Window()
         window.connect('destroy', self._on_destroy)
 
@@ -712,8 +710,6 @@ class XCardWindow:
 
         self.show()
 
-        self._iterated_loop.wait()
-
         return
 
     def show(self):
@@ -724,7 +720,6 @@ class XCardWindow:
         self._xcard_widget.destroy()
         self._window.hide()
         self._window.destroy()
-        self._iterated_loop.stop()
         return
 
     def _on_destroy(self, window):

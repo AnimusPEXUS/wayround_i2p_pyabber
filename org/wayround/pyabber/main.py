@@ -29,11 +29,15 @@ class Main:
         self._rel_win_ctl = org.wayround.utils.gtk.RelatedWindowCollector()
         self._rel_win_ctl.set_constructor_cb(
             'profile_selection_dialog',
-            self._profile_selection_dialog_constructor
+            self._profile_selection_dialog_constructor,
+            single=True
             )
 
-        self._iteration_loop = org.wayround.utils.gtk.GtkIteratedLoop()
         self._working = False
+
+        self._iteration_loop = org.wayround.utils.gtk.GtkIteratedLoop()
+
+        return
 
     def _profile_selection_dialog_constructor(self):
         return org.wayround.pyabber.profile_window.ProfileMgrWindow(self)
@@ -46,6 +50,7 @@ class Main:
                 )
             self._iteration_loop.wait()
             self._working = False
+        return
 
     def destroy(self):
         logging.debug("main destroy 1")
@@ -60,9 +65,8 @@ class Main:
         return
 
     def show_profile_selection_dialog(self):
-
-        self._rel_win_ctl.show('profile_selection_dialog')
-
+        ret = self._rel_win_ctl.get('profile_selection_dialog')
+        ret.run()
         return
 
     def set_profile(self, pfl):
@@ -94,7 +98,7 @@ class ProfileSession:
             self._connection_mgr_dialog_constructor
             )
 
-#        self._connection_mgr_dialog = None
+        return
 
     def _connection_mgr_dialog_constructor(self):
         return org.wayround.pyabber.connection_window.ConnectionMgrWindow(
@@ -102,22 +106,19 @@ class ProfileSession:
             )
 
     def show_connection_mgr_dialog(self):
-
-        self._rel_win_ctl.show('connection_mgr_dialog')
-
+        res = self._rel_win_ctl.get('connection_mgr_dialog')
+        res.run()
         return
 
     def destroy(self):
-
         self._rel_win_ctl.destroy()
-
         for i in list(self.connection_controllers):
             i.destroy()
-
         return
 
     def save(self):
         self.data.commit()
+        return
 
 
 def main(opts, args):

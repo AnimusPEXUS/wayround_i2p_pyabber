@@ -28,8 +28,6 @@ class SingleMessageWindow:
 
         self._window = Gtk.Window()
 
-        self._iterated_loop = org.wayround.utils.gtk.GtkIteratedLoop()
-
         date_label = Gtk.Label()
         date_label.set_no_show_all(True)
         date_label.set_alignment(0.0, 0.5)
@@ -317,8 +315,6 @@ class SingleMessageWindow:
 
         self.show()
 
-        self._iterated_loop.wait()
-
         return
 
     def show(self):
@@ -332,7 +328,6 @@ class SingleMessageWindow:
         self._subject_widget.destroy()
         self._msg_edit_widget.destroy()
         self._window.destroy()
-        self._iterated_loop.stop()
 
     def _on_destroy(self, window):
         self.destroy()

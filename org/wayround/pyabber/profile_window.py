@@ -58,6 +58,7 @@ class ProfileMgrWindow:
         ff1.set_label("Actions")
 
         icon_view = Gtk.IconView()
+        icon_view.set_item_width(50)
 
         ff = Gtk.Frame()
         ff.add(icon_view)
@@ -93,11 +94,13 @@ class ProfileMgrWindow:
         window.set_position(Gtk.WindowPosition.CENTER)
 
         window.connect('destroy', self._on_destroy)
+        window.connect(
+            'delete-event', org.wayround.utils.gtk.hide_on_delete
+            )
         icon_view.connect(
             'item-activated', self._on_iconview_item_activated
             )
 
-        self._iterated_loop = org.wayround.utils.gtk.GtkIteratedLoop()
         self._main = main
         self._profile_icon_view = icon_view
         self._profile_info_label = profile_info_label
@@ -109,7 +112,6 @@ class ProfileMgrWindow:
     def run(self):
         self.refresh_list()
         self.show()
-        self._iterated_loop.wait()
         return self._result
 
     def show(self):
@@ -118,7 +120,6 @@ class ProfileMgrWindow:
     def destroy(self):
 #        self._window.hide()
         self._window.destroy()
-        self._iterated_loop.stop()
 
     def refresh_list(self):
 
@@ -155,9 +156,7 @@ class ProfileMgrWindow:
 
     def _on_new_clicked(self, button):
 
-        w = ProfileWindow(
-            self._window, typ='new'
-            )
+        w = ProfileWindow('new')
         r = w.run()
 
         if r['button'] == 'ok':
@@ -268,7 +267,7 @@ class ProfileMgrWindow:
                 get_model()[items[0]][0][:-len('.sqlite')]
 
             w = ProfileWindow(
-                self._window, typ='open', profile=name
+                typ='open', profile=name
                 )
             r = w.run()
 
@@ -299,7 +298,7 @@ class ProfileMgrWindow:
 
 class ProfileWindow:
 
-    def __init__(self, parent, profile=None, typ='new'):
+    def __init__(self, profile=None, typ='new'):
 
         self._iteration_loop = org.wayround.utils.gtk.GtkIteratedLoop()
 
@@ -322,15 +321,11 @@ class ProfileWindow:
             title = "Opening Profile `{}'".format(profile)
 
         win = Gtk.Window()
-
-        win.set_title(title)
-        if parent != None:
-            win.set_transient_for(parent)
-#            win.set_parent_window(parent)
-            win.set_destroy_with_parent(True)
-
         win.set_modal(True)
         win.set_type_hint(Gdk.WindowTypeHint.DIALOG)
+        win.set_resizable(False)
+
+        win.set_title(title)
 
         b = Gtk.Box()
         b.set_orientation(Gtk.Orientation.VERTICAL)
@@ -427,6 +422,8 @@ class ProfileWindow:
             'password': '123',
             'password2': '1234'
             }
+
+        return
 
     def run(self):
 

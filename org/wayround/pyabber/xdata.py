@@ -5,7 +5,6 @@ import logging
 
 from gi.repository import Gtk
 
-import lxml.etree
 import org.wayround.pyabber.ccc
 import org.wayround.pyabber.xdata_media_element
 import org.wayround.utils.list

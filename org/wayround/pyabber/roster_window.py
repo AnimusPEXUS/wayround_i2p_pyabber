@@ -187,16 +187,16 @@ class RosterWindow:
 
         window.add(b)
         window.connect('destroy', self._on_destroy)
+        window.connect(
+            'delete-event', org.wayround.utils.gtk.hide_on_delete
+            )
 
         self._window = window
-
-        self._iterated_loop = org.wayround.utils.gtk.GtkIteratedLoop()
 
         return
 
     def run(self):
         self.show()
-        self._iterated_loop.wait()
         return
 
     def show(self):
@@ -211,7 +211,6 @@ class RosterWindow:
             self._roster_widgets.remove(i)
 
         self._window.destroy()
-        self._iterated_loop.stop()
         return
 
     def _on_destroy(self, window):

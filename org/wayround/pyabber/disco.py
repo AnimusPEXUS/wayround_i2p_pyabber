@@ -67,10 +67,28 @@ class DiscoMenu:
 
         menu.show_all()
 
-        addr_open_mi.connect('activate', self._on_addr_open_activated)
-        commands_mi.connect('activate', self._on_commands_mi_activated)
-        privacy_mi.connect('activate', self._on_privacy_mi_activated)
-        registration_mi.connect('activate', self._on_registration_mi_activated)
+        self._on_addr_open_activated_idle = \
+            org.wayround.utils.gtk.to_idle(self._on_addr_open_activated)
+
+        addr_open_mi.connect('activate', self._on_addr_open_activated_idle)
+
+        self._on_commands_mi_activated_idle = \
+            org.wayround.utils.gtk.to_idle(self._on_commands_mi_activated)
+
+        commands_mi.connect('activate', self._on_commands_mi_activated_idle)
+
+        self._on_privacy_mi_activated_idle = \
+            org.wayround.utils.gtk.to_idle(self._on_privacy_mi_activated)
+
+        privacy_mi.connect('activate', self._on_privacy_mi_activated_idle)
+
+        self._on_registration_mi_activated_idle = \
+            org.wayround.utils.gtk.to_idle(self._on_registration_mi_activated)
+
+        registration_mi.connect(
+            'activate',
+            self._on_registration_mi_activated_idle
+            )
 
         self._addr_mi = addr_mi
         self._commands_mi = commands_mi
@@ -222,7 +240,11 @@ class Disco:
 
         window = Gtk.Window()
         window.set_default_size(500, 500)
-        window.connect('destroy', self._on_destroy)
+
+        self._on_destroy_idle = \
+            org.wayround.utils.gtk.to_idle(self._on_destroy)
+
+        window.connect('destroy', self._on_destroy_idle)
 
         main_box = Gtk.Box()
         main_box.set_orientation(Gtk.Orientation.VERTICAL)
@@ -241,10 +263,13 @@ class Disco:
 
         go_button = Gtk.Button("Go!")
         self._go_button = go_button
-        go_button.connect('clicked', self._on_go_button_pressed)
+        self._on_go_button_pressed_idle = \
+            org.wayround.utils.gtk.to_idle(self._on_go_button_pressed)
+        go_button.connect('clicked', self._on_go_button_pressed_idle)
         clear_node_button = Gtk.Button("Clear")
         server_menu_button = Gtk.Button("This Entity Menu")
         self._server_menu_button = server_menu_button
+
         server_menu_button.connect(
             'clicked', self._on_server_menu_button_clicked
             )
@@ -260,8 +285,18 @@ class Disco:
         addr_control_grid.set_row_spacing(5)
         addr_control_grid.set_column_spacing(5)
 
-        jid_entry.connect('activate', self._on_jid_or_node_entry_activate)
-        node_entry.connect('activate', self._on_jid_or_node_entry_activate)
+        self._on_jid_or_node_entry_activate_idle = \
+            org.wayround.utils.gtk.to_idle(self._on_jid_or_node_entry_activate)
+
+        jid_entry.connect('activate', self._on_jid_or_node_entry_activate_idle)
+
+        self._on_jid_or_node_entry_activate_idle = \
+            org.wayround.utils.gtk.to_idle(self._on_jid_or_node_entry_activate)
+
+        node_entry.connect(
+            'activate',
+            self._on_jid_or_node_entry_activate_idle
+            )
 
         view_frame = Gtk.Frame()
         view_sw = Gtk.ScrolledWindow()
@@ -327,10 +362,16 @@ class Disco:
         view_tw.append_column(_c)
         view_tw.set_headers_visible(False)
 
+#        self._on_row_activated_idle = \
+#            org.wayround.utils.gtk.to_idle(self._on_row_activated)
         view_tw.connect('row-activated', self._on_row_activated)
-        view_tw.connect('button-release-event', self._on_treeview_buttonpress)
 
-        window.connect('destroy', self._on_destroy)
+#        self._on_treeview_buttonpress_idle = \
+#            org.wayround.utils.gtk.to_idle(self._on_treeview_buttonpress)
+        view_tw.connect(
+            'button-release-event',
+            self._on_treeview_buttonpress
+            )
 
         self._lock = threading.Lock()
 
@@ -701,17 +742,19 @@ class Disco:
 
     def _fill(self, path, jid, node=None):
 
-        t = threading.Thread(
-            target=self._fill2,
-            args=(path, jid),
-            kwargs={
-                'node': node
-                }
-            )
-        t.start()
+#        t = threading.Thread(
+#            target=self._fill2,
+#            args=(path, jid),
+#            kwargs={
+#                'node': node
+#                }
+#            )
+#        t.start()
+#
+#        w = org.wayround.utils.gtk.Waiter(t.join, None, t.is_alive)
+#        w.wait()
 
-        w = org.wayround.utils.gtk.Waiter(t.join, None, t.is_alive)
-        w.wait()
+        self._fill2(path, jid, node=node)
 
         return
 
@@ -733,7 +776,7 @@ class Disco:
         self._jid_entry.set_text(self._work_jid)
 
         nt = ''
-        if self._work_node != None:
+        if self._work_node != None and isinstance(self._work_node, str):
             nt = self._work_node
 
         t = jid

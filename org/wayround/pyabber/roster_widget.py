@@ -4,6 +4,7 @@ import threading
 from gi.repository import Gtk
 
 import org.wayround.pyabber.jid_widget
+import org.wayround.utils.gtk
 import org.wayround.xmpp.core
 import org.wayround.xmpp.disco
 
@@ -102,16 +103,30 @@ class RosterWidget:
 
         b.show_all()
 
+        self._on_groups_combobox_changed_idle = \
+            org.wayround.utils.gtk.to_idle(
+                self._on_groups_combobox_changed
+                )
+
         self._set_cb_signal()
 
         self.set_mode(mode)
         self.set_group('')
 
-        order_combobox.connect('changed', self._on_order_combobox_changed)
+        self._on_order_combobox_changed_idle = \
+            org.wayround.utils.gtk.to_idle(self._on_order_combobox_changed)
+
+        order_combobox.connect(
+            'changed',
+            self._on_order_combobox_changed_idle
+            )
+
+        self._roster_storage_listener_idle = \
+            org.wayround.utils.gtk.to_idle(self._roster_storage_listener)
 
         self._roster_storage.signal.connect(
             True,
-            self._roster_storage_listener
+            self._roster_storage_listener_idle
             )
 
         return
@@ -119,6 +134,8 @@ class RosterWidget:
     def destroy(self):
         self._clear_list()
         self.get_widget().destroy()
+
+        return
 
     def get_widget(self):
         return self._main_widget
@@ -133,6 +150,8 @@ class RosterWidget:
         self._groups_combobox.set_visible(name == 'grouped')
         self._reload_list()
         self._lock.release()
+
+        return
 
     def get_group(self):
         self._lock.acquire()
@@ -153,6 +172,8 @@ class RosterWidget:
         self._reload_list()
         self._lock.release()
 
+        return
+
     def _set_groups(self, lst):
         lst.sort()
         while len(self._groups_model) != 0:
@@ -162,6 +183,8 @@ class RosterWidget:
 
         for i in lst:
             self._groups_model.append([i, i])
+
+        return
 
     def _set_group(self, name):
         x = -1
@@ -205,6 +228,8 @@ class RosterWidget:
         self._lock.acquire()
         self._reload_list()
         self._lock.release()
+
+        return
 
     def _reload_list(self):
 
@@ -290,11 +315,9 @@ class RosterWidget:
             od[_t].append(i)
 
         ol.sort()
-#        x = 0
         for i in ol:
             for j in od[i]:
                 self._jid_box.reorder_child(j.get_widget(), -1)
-#                x = 1
 
         return
 
@@ -304,21 +327,27 @@ class RosterWidget:
             i.destroy()
             self._list.remove(i)
 
+        return
+
     def _remove_cb_signal(self):
         try:
             self._groups_combobox.disconnect_by_func(
-                self._on_groups_combobox_changed
+                self._on_groups_combobox_changed_idle
                 )
         except:
             pass
+
+        return
 
     def _set_cb_signal(self):
         self._remove_cb_signal()
         # FIXME: re do this by making/using object attribute
         self._groups_combobox.connect(
             'changed',
-            self._on_groups_combobox_changed
+            self._on_groups_combobox_changed_idle
             )
+
+        return
 
     def _roster_storage_listener(
         self,
@@ -352,9 +381,9 @@ class RosterWidget:
         else:
             self._remove_jid_widget(bare_jid)
 
-    def _add_jid_widget(self, bare_jid):
+        return
 
-#        self._addlock.acquire()
+    def _add_jid_widget(self, bare_jid):
 
         if not self._is_in_roster(bare_jid):
 
@@ -366,7 +395,7 @@ class RosterWidget:
             self._list.append(jw)
             self._jid_box.pack_start(jw.get_widget(), False, False, 0)
 
-#        self._addlock.release()
+        return
 
     def _remove_jid_widget(self, bare_jid):
         for i in self._list[:]:
@@ -389,7 +418,11 @@ class RosterWidget:
         self._reload_list()
         self._lock.release()
 
+        return
+
     def _on_order_combobox_changed(self, widget):
         self._lock.acquire()
         self._reload_list()
         self._lock.release()
+
+        return

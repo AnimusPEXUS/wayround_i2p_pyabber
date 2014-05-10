@@ -11,6 +11,7 @@ import org.wayround.pyabber.message_edit_widget
 import org.wayround.pyabber.muc_roster_widget
 import org.wayround.pyabber.subject_widget
 import org.wayround.pyabber.thread_widget
+import org.wayround.utils.gtk
 import org.wayround.xmpp.core
 
 
@@ -126,10 +127,15 @@ class Chat:
 
         if self._mode != 'groupchat':
 
+            self._on_tab_close_button_clicked_idle = \
+                org.wayround.utils.gtk.to_idle(
+                    self._on_tab_close_button_clicked
+                    )
+
             tab_close_button = Gtk.Button('x')
             tab_close_button.connect(
                 'clicked',
-                self._on_tab_close_button_clicked
+                self._on_tab_close_button_clicked_idle
                 )
 
             self._title_label.pack_start(tab_close_button, False, False, 0)
@@ -160,20 +166,30 @@ class Chat:
 
         self._root_widget = b
 
-        self._editor.connect('key-press-event', self._on_key_press_event)
-        send_button.connect('clicked', self._on_send_button_clicked)
+        self._on_key_press_event_idle = \
+            org.wayround.utils.gtk.to_idle(self._on_key_press_event)
+
+        self._editor.connect('key-press-event', self._on_key_press_event_idle)
+
+        self._on_send_button_clicked_idle = \
+            org.wayround.utils.gtk.to_idle(self._on_send_button_clicked)
+
+        send_button.connect('clicked', self._on_send_button_clicked_idle)
 
         self._update_jid_widget()
         self._thread_widget.set_data(thread_id)
 
+        self._message_relay_listener_idle = \
+            org.wayround.utils.gtk.to_idle(self._message_relay_listener)
+
         if message_relay_listener_call_queue:
             message_relay_listener_call_queue.set_callable_target(
-                self._message_relay_listener
+                self._message_relay_listener_idle
                 )
             message_relay_listener_call_queue.dump()
         else:
             self._controller.message_relay.signal.connect(
-                'new_message', self._message_relay_listener
+                'new_message', self._message_relay_listener_idle
                 )
 
         return
@@ -410,8 +426,9 @@ class ChatPager:
                 controller=self._controller,
                 room_bare_jid=jid_obj.bare(),
                 own_resource=None,
-                message_relay_listener_call_queue=\
+                message_relay_listener_call_queue=(
                     message_relay_listener_call_queue
+                    )
                 )
             self.add_page(p)
             ret = p
@@ -593,8 +610,9 @@ class GroupChat:
                 thread_id=None,
                 mode='groupchat',
                 muc_roster_storage=self._storage,
-                message_relay_listener_call_queue=\
+                message_relay_listener_call_queue=(
                     message_relay_listener_call_queue
+                    )
                 )
             self._main_chat_page = main_chat_page
 
@@ -638,9 +656,15 @@ class GroupChat:
             self._title_label.set_orientation(Gtk.Orientation.HORIZONTAL)
 
             tab_close_button = Gtk.Button('x')
+
+            self._on_tab_close_button_clicked_idle = \
+                org.wayround.utils.gtk.to_idle(
+                    self._on_tab_close_button_clicked
+                    )
+
             tab_close_button.connect(
                 'clicked',
-                self._on_tab_close_button_clicked
+                self._on_tab_close_button_clicked_idle
                 )
 
             self._title_label.pack_start(
@@ -662,9 +686,14 @@ class GroupChat:
             self._roster_widget.sync_with_storage()
             self._roster_widget.sort_jid_widgets()
 
+            self._on_own_rename_storage_action_idle = \
+                org.wayround.utils.gtk.to_idle(
+                    self._on_own_rename_storage_action
+                    )
+
             self._storage.signal.connect(
                 'own_rename',
-                self._on_own_rename_storage_action
+                self._on_own_rename_storage_action_idle
                 )
 
             self._sync_pages_with_list()

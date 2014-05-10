@@ -3,6 +3,7 @@ from gi.repository import Gdk
 from gi.repository import Gtk
 
 import org.wayround.pyabber.disco
+import org.wayround.utils.gtk
 import org.wayround.xmpp.core
 
 
@@ -103,35 +104,67 @@ class ContactPopupMenu:
         subs_sub_menu.append(subscribed_mi)
         subs_sub_menu.append(unsubscribed_mi)
 
-        subscribe_mi.connect('activate', self._subs_activate, 'subscribe')
-        unsubscribe_mi.connect('activate', self._subs_activate, 'unsubscribe')
-        subscribed_mi.connect('activate', self._subs_activate, 'subscribed')
+        self._subs_activate_idle = \
+            org.wayround.utils.gtk.to_idle(self._subs_activate)
+
+        subscribe_mi.connect(
+            'activate', self._subs_activate_idle, 'subscribe'
+            )
+        unsubscribe_mi.connect(
+            'activate', self._subs_activate_idle, 'unsubscribe'
+            )
+        subscribed_mi.connect(
+            'activate', self._subs_activate_idle, 'subscribed'
+            )
         unsubscribed_mi.connect(
-            'activate', self._subs_activate, 'unsubscribed'
+            'activate', self._subs_activate_idle, 'unsubscribed'
             )
 
-        remove_mi.connect('activate', self._remove_activate)
-        forget_mi.connect('activate', self._forget_activate)
-        edit_mi.connect('activate', self._edit_activate)
+        self._remove_activate_idle = \
+            org.wayround.utils.gtk.to_idle(self._remove_activate)
+        self._forget_activate_idle = \
+            org.wayround.utils.gtk.to_idle(self._forget_activate)
+        self._edit_activate_idle = \
+            org.wayround.utils.gtk.to_idle(self._edit_activate)
 
-        send_message_mi.connect('activate', self._send_message_activate)
-        start_chat_mi.connect('activate', self._start_chat_activate)
+        remove_mi.connect('activate', self._remove_activate_idle)
+        forget_mi.connect('activate', self._forget_activate_idle)
+        edit_mi.connect('activate', self._edit_activate_idle)
+
+        self._send_message_activate_idle = \
+            org.wayround.utils.gtk.to_idle(self._send_message_activate)
+
+        send_message_mi.connect('activate', self._send_message_activate_idle)
+
+        self._start_chat_activate_idle = \
+            org.wayround.utils.gtk.to_idle(self._start_chat_activate)
+
+        start_chat_mi.connect('activate', self._start_chat_activate_idle)
+
+        self._send_custom_presence_activate_idle = \
+            org.wayround.utils.gtk.to_idle(self._send_custom_presence_activate)
 
         send_custom_presence_mi.connect(
             'activate',
-            self._send_custom_presence_activate
+            self._send_custom_presence_activate_idle
             )
+
+        self._vcard_activate_idle = \
+            org.wayround.utils.gtk.to_idle(self._vcard_activate)
 
         vcard_mi.connect(
             'activate',
-            self._vcard_activate
+            self._vcard_activate_idle
             )
 
         self._menu.show_all()
 
+        return
+
     def destroy(self):
         self._disco_menu.destroy()
         self._menu.destroy()
+        return
 
     def set(self, bare_or_full_jid):
 
@@ -142,8 +175,7 @@ class ContactPopupMenu:
 
         self.subject_mi.set_label(str(jid))
 
-#        while Gtk.events_pending():
-#            Gtk.main_iteration()
+        return
 
     def show(self):
 
@@ -166,6 +198,7 @@ class ContactPopupMenu:
             typ=data,
             to_full_or_bare_jid=self._jid.bare()
             )
+        return
 
     def _remove_activate(self, menuitem):
         self._controller.roster_client.set(
@@ -173,15 +206,18 @@ class ContactPopupMenu:
             subscription='remove',
             to_jid=self._controller.jid.bare(),
             )
+        return
 
     def _forget_activate(self, menuitem):
         self._controller.roster_storage.forget(self._jid.bare())
+        return
 
     def _edit_activate(self, menuitem):
         self._controller.show_contact_editor_window(
             jid=self._jid.bare(),
             mode='edit'
             )
+        return
 
     def _send_message_activate(self, menuitem):
 
@@ -201,6 +237,8 @@ class ContactPopupMenu:
             stanza=stanza
             )
 
+        return
+
     def _start_chat_activate(self, menuitem):
 
         chat_window = self._controller.get_chat_window()
@@ -210,9 +248,12 @@ class ContactPopupMenu:
 
         chat_window.chat_pager.add_chat(self._jid, None)
 
-    def _send_custom_presence_activate(self, mi):
+        return
 
+    def _send_custom_presence_activate(self, mi):
         self._controller.show_presence_control_window(to_=str(self._jid))
+        return
 
     def _vcard_activate(self, mi):
         self._controller.show_xcard_window('')
+        return

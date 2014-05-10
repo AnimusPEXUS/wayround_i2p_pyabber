@@ -7,6 +7,7 @@ import org.wayround.pyabber.ccc
 import org.wayround.pyabber.contact_popup_menu
 import org.wayround.pyabber.icondb
 import org.wayround.pyabber.roster_storage
+import org.wayround.utils.gtk
 
 
 class JIDWidget:
@@ -110,14 +111,20 @@ class JIDWidget:
 
         self._main_widget = event_box
 
+        self._on_widget_right_button_idle = \
+            org.wayround.utils.gtk.to_idle(self._on_widget_right_button)
+
         event_box.connect(
             'button-press-event',
-            self._on_widget_right_button
+            self._on_widget_right_button_idle
             )
+
+        self._roster_storage_listener_idle = \
+            org.wayround.utils.gtk.to_idle(self._roster_storage_listener)
 
         self._roster_storage.signal.connect(
             True,
-            self._roster_storage_listener
+            self._roster_storage_listener_idle
             )
 
         self.reload_data()
@@ -293,11 +300,15 @@ class MUCRosterJIDWidgetMenu:
         contact_submenu_mi = Gtk.MenuItem("MUC Roster Contact Menu")
 
         edit_entity_mi = Gtk.MenuItem("Full Entity Editor..")
-        edit_entity_mi.connect('activate', self._on_edit_entity_activated)
+        self._on_edit_entity_activated_idle = \
+            org.wayround.utils.gtk.to_idle(self._on_edit_entity_activated)
+        edit_entity_mi.connect('activate', self._on_edit_entity_activated_idle)
 
         mini_edit_entity_mi = Gtk.MenuItem("Mini Entity Editor..")
+        self._on_mini_edit_entity_activated_idle = \
+            org.wayround.utils.gtk.to_idle(self._on_mini_edit_entity_activated)
         mini_edit_entity_mi.connect(
-            'activate', self._on_mini_edit_entity_activated
+            'activate', self._on_mini_edit_entity_activated_idle
             )
 
         open_private_mi = Gtk.MenuItem("Open Private Chat")
@@ -475,24 +486,36 @@ class MUCRosterJIDWidget:
 
             self.set_nick(nick)
 
+            self._on_widget_right_button_idle = \
+                org.wayround.utils.gtk.to_idle(self._on_widget_right_button)
+
             event_box.connect(
                 'button-press-event',
-                self._on_widget_right_button
+                self._on_widget_right_button_idle
                 )
+
+            self._on_jid_right_button_idle = \
+                org.wayround.utils.gtk.to_idle(self._on_jid_right_button)
 
             event_box2.connect(
                 'button-press-event',
-                self._on_jid_right_button
+                self._on_jid_right_button_idle
                 )
+
+            self._on_storage_actions_idle = \
+                org.wayround.utils.gtk.to_idle(self._on_storage_actions)
 
             muc_roster_storage.signal.connect(
                 'set',
-                self._on_storage_actions
+                self._on_storage_actions_idle
                 )
+
+            self._on_storage_rename_idle = \
+                org.wayround.utils.gtk.to_idle(self._on_storage_rename)
 
             muc_roster_storage.signal.connect(
                 'rename',
-                self._on_storage_rename
+                self._on_storage_rename_idle
                 )
 
         return
@@ -729,9 +752,12 @@ class GroupChatTabWidget:
 
             self.set_own_resource(own_resource)
 
+            self._on_widget_right_button_idle = \
+                org.wayround.utils.gtk.to_idle(self._on_widget_right_button)
+
             event_box.connect(
                 'button-press-event',
-                self._on_widget_right_button
+                self._on_widget_right_button_idle
                 )
 
         return

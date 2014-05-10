@@ -1,13 +1,12 @@
 
-from gi.repository import Gtk
-from gi.repository import Gdk
 from gi.repository import GLib
+from gi.repository import Gdk
+from gi.repository import Gtk
 from gi.repository import Pango
 
-import org.wayround.utils.gtk
-
-import org.wayround.pyabber.main
 import org.wayround.pyabber.ccc
+import org.wayround.pyabber.main
+import org.wayround.utils.gtk
 
 
 class ConnectionMgrWindow:
@@ -199,12 +198,15 @@ class ConnectionMgrWindow:
 
         window = Gtk.Window()
         window.connect('destroy', self._on_destroy)
+        window.connect(
+            'delete-event', org.wayround.utils.gtk.hide_on_delete
+            )
         window.set_default_size(400, 300)
         window.set_position(Gtk.WindowPosition.CENTER)
 
         window.add(b)
 
-        self._iterated_loop = org.wayround.utils.gtk.GtkIteratedLoop()
+#        self._iterated_loop = org.wayround.utils.gtk.GtkIteratedLoop()
         self._main = main
         self._profile = profile
         self._window = window
@@ -214,7 +216,7 @@ class ConnectionMgrWindow:
     def run(self):
         self._reload_list()
         self.show()
-        self._iterated_loop.wait()
+#        self._iterated_loop.wait()
         return
 
     def show(self):
@@ -223,7 +225,7 @@ class ConnectionMgrWindow:
     def destroy(self):
         self._window.hide()
         self._window.destroy()
-        self._iterated_loop.stop()
+#        self._iterated_loop.stop()
 
     def _on_destroy(self, window):
         self.destroy()

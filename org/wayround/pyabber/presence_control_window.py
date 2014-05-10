@@ -118,7 +118,6 @@ class PresenceControlWindow:
         window.connect('destroy', self._on_destroy)
         window.set_position(Gtk.WindowPosition.CENTER)
 
-        self._iterated_loop = org.wayround.utils.gtk.GtkIteratedLoop()
         self._presence_client = self._controller.presence_client
         self._status = status_text_view
         self._status_cb = status_cb
@@ -136,11 +135,11 @@ class PresenceControlWindow:
 
             to_bare = org.wayround.xmpp.core.JID.new_from_str(to_).bare()
 
-            res, stanza = org.wayround.xmpp.disco.get_info(
+            res = org.wayround.xmpp.disco.get_info(
                 to_bare,
                 self._controller.jid.full(),
                 stanza_processor=self._controller.client.stanza_processor
-                )
+                )[0]
 
             if res != None:
                 if res.has_feature('http://jabber.org/protocol/muc'):
@@ -148,14 +147,11 @@ class PresenceControlWindow:
 
         self.show()
 
-        self._iterated_loop.wait()
-
     def show(self):
         self._window.show_all()
 
     def destroy(self):
         self._window.destroy()
-        self._iterated_loop.stop()
 
     def _on_destroy(self, window):
         self.destroy()

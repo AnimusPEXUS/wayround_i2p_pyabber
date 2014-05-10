@@ -3,7 +3,7 @@ import logging
 import socket
 import threading
 
-from gi.repository import Gtk, GLib
+from gi.repository import Gtk
 
 import lxml.etree
 import org.wayround.gsasl.gsasl
@@ -36,29 +36,26 @@ import org.wayround.xmpp.privacy
 SUBWINDOWS = [
     # 1. registered window name;
     # 2. single?;
-    # 3. threaded?.
-    ('add_mode_language_window', False, False),
-    ('adhoc_response_window', False, True),
-    ('adhoc_window', False, True),
-    ('chat_window', True, True),
-    ('contact_editor_window', False, True),
-    ('disco_window', False, True),
-    ('muc_config_window', False, True),
-    ('muc_destruction_dialog', False, True),
-    ('muc_identity_editor_window', False, True),
-    ('muc_jid_entry_dialog', False, False),
-    ('muc_join_dialog', False, True),
-    ('muc_mini_identity_editor_window', False, True),
-    ('muc_voice_request_window', False, True),
-    ('presence_control_window', False, True),
-    ('registration_window', False, False),
-    ('registration_window_threaded', False, True),
-    ('roster_window', True, True),
-    ('single_message_window', False, True),
-    ('subject_edit_window', False, True),
-    ('subject_edit_window_modal', False, False),
-    ('thread_edit_window', False, False),
-    ('xcard_window', False, True)
+    ('add_mode_language_window', False),
+    ('adhoc_response_window', False),
+    ('adhoc_window', False),
+    ('chat_window', True),
+    ('contact_editor_window', False),
+    ('disco_window', False),
+    ('muc_config_window', False),
+    ('muc_destruction_dialog', False),
+    ('muc_identity_editor_window', False),
+    ('muc_jid_entry_dialog', False),
+    ('muc_join_dialog', False),
+    ('muc_mini_identity_editor_window', False),
+    ('muc_voice_request_window', False),
+    ('presence_control_window', False),
+    ('registration_window', False),
+    ('roster_window', True),
+    ('single_message_window', False),
+    ('subject_edit_window', False),
+    ('thread_edit_window', False),
+    ('xcard_window', False)
     ]
 
 
@@ -86,13 +83,30 @@ class ConnectionStatusMenu:
         m.append(Gtk.SeparatorMenuItem())
         m.append(destroy_mi)
 
-        roster_mi.connect('activate', self._on_roster_mi_activated)
-        messages_mi.connect('activate', self._on_messages_mi_activated)
+        self._on_roster_mi_activated_idle = \
+            org.wayround.utils.gtk.to_idle(self._on_roster_mi_activated)
 
-        reconnect_mi.connect('activate', self._on_reconnect_mi_activated)
-        disconnect_mi.connect('activate', self._on_disconnect_mi_activated)
+        self._on_messages_mi_activated_idle = \
+            org.wayround.utils.gtk.to_idle(self._on_messages_mi_activated)
 
-        destroy_mi.connect('activate', self._on_destroy_mi_activated)
+        roster_mi.connect('activate', self._on_roster_mi_activated_idle)
+        messages_mi.connect('activate', self._on_messages_mi_activated_idle)
+
+        self._on_reconnect_mi_activated_idle = \
+            org.wayround.utils.gtk.to_idle(self._on_reconnect_mi_activated)
+        self._on_disconnect_mi_activated_idle = \
+            org.wayround.utils.gtk.to_idle(self._on_disconnect_mi_activated)
+
+        reconnect_mi.connect('activate', self._on_reconnect_mi_activated_idle)
+        disconnect_mi.connect(
+            'activate',
+            self._on_disconnect_mi_activated_idle
+            )
+
+        self._on_destroy_mi_activated_idle = \
+            org.wayround.utils.gtk.to_idle(self._on_destroy_mi_activated)
+
+        destroy_mi.connect('activate', self._on_destroy_mi_activated_idle)
 
         m.show_all()
 
@@ -107,17 +121,22 @@ class ConnectionStatusMenu:
 
     def destroy(self):
         self._connections_submenu_item.destroy()
+        return
 
     def set_connections_submenu_item(self, menuitem):
         self._connections_submenu_item = menuitem
+        return
 
     def _on_roster_mi_activated(self, mi):
         self._client_connetion_controller.show_roster_window()
+        return
 
     def _on_messages_mi_activated(self, mi):
         self._client_connetion_controller.show_chat_window()
+        return
 
     def _on_reconnect_mi_activated(self, mi):
+
         self._client_connetion_controller.disconnect()
         #threading.Thread(
         #    target=lambda: GLib.idle_add(
@@ -137,9 +156,11 @@ class ConnectionStatusMenu:
 
     def _on_disconnect_mi_activated(self, mi):
         self._client_connetion_controller.disconnect()
+        return
 
     def _on_destroy_mi_activated(self, mi):
         self._client_connetion_controller.destroy()
+        return
 
 
 class ClientConnectionController:
@@ -222,9 +243,6 @@ self._rel_win_ctl.set_constructor_cb(
         self.clear(init=True)
 
         return
-
-    def __del__(self):
-        self._remove_self_from_list()
 
     def _remove_self_from_list(self):
         if self in self.profile.connection_controllers:
@@ -309,20 +327,14 @@ def destroy_{i}(self):
 
 def get_{i}(self):
     ret = self._rel_win_ctl.get('{i}')
-    if ret == None:
-        self.show_{i}()
-    ret = self._rel_win_ctl.get('{i}')
     return ret
 
 def show_{i}(self, *args, **kwargs):
-    ret = None
-    if {threaded}:
-        self._rel_win_ctl.show_threaded('{i}', *args, **kwargs)
-    else:
-        ret = self._rel_win_ctl.show('{i}', *args, **kwargs)
+    res = self.get_{i}()
+    ret = res.run(*args, **kwargs)
     return ret
 
-""".format(i=i[0], threaded=i[2]))
+""".format(i=i[0]))
 
     def clear(self, init=False):
 
@@ -419,17 +431,23 @@ def show_{i}(self, *args, **kwargs):
 
 #        self.muc_pool = org.wayround.pyabber.muc.MUCControllerPool(self)
 
+        self._on_connection_event_idle = \
+            org.wayround.utils.gtk.to_idle(self._on_connection_event)
+
         self.client.sock_streamer.signal.connect(
             ['start', 'stop', 'error'],
-            self._on_connection_event
+            self._on_connection_event_idle
             )
 
         logging.debug("streamer connected")
 
+        self._on_stream_io_event_idle = \
+            org.wayround.utils.gtk.to_idle(self._on_stream_io_event)
+
         self.client.io_machine.signal.connect(
             ['in_start', 'in_stop', 'in_error',
              'out_start', 'out_stop', 'out_error'],
-            self._on_stream_io_event
+            self._on_stream_io_event_idle
             )
 
         features_waiter = org.wayround.utils.threading.SignalWaiter(
@@ -593,8 +611,11 @@ def show_{i}(self, *args, **kwargs):
                         self.presence_client
                         )
 
+                self._on_presence_idle = \
+                    org.wayround.utils.gtk.to_idle(self._on_presence)
+
                 self.presence_client.signal.connect(
-                    ['presence'], self._on_presence
+                    ['presence'], self._on_presence_idle
                     )
 
                 self.message_client.signal.connect(
@@ -608,8 +629,14 @@ def show_{i}(self, *args, **kwargs):
                     items=None
                     )
 
+                self._message_relay_listener_idle = \
+                    org.wayround.utils.gtk.to_idle(
+                        self._message_relay_listener
+                        )
+
                 self.message_relay.signal.connect(
-                    'new_message', self._message_relay_listener
+                    'new_message',
+                    self._message_relay_listener_idle
                     )
 
         self.is_driven = False
@@ -950,8 +977,9 @@ def show_{i}(self, *args, **kwargs):
                                 )
                         cp.add_groupchat(
                             jid_obj,
-                            message_relay_listener_call_queue=
+                            message_relay_listener_call_queue=(
                                 message_relay_listener_call_queue
+                                )
                             )
 
                     win = w.get_window_widget()
@@ -979,8 +1007,9 @@ def show_{i}(self, *args, **kwargs):
                         )
                     w.chat_pager.add_groupchat(
                         jid,
-                        message_relay_listener_call_queue=
+                        message_relay_listener_call_queue=(
                             message_relay_listener_call_queue
+                            )
                         )
 
         return

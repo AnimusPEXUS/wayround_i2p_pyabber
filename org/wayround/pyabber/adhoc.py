@@ -72,8 +72,6 @@ class AD_HOC_Window:
         b.pack_start(sw, True, True, 0)
         b.pack_start(ok_button, False, False, 0)
 
-        self._iterated_loop = org.wayround.utils.gtk.GtkIteratedLoop()
-
         return
 
     def run(self, commands, to_jid):
@@ -104,15 +102,12 @@ class AD_HOC_Window:
 
         self.show()
 
-        self._iterated_loop.wait()
-
     def show(self):
         self._window.show_all()
 
     def destroy(self):
         self._window.hide()
         self._window.destroy()
-        self._iterated_loop.stop()
 
     def _on_destroy(self, window):
         self.destroy()
@@ -252,8 +247,6 @@ class AD_HOC_Response_Window:
 
         self._window.add(b)
 
-        self._iterated_loop = org.wayround.utils.gtk.GtkIteratedLoop()
-
         return
 
     def run(self, stanza_response, command_struct):
@@ -329,8 +322,6 @@ class AD_HOC_Response_Window:
 
         self.show()
 
-        self._iterated_loop.wait()
-
         return
 
     def show(self):
@@ -341,7 +332,6 @@ class AD_HOC_Response_Window:
             self._form_controller.destroy()
         self._window.hide()
         self._window.destroy()
-        self._iterated_loop.stop()
 
     def _on_destroy(self, window):
         self.destroy()

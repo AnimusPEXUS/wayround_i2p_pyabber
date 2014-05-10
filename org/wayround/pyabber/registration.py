@@ -1,6 +1,4 @@
 
-import logging
-
 from gi.repository import Gtk
 
 import org.wayround.pyabber.ccc
@@ -313,6 +311,8 @@ This text will be returned to caller.
 
         self._window = window
 
+        self._modal = False
+
         return
 
     def run(
@@ -320,7 +320,8 @@ This text will be returned to caller.
         target_jid_obj=None, from_jid_obj=None, get_reg_form=False,
         predefined_form=None,
         pred_username=None, pred_password=None,
-        original_stanza=None
+        original_stanza=None,
+        modal=False
         ):
 
         if isinstance(pred_username, str):
@@ -328,6 +329,8 @@ This text will be returned to caller.
 
         if isinstance(pred_password, str):
             self._pred_password = pred_password
+
+        self._modal = modal
 
         if target_jid_obj != None:
             self._target_entry.set_text(str(target_jid_obj))
@@ -350,7 +353,8 @@ This text will be returned to caller.
                 self.get_registration_form()
 
         self.show()
-        self._iterated_loop.wait()
+        if self._modal:
+            self._iterated_loop.wait()
         return self._resolution_text
 
     def show(self):
@@ -359,7 +363,8 @@ This text will be returned to caller.
     def destroy(self):
         self._resolution_text = self._resolution_label.get_text()
         self._window.destroy()
-        self._iterated_loop.stop()
+        if self._modal:
+            self._iterated_loop.stop()
 
     def _on_destroy(self, window):
         self.destroy()
