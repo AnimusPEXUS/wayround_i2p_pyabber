@@ -7,11 +7,10 @@ from gi.repository import Gtk, Pango, Gdk
 
 import org.wayround.pyabber.ccc
 import org.wayround.pyabber.chat_pager
-import org.wayround.pyabber.message_filter
 import org.wayround.pyabber.l10n
+import org.wayround.pyabber.message_filter
 import org.wayround.utils.gtk
 import org.wayround.utils.timer
-import org.wayround.xmpp.core
 
 
 class ChatLogTableRow:
@@ -41,9 +40,11 @@ class ChatLogTableRow:
 
         date_label = Gtk.Label(date)
         date_label.set_alignment(0.0, 0.5)
+        date_label.set_selectable(True)
 
         jid_label = Gtk.Label(jid_to_display)
         jid_label.set_alignment(0.0, 0.5)
+        jid_label.set_selectable(True)
 
         subject_label = Gtk.Label()
         subject_label.override_font(font_desc)
@@ -344,14 +345,17 @@ class ChatLogWidget:
             self._rows = []
             self._lock = threading.Lock()
 
+            self._message_relay_listener_idle = \
+                org.wayround.utils.gtk.to_idle(self._message_relay_listener)
+
             if message_relay_listener_call_queue:
                 message_relay_listener_call_queue.set_callable_target(
-                    self._message_relay_listener
+                    self._message_relay_listener_idle
                     )
                 message_relay_listener_call_queue.dump()
             else:
                 self._controller.message_relay.signal.connect(
-                    'new_message', self._message_relay_listener
+                    'new_message', self._message_relay_listener_idle
                     )
 
             self.load_history()
@@ -458,29 +462,30 @@ class ChatLogWidget:
             if event == 'new_message':
                 if type_ in ['message_chat', 'message_groupchat']:
 
-                    if org.wayround.pyabber.message_filter.is_message_acceptable(
-                        operation_mode=self._operation_mode,
-                        message_type=type_,
-                        contact_bare_jid=self._chat.contact_bare_jid,
-                        contact_resource=self._chat.contact_resource,
-                        active_bare_jid=jid_obj.bare(),
-                        active_resource=jid_obj.resource
-                        ):
+                    if org.wayround.pyabber.message_filter.\
+                        is_message_acceptable(
+                            operation_mode=self._operation_mode,
+                            message_type=type_,
+                            contact_bare_jid=self._chat.contact_bare_jid,
+                            contact_resource=self._chat.contact_resource,
+                            active_bare_jid=jid_obj.bare(),
+                            active_resource=jid_obj.resource
+                            ):
 
-                        if plain != {} or xhtml != {} or subject != {}:
+                            if plain != {} or xhtml != {} or subject != {}:
 
-                            self.add_record(
-                                date,
-                                self._format_jid_text(
-                                    jid_obj.resource,
-                                    incomming
-                                    ),
-                                plain,
-                                xhtml,
-                                delay_from,
-                                delay_message,
-                                subject
-                                )
+                                self.add_record(
+                                    date,
+                                    self._format_jid_text(
+                                        jid_obj.resource,
+                                        incomming
+                                        ),
+                                    plain,
+                                    xhtml,
+                                    delay_from,
+                                    delay_message,
+                                    subject
+                                    )
 
         return
 

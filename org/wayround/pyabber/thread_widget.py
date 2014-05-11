@@ -182,14 +182,17 @@ class ThreadWidget:
 
         self.set_data(self._data)
 
+        self._message_relay_listener_idle = \
+            org.wayround.utils.gtk.to_idle(self._message_relay_listener)
+
         if message_relay_listener_call_queue:
             message_relay_listener_call_queue.set_callable_target(
-                self._message_relay_listener
+                self._message_relay_listener_idle
                 )
             message_relay_listener_call_queue.dump()
         else:
             self._controller.message_relay.signal.connect(
-                'new_message', self._message_relay_listener
+                'new_message', self._message_relay_listener_idle
                 )
 
         return

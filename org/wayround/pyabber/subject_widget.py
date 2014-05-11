@@ -3,14 +3,13 @@ import threading
 
 from gi.repository import Gtk, Pango
 
-import org.wayround.pyabber.misc
-import org.wayround.pyabber.message_filter
 import org.wayround.pyabber.message_edit_widget
+import org.wayround.pyabber.message_filter
+import org.wayround.pyabber.misc
+import org.wayround.utils.gtk
 
 
 # TODO: make classes in this module better
-
-
 class SubjectTooltip:
 
     def __init__(self):
@@ -264,14 +263,17 @@ class SubjectWidget:
 
         self._lang_select_cb.connect('changed', self._on_lang_switch_chenged)
 
+        self._message_relay_listener_idle = \
+            org.wayround.utils.gtk.to_idle(self._message_relay_listener)
+
         if message_relay_listener_call_queue:
             message_relay_listener_call_queue.set_callable_target(
-                self._message_relay_listener
+                self._message_relay_listener_idle
                 )
             message_relay_listener_call_queue.dump()
         else:
             self._controller.message_relay.signal.connect(
-                'new_message', self._message_relay_listener
+                'new_message', self._message_relay_listener_idle
                 )
 
         self.set_selected_language('')
