@@ -115,6 +115,13 @@ class ChatLogTableRow:
         b.pack_start(date_label, False, False, 0)
         b.pack_start(mode_lang_switch_combo, False, False, 0)
         b.pack_start(delay_label, False, False, 0)
+        bg_color = Gdk.RGBA()
+        bg_color.green = 0.8
+        bg_color.red = 0.8
+        bg_color.blue = 0.8
+        bg_color.alpha = 1
+
+        b.override_background_color(Gtk.StateFlags.NORMAL, bg_color)
 
         b2 = Gtk.Box()
         b2.set_margin_top(5)
@@ -544,9 +551,9 @@ class ChatLogWidget:
             jid = resource
         else:
             if is_incomming:
-                jid = '-->'
+                jid = '\u2192'
             else:
-                jid = '<--'
+                jid = '\u2190'
 
         return jid
 

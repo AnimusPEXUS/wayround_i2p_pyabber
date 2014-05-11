@@ -111,12 +111,9 @@ class JIDWidget:
 
         self._main_widget = event_box
 
-        self._on_widget_right_button_idle = \
-            org.wayround.utils.gtk.to_idle(self._on_widget_right_button)
-
         event_box.connect(
             'button-press-event',
-            self._on_widget_right_button_idle
+            self._on_widget_right_button
             )
 
         self._roster_storage_listener_idle = \
@@ -486,20 +483,14 @@ class MUCRosterJIDWidget:
 
             self.set_nick(nick)
 
-            self._on_widget_right_button_idle = \
-                org.wayround.utils.gtk.to_idle(self._on_widget_right_button)
-
             event_box.connect(
                 'button-press-event',
-                self._on_widget_right_button_idle
+                self._on_widget_right_button
                 )
-
-            self._on_jid_right_button_idle = \
-                org.wayround.utils.gtk.to_idle(self._on_jid_right_button)
 
             event_box2.connect(
                 'button-press-event',
-                self._on_jid_right_button_idle
+                self._on_jid_right_button
                 )
 
             self._on_storage_actions_idle = \
@@ -752,12 +743,9 @@ class GroupChatTabWidget:
 
             self.set_own_resource(own_resource)
 
-            self._on_widget_right_button_idle = \
-                org.wayround.utils.gtk.to_idle(self._on_widget_right_button)
-
             event_box.connect(
                 'button-press-event',
-                self._on_widget_right_button_idle
+                self._on_widget_right_button
                 )
 
         return

@@ -104,57 +104,35 @@ class ContactPopupMenu:
         subs_sub_menu.append(subscribed_mi)
         subs_sub_menu.append(unsubscribed_mi)
 
-        self._subs_activate_idle = \
-            org.wayround.utils.gtk.to_idle(self._subs_activate)
-
         subscribe_mi.connect(
-            'activate', self._subs_activate_idle, 'subscribe'
+            'activate', self._subs_activate, 'subscribe'
             )
         unsubscribe_mi.connect(
-            'activate', self._subs_activate_idle, 'unsubscribe'
+            'activate', self._subs_activate, 'unsubscribe'
             )
         subscribed_mi.connect(
-            'activate', self._subs_activate_idle, 'subscribed'
+            'activate', self._subs_activate, 'subscribed'
             )
         unsubscribed_mi.connect(
-            'activate', self._subs_activate_idle, 'unsubscribed'
+            'activate', self._subs_activate, 'unsubscribed'
             )
 
-        self._remove_activate_idle = \
-            org.wayround.utils.gtk.to_idle(self._remove_activate)
-        self._forget_activate_idle = \
-            org.wayround.utils.gtk.to_idle(self._forget_activate)
-        self._edit_activate_idle = \
-            org.wayround.utils.gtk.to_idle(self._edit_activate)
+        remove_mi.connect('activate', self._remove_activate)
+        forget_mi.connect('activate', self._forget_activate)
+        edit_mi.connect('activate', self._edit_activate)
 
-        remove_mi.connect('activate', self._remove_activate_idle)
-        forget_mi.connect('activate', self._forget_activate_idle)
-        edit_mi.connect('activate', self._edit_activate_idle)
+        send_message_mi.connect('activate', self._send_message_activate)
 
-        self._send_message_activate_idle = \
-            org.wayround.utils.gtk.to_idle(self._send_message_activate)
-
-        send_message_mi.connect('activate', self._send_message_activate_idle)
-
-        self._start_chat_activate_idle = \
-            org.wayround.utils.gtk.to_idle(self._start_chat_activate)
-
-        start_chat_mi.connect('activate', self._start_chat_activate_idle)
-
-        self._send_custom_presence_activate_idle = \
-            org.wayround.utils.gtk.to_idle(self._send_custom_presence_activate)
+        start_chat_mi.connect('activate', self._start_chat_activate)
 
         send_custom_presence_mi.connect(
             'activate',
-            self._send_custom_presence_activate_idle
+            self._send_custom_presence_activate
             )
-
-        self._vcard_activate_idle = \
-            org.wayround.utils.gtk.to_idle(self._vcard_activate)
 
         vcard_mi.connect(
             'activate',
-            self._vcard_activate_idle
+            self._vcard_activate
             )
 
         self._menu.show_all()
@@ -246,6 +224,7 @@ class ContactPopupMenu:
             self._controller.show_chat_window()
             chat_window = self._controller.get_chat_window()
 
+        chat_window.show()
         chat_window.chat_pager.add_chat(self._jid, None)
 
         return

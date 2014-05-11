@@ -52,7 +52,12 @@ class AddModeLang:
 
         self._entry = Gtk.Entry()
 
+        b2.pack_start(Gtk.Label("Mode:"), False, False, 0)
         b2.pack_start(mode_switch_combo, False, False, 0)
+        b2.pack_start(
+            Gtk.Label("Language Code (en, ru, jp etc..):"),
+            False, False, 0
+            )
         b2.pack_start(self._entry, True, True, 0)
 
         b.pack_start(b2, True, True, 0)
