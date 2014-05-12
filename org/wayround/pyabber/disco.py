@@ -9,8 +9,6 @@ import org.wayround.pyabber.privacy
 import org.wayround.utils.gtk
 import org.wayround.xmpp.core
 import org.wayround.xmpp.disco
-import org.wayround.xmpp.muc
-import org.wayround.xmpp.xdata
 
 
 class DiscoMenu:
@@ -373,6 +371,8 @@ class Disco:
             self._on_treeview_buttonpress
             )
 
+#        self._fill2_idle = org.wayround.utils.gtk.to_idle(self._fill2)
+
         self._lock = threading.Lock()
 
         self._iterated_loop = org.wayround.utils.gtk.GtkIteratedLoop()
@@ -458,12 +458,23 @@ class Disco:
 
             self._stat_bar.push(0, "Getting information from server")
 
-            res = org.wayround.xmpp.disco.get(
-                to_jid=jid,
-                from_jid=self._own_jid.full(),
-                node=node,
-                stanza_processor=self._client.stanza_processor
+            get_res = {'data': None}
+
+            t = threading.Thread(
+                target=_t_proc,
+                args=(get_res, {
+                    'to_jid': jid,
+                    'from_jid': self._own_jid.full(),
+                    'node': node,
+                    'stanza_processor': self._client.stanza_processor
+                    }),
+                kwargs={}
                 )
+            t.start()
+
+            org.wayround.utils.gtk.Waiter.wait_thread(t)
+
+            res = get_res['data']
 
             if res['info'][0] != None:
                 x = res['info'][0].get_xdata()
@@ -743,7 +754,7 @@ class Disco:
     def _fill(self, path, jid, node=None):
 
 #        t = threading.Thread(
-#            target=self._fill2,
+#            target=self._fill2_idle,
 #            args=(path, jid),
 #            kwargs={
 #                'node': node
@@ -900,3 +911,7 @@ class Disco:
 
     def _on_jid_or_node_entry_activate(self, entry):
         self._go_button.emit('clicked')
+
+
+def _t_proc(x, y):
+    x['data'] = org.wayround.xmpp.disco.get(**y)
