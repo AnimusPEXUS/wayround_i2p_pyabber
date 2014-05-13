@@ -5,12 +5,13 @@ widget and window for displaying and editing both new vcard and old vcard-temp
 
 import logging
 import sys
+import threading
 
 from gi.repository import Gtk
-
 import lxml.etree
-import org.wayround.pyabber.xcard_temp_widgets
 import org.wayround.utils.error
+
+import org.wayround.pyabber.xcard_temp_widgets
 import org.wayround.utils.gtk
 import org.wayround.xmpp.core
 import org.wayround.xmpp.xcard_4
@@ -235,7 +236,7 @@ class XCardWidget:
 
         if isinstance(obj, org.wayround.xmpp.xcard_temp.XCardTemp):
             self._mode_label.set_text("xcard-temp mode")
-        elif isinstance(obj, org.wayround.xmpp.xcard.XCard):
+        elif isinstance(obj, org.wayround.xmpp.xcard_4.XCard):
             self._mode_label.set_text("urn:ietf:params:xml:ns:vcard-4.0 mode")
         else:
             self._mode_label.set_text("unsupported mode")
@@ -369,7 +370,7 @@ class XCardWidget:
         elems = []
         if isinstance(self._data, org.wayround.xmpp.xcard_temp.XCardTemp):
             elems = org.wayround.xmpp.xcard_temp.VCARD_ELEMENTS
-        elif isinstance(self._data, org.wayround.xmpp.xcard.XCard):
+        elif isinstance(self._data, org.wayround.xmpp.xcard_4.XCard):
             elems = org.wayround.xmpp.xcard_4.VCARD_ELEMENTS
         else:
             raise Exception("Programming error")
@@ -739,6 +740,8 @@ class XCardWindow:
 
         if mode == 'vcard-temp':
             objects.append(org.wayround.xmpp.xcard_temp.XCardTemp())
+        elif mode == 'vcard-4.0':
+            objects.append(org.wayround.xmpp.xcard_4.XCard())
 
         stanza = org.wayround.xmpp.core.Stanza(
             tag='iq',
@@ -748,13 +751,24 @@ class XCardWindow:
             objects=objects
             )
 
-        res = self._controller.client.stanza_processor.send(
-            stanza, wait=True
+        proc_data = {
+            'args': (stanza,),
+            'kwargs': {'wait': True}
+            }
+
+        t = threading.Thread(
+            target=self._t_proc,
+            args=(proc_data,)
             )
+        t.start()
+
+        org.wayround.utils.gtk.Waiter.wait_thread(t)
+
+        res = proc_data['res_data']
 
         if res == None:
             d = org.wayround.utils.gtk.MessageDialog(
-                None,
+                self._window,
                 0,
                 Gtk.MessageType.ERROR,
                 Gtk.ButtonsType.OK,
@@ -766,7 +780,7 @@ class XCardWindow:
 
             if res.is_error():
                 org.wayround.pyabber.misc.stanza_error_message(
-                    None,
+                    self._window,
                     res,
                     "Failed to get vcard-temp"
                     )
@@ -793,7 +807,7 @@ class XCardWindow:
                                         )
                                     logging.exception(error)
                                     d = org.wayround.utils.gtk.MessageDialog(
-                                        None,
+                                        self._window,
                                         0,
                                         Gtk.MessageType.ERROR,
                                         Gtk.ButtonsType.OK,
@@ -806,7 +820,7 @@ class XCardWindow:
 
                     if obj == None:
                         d = org.wayround.utils.gtk.MessageDialog(
-                            None,
+                            self._window,
                             0,
                             Gtk.MessageType.ERROR,
                             Gtk.ButtonsType.OK,
@@ -861,13 +875,24 @@ class XCardWindow:
                 objects=objects
                 )
 
-            res = self._controller.client.stanza_processor.send(
-                stanza, wait=True
+            proc_data = {
+                'args': (stanza,),
+                'kwargs': {'wait': True}
+                }
+
+            t = threading.Thread(
+                target=self._t_proc,
+                args=(proc_data,)
                 )
+            t.start()
+
+            org.wayround.utils.gtk.Waiter.wait_thread(t)
+
+            res = proc_data['res_data']
 
             if res == None:
                 d = org.wayround.utils.gtk.MessageDialog(
-                    None,
+                    self._window,
                     0,
                     Gtk.MessageType.ERROR,
                     Gtk.ButtonsType.OK,
@@ -879,13 +904,13 @@ class XCardWindow:
 
                 if res.is_error():
                     org.wayround.pyabber.misc.stanza_error_message(
-                        None,
+                        self._window,
                         res,
                         "Failed to set vcard-temp"
                         )
                 else:
                     d = org.wayround.utils.gtk.MessageDialog(
-                        None,
+                        self._window,
                         0,
                         Gtk.MessageType.INFO,
                         Gtk.ButtonsType.OK,
@@ -913,3 +938,10 @@ class XCardWindow:
         self._edit_button.set_active(True)
 
         return
+
+    def _t_proc(self, x):
+        x['res_data'] = \
+            self._controller.client.stanza_processor.send(
+                *x['args'],
+                **x['kwargs']
+                )

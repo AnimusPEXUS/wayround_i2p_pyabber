@@ -726,9 +726,10 @@ class ValueImageBinvalWidget:
                 d.run()
                 d.destroy()
             else:
-                self._value_widget.set_from_file()
+                self._value_widget.set_from_file(fn)
                 self._element_obj._type_.set_value('image/png')
                 self._element_obj._type_.set_deleted(False)
+                self._element_obj._binval.set_deleted(False)
                 self._element_obj._extval.set_deleted(True)
 
         d.destroy()
