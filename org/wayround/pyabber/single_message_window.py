@@ -193,6 +193,10 @@ class SingleMessageWindow:
 
         return
 
+    def __del__(self):
+        print("deleting {}".format(self))
+        return
+
     def run(
         self,
         mode='new',
@@ -319,18 +323,20 @@ class SingleMessageWindow:
 
     def show(self):
         self._window.show_all()
+        return
 
     def destroy(self):
+        self._window.destroy()
+        return
+
+    def _on_destroy(self, window):
         for i in self._additional_widgets[:]:
             i.destroy()
             self._additional_widgets.remove(i)
         self._thread_widget.destroy()
         self._subject_widget.destroy()
         self._msg_edit_widget.destroy()
-        self._window.destroy()
-
-    def _on_destroy(self, window):
-        self.destroy()
+        return
 
     def _on_send_button_clicked(self, button):
 
@@ -366,7 +372,7 @@ class SingleMessageWindow:
 
         self._controller.client.stanza_processor.send(stanza, wait=False)
 
-        self._window.destroy()
+        self.destroy()
 
         return
 
@@ -390,6 +396,6 @@ class SingleMessageWindow:
             stanza=stanza
             )
 
-        self._window.destroy()
+        self.destroy()
 
         return

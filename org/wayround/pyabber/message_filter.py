@@ -7,9 +7,10 @@ def is_message_acceptable(
     active_bare_jid, active_resource
     ):
 
-    if not operation_mode in ['chat', 'groupchat', 'private']:
+    if not operation_mode in ['normal', 'chat', 'groupchat', 'private']:
         raise ValueError(
-            "`operation_mode' must be in ['chat', 'groupchat', 'private']"
+            "`operation_mode' must be in"
+            " ['normal', 'chat', 'groupchat', 'private']"
             )
 
     ret = False
@@ -29,6 +30,12 @@ def is_message_acceptable(
         ret = (contact_bare_jid == active_bare_jid
                and contact_resource == active_resource
                and message_type == 'message_chat')
+
+    #    elif operation_mode == 'normal':
+    #
+    #        ret = (contact_bare_jid == active_bare_jid
+    #               and contact_resource == active_resource
+    #               and message_type == 'normal_chat')
 
     else:
         pass

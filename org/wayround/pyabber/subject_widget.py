@@ -402,7 +402,7 @@ class SubjectWidget:
         subject, plain, xhtml
         ):
 
-        if self._operation_mode != 'message_normal':
+        if self._operation_mode != 'normal':
             if event == 'new_message':
                 if type_ in ['message_chat', 'message_groupchat']:
 
@@ -445,7 +445,7 @@ class SubjectWidget:
                 s,
                 wait=True
                 )
-            if res != None:
+            if isinstance(res, org.wayround.xmpp.core.Stanza):
                 if res.is_error():
                     org.wayround.pyabber.misc.stanza_error_error_message(
                         None,

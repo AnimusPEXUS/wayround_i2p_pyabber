@@ -35,9 +35,13 @@ class ContactPopupMenu:
         jid_menu.append(jid_copy_to_clipboard_mi)
         self.subject_mi = subject_mi
 
+        jid_copy_to_clipboard_mi.connect(
+            'activate', self._on_jid_copy_to_clipboard_mi
+            )
+
         start_chat_mi = Gtk.MenuItem.new_with_label("Start Chat")
-        send_message_mi = Gtk.MenuItem.new_with_label("Send Message")
-        invite_to_muc_mi = Gtk.MenuItem.new_with_label("Invite to MUC")
+        send_message_mi = Gtk.MenuItem.new_with_label("Send Message..")
+        invite_to_muc_mi = Gtk.MenuItem.new_with_label("Invite to MUC..")
         subscription_mi = Gtk.MenuItem.new_with_label("Subscription")
         remove_mi = Gtk.MenuItem.new_with_label("Remove From Roster")
         forget_mi = Gtk.MenuItem.new_with_label("Forget")
@@ -235,4 +239,8 @@ class ContactPopupMenu:
 
     def _vcard_activate(self, mi):
         self._controller.show_xcard_window('')
+        return
+
+    def _on_jid_copy_to_clipboard_mi(self, mi):
+        Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD).set_text(str(self._jid), -1)
         return

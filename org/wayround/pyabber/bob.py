@@ -104,7 +104,7 @@ class BOBMgr:
 
         res = self._controller.client.stanza_processor.send(stanza, wait=True)
 
-        if res != None:
+        if isinstance(res, org.wayround.xmpp.core.Stanza):
 
             if res.is_error():
                 org.wayround.pyabber.misc.stanza_error_message(

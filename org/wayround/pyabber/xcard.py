@@ -890,18 +890,7 @@ class XCardWindow:
 
             res = proc_data['res_data']
 
-            if res == None:
-                d = org.wayround.utils.gtk.MessageDialog(
-                    self._window,
-                    0,
-                    Gtk.MessageType.ERROR,
-                    Gtk.ButtonsType.OK,
-                    "Timeout"
-                    )
-                d.run()
-                d.destroy()
-            else:
-
+            if isinstance(res, org.wayround.xmpp.core.Stanza):
                 if res.is_error():
                     org.wayround.pyabber.misc.stanza_error_message(
                         self._window,
@@ -919,6 +908,20 @@ class XCardWindow:
                         )
                     d.run()
                     d.destroy()
+            else:
+
+                if res == False:
+                    d = org.wayround.utils.gtk.MessageDialog(
+                        self._window,
+                        0,
+                        Gtk.MessageType.ERROR,
+                        Gtk.ButtonsType.OK,
+                        "Timeout"
+                        )
+                    d.run()
+                    d.destroy()
+                else:
+                    raise Exception("This not should been happen")
 
         return
 

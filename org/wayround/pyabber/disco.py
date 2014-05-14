@@ -53,6 +53,8 @@ class DiscoMenu:
         addr_open_mi = Gtk.MenuItem("Open")
         addr_copy_mi = Gtk.MenuItem("Copy to Clipboard")
 
+        addr_copy_mi.connect('activate', self._on_jid_copy_to_clipboard_mi)
+
         addr_submenu.append(addr_open_mi)
         addr_submenu.append(Gtk.SeparatorMenuItem())
         addr_submenu.append(addr_copy_mi)
@@ -127,35 +129,36 @@ class DiscoMenu:
 #        self._registration_mi.set_sensitive(False)
 #        privacy_mi.set_sensitive(False)
 
-        if stanza.is_error():
-            self._error_mi.set_label(stanza.gen_error().gen_text().strip())
-        else:
-            self._error_mi.set_label("No errors")
+        if isinstance(stanza, org.wayround.xmpp.core.Stanza):
+            if stanza.is_error():
+                self._error_mi.set_label(stanza.gen_error().gen_text().strip())
+            else:
+                self._error_mi.set_label("No errors")
 
-        t = self._target_jid_str
-        if node:
-            t += '\{}'.format(node)
+            t = self._target_jid_str
+            if node:
+                t += '\{}'.format(node)
 
-        self._addr_mi.set_label(t)
+            self._addr_mi.set_label(t)
 
-        if q != None:
-            self._commands_mi.set_sensitive(
-                q.has_feature('http://jabber.org/protocol/commands')
-                )
+            if q != None:
+                self._commands_mi.set_sensitive(
+                    q.has_feature('http://jabber.org/protocol/commands')
+                    )
 
-            self._muc_mi.set_sensitive(
-                q.has_feature('http://jabber.org/protocol/muc')
-                )
+                self._muc_mi.set_sensitive(
+                    q.has_feature('http://jabber.org/protocol/muc')
+                    )
 
-            #            self._registration_mi.set_sensitive(
-            #                q.has_feature('jabber:iq:register')
-            #                )
+                #            self._registration_mi.set_sensitive(
+                #                q.has_feature('jabber:iq:register')
+                #                )
 
-            #            self._privacy_mi.set_sensitive(
-            #                q.has_feature('jabber:iq:privacy')
-            #                )
+                #            self._privacy_mi.set_sensitive(
+                #                q.has_feature('jabber:iq:privacy')
+                #                )
 
-        self._mucmenu.set(target_jid_str)
+            self._mucmenu.set(target_jid_str)
 
         return
 
@@ -214,6 +217,13 @@ class DiscoMenu:
             pred_password=None
             )
 
+        return
+
+    def _on_jid_copy_to_clipboard_mi(self, mi):
+        Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD).set_text(
+            str(self._target_jid_str),
+            - 1
+            )
         return
 
 

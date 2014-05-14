@@ -4,6 +4,7 @@ import threading
 from gi.repository import Gtk
 
 import org.wayround.pyabber.jid_widget
+import org.wayround.utils.gtk
 
 
 class MUCRosterWidget:
@@ -33,9 +34,14 @@ class MUCRosterWidget:
 
         self.sync_with_storage()
 
+        self._on_muc_roster_storage_event_idle = \
+            org.wayround.utils.gtk.to_idle(
+                self._on_muc_roster_storage_event
+                )
+
         muc_roster_storage.signal.connect(
             'set',
-            self._on_muc_roster_storage_event
+            self._on_muc_roster_storage_event_idle
             )
 
         return

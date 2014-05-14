@@ -166,15 +166,9 @@ class Chat:
 
         self._root_widget = b
 
-        self._on_key_press_event_idle = \
-            org.wayround.utils.gtk.to_idle(self._on_key_press_event)
+        self._editor.connect('key-press-event', self._on_key_press_event)
 
-        self._editor.connect('key-press-event', self._on_key_press_event_idle)
-
-        self._on_send_button_clicked_idle = \
-            org.wayround.utils.gtk.to_idle(self._on_send_button_clicked)
-
-        send_button.connect('clicked', self._on_send_button_clicked_idle)
+        send_button.connect('clicked', self._on_send_button_clicked)
 
         self._update_jid_widget()
         self._thread_widget.set_data(thread_id)
@@ -657,14 +651,9 @@ class GroupChat:
 
             tab_close_button = Gtk.Button('x')
 
-            self._on_tab_close_button_clicked_idle = \
-                org.wayround.utils.gtk.to_idle(
-                    self._on_tab_close_button_clicked
-                    )
-
             tab_close_button.connect(
                 'clicked',
-                self._on_tab_close_button_clicked_idle
+                self._on_tab_close_button_clicked
                 )
 
             self._title_label.pack_start(

@@ -258,22 +258,35 @@ class MUCMiniIdentityEditorWindow:
         stanza.get_objects().append(query)
 
         res = self._controller.client.stanza_processor.send(stanza, wait=None)
-        if res.is_error():
-            org.wayround.pyabber.misc.stanza_error_message(
-                self._window,
-                res,
-                "Server Returned Error"
-                )
+        if isinstance(res, org.wayround.xmpp.core.Stanza):
+            if res.is_error():
+                org.wayround.pyabber.misc.stanza_error_message(
+                    self._window,
+                    res,
+                    "Server Returned Error"
+                    )
+            else:
+                d = org.wayround.utils.gtk.MessageDialog(
+                    self._window,
+                    0,
+                    Gtk.MessageType.INFO,
+                    Gtk.ButtonsType.OK,
+                    "Processed. No Error Returned From Server."
+                    )
+                d.run()
+                d.destroy()
         else:
-            d = org.wayround.utils.gtk.MessageDialog(
-                self._window,
-                0,
-                Gtk.MessageType.INFO,
-                Gtk.ButtonsType.OK,
-                "Processed. No Error Returned From Server."
-                )
-            d.run()
-            d.destroy()
+            if res == False:
+                d = org.wayround.utils.gtk.MessageDialog(
+                    self._window,
+                    0,
+                    Gtk.MessageType.ERROR,
+                    Gtk.ButtonsType.OK,
+                    "Timeout"
+                    )
+                d.run()
+                d.destroy()
+
         return
 
 
@@ -953,25 +966,28 @@ class MUCDestructionDialog:
             alternate_venue_jid=alternate_venue_jid
             )
 
-        if res.is_error():
-            org.wayround.pyabber.misc.stanza_error_message(
-                self._window, res, message=None
-                )
-        else:
-            d = org.wayround.utils.gtk.MessageDialog(
-                self._window,
-                0,
-                Gtk.MessageType.INFO,
-                Gtk.ButtonsType.OK,
-                "Room `{}' destroyed".format(
-                    self._room_jid
+        if isinstance(res, org.wayround.xmpp.core.Stanza):
+            if res.is_error():
+                org.wayround.pyabber.misc.stanza_error_message(
+                    self._window, res, message=None
                     )
-                )
-            d.run()
-            d.destroy()
+            else:
+                d = org.wayround.utils.gtk.MessageDialog(
+                    self._window,
+                    0,
+                    Gtk.MessageType.INFO,
+                    Gtk.ButtonsType.OK,
+                    "Room `{}' destroyed".format(
+                        self._room_jid
+                        )
+                    )
+                d.run()
+                d.destroy()
 
         self._window.hide()
         self._window.destroy()
+
+        return
 
 
 class MUCPopupMenu:
@@ -1131,12 +1147,13 @@ class MUCPopupMenu:
                 stanza_processor=self._client.stanza_processor
                 )
 
-            if res.is_error():
-                org.wayround.pyabber.misc.stanza_error_message(
-                    parent=None,
-                    stanza=res,
-                    message="Can't create room `{}' instantly".format(jid)
-                    )
+            if isinstance(res, org.wayround.xmpp.core.Stanza):
+                if res.is_error():
+                    org.wayround.pyabber.misc.stanza_error_message(
+                        parent=None,
+                        stanza=res,
+                        message="Can't create room `{}' instantly".format(jid)
+                        )
 
         return
 
@@ -1205,52 +1222,63 @@ class MUCPopupMenu:
                 stanza_processor=self._stanza_processor
                 )
 
-            if res.is_error():
-                org.wayround.pyabber.misc.stanza_error_message(
-                    parent=None,
-                    stanza=res,
-                    message="Can't get Your registered Nickname"
-                    )
-            else:
-                q = res.get_element().find(
-                    "{http://jabber.org/protocol/disco#info}"
-                    "query[@node='x-roomuser-item']"
-                    )
-                if q != None:
-                    q = org.wayround.xmpp.disco.IQDisco.new_from_element(q)
-
-                    items = q.get_identity()
-                    nicks = []
-                    nicks_l = len(nicks)
-                    for i in items:
-                        nicks.append('   {}'.format(i.get_name()))
-
-                    nicks.sort()
-                    nicks = '\n'.join(nicks)
-
-                    d = org.wayround.utils.gtk.MessageDialog(
-                        None,
-                        0,
-                        Gtk.MessageType.INFO,
-                        Gtk.ButtonsType.OK,
-                        "You'r have {} nickname(s) in room `{}':\n{}".format(
-                            nicks_l,
-                            jid,
-                            nicks
-                            )
+            if isinstance(res, org.wayround.xmpp.core.Stanza):
+                if res.is_error():
+                    org.wayround.pyabber.misc.stanza_error_message(
+                        parent=None,
+                        stanza=res,
+                        message="Can't get Your registered Nickname"
                         )
-                    d.run()
-                    d.destroy()
                 else:
-                    d = org.wayround.utils.gtk.MessageDialog(
-                        None,
-                        0,
-                        Gtk.MessageType.ERROR,
-                        Gtk.ButtonsType.OK,
-                        "Result does not contains query response"
+                    q = res.get_element().find(
+                        "{http://jabber.org/protocol/disco#info}"
+                        "query[@node='x-roomuser-item']"
                         )
-                    d.run()
-                    d.destroy()
+                    if q != None:
+                        q = org.wayround.xmpp.disco.IQDisco.new_from_element(q)
+
+                        items = q.get_identity()
+                        nicks = []
+                        nicks_l = len(nicks)
+                        for i in items:
+                            nicks.append('   {}'.format(i.get_name()))
+
+                        nicks.sort()
+                        nicks = '\n'.join(nicks)
+
+                        d = org.wayround.utils.gtk.MessageDialog(
+                            None,
+                            0,
+                            Gtk.MessageType.INFO,
+                            Gtk.ButtonsType.OK,
+                            "You'r have {} nickname(s) in room `{}':\n{}".format(
+                                nicks_l,
+                                jid,
+                                nicks
+                                )
+                            )
+                        d.run()
+                        d.destroy()
+                    else:
+                        d = org.wayround.utils.gtk.MessageDialog(
+                            None,
+                            0,
+                            Gtk.MessageType.ERROR,
+                            Gtk.ButtonsType.OK,
+                            "Result does not contains query response"
+                            )
+                        d.run()
+                        d.destroy()
+            else:
+                d = org.wayround.utils.gtk.MessageDialog(
+                    None,
+                    0,
+                    Gtk.MessageType.ERROR,
+                    Gtk.ButtonsType.OK,
+                    "Timeout"
+                    )
+                d.run()
+                d.destroy()
 
         return
 
@@ -1639,46 +1667,59 @@ List of dictionaries. Add to dictionaties only changes (delta)
                     stanza.get_objects().append(query)
 
                     res = self._stanza_processor.send(stanza, wait=None)
-                    if res.is_error():
-                        org.wayround.pyabber.misc.stanza_error_message(
-                            self._window,
-                            res,
-                            "Server Returned Error"
-                            )
 
-                    muc_q = res.get_element().find(
-                        '{http://jabber.org/protocol/muc#admin}query'
-                        )
-                    if muc_q is None:
-                        d = org.wayround.utils.gtk.MessageDialog(
-                            self._window,
-                            0,
-                            Gtk.MessageType.ERROR,
-                            Gtk.ButtonsType.OK,
-                            "Response Contains No Query Result"
-                            )
-                        d.run()
-                        d.destroy()
-                    else:
-                        q = org.wayround.xmpp.muc.Query.new_from_element(
-                            muc_q
-                            )
-                        data = []
-                        for i in q.get_item():
-                            data.append(
-                                {
-                                 'jid': i.get_jid(),
-                                 'affiliation': i.get_affiliation(),
-                                 'role': i.get_role(),
-                                 'nick': i.get_nick()
-                                 }
+                    if isinstance(res, org.wayround.xmpp.core.Stanza):
+                        if res.is_error():
+                            org.wayround.pyabber.misc.stanza_error_message(
+                                self._window,
+                                res,
+                                "Server Returned Error"
                                 )
 
-                        b = self._g_text_view.get_buffer()
-                        b.set_text(
-                            json.dumps(data, sort_keys=True,
-                                       indent=4, separators=(',', ': '))
+                        muc_q = res.get_element().find(
+                            '{http://jabber.org/protocol/muc#admin}query'
                             )
+                        if muc_q is None:
+                            d = org.wayround.utils.gtk.MessageDialog(
+                                self._window,
+                                0,
+                                Gtk.MessageType.ERROR,
+                                Gtk.ButtonsType.OK,
+                                "Response Contains No Query Result"
+                                )
+                            d.run()
+                            d.destroy()
+                        else:
+                            q = org.wayround.xmpp.muc.Query.new_from_element(
+                                muc_q
+                                )
+                            data = []
+                            for i in q.get_item():
+                                data.append(
+                                    {
+                                     'jid': i.get_jid(),
+                                     'affiliation': i.get_affiliation(),
+                                     'role': i.get_role(),
+                                     'nick': i.get_nick()
+                                     }
+                                    )
+
+                            b = self._g_text_view.get_buffer()
+                            b.set_text(
+                                json.dumps(data, sort_keys=True,
+                                           indent=4, separators=(',', ': '))
+                                )
+                    else:
+                        if res == False:
+                            d = org.wayround.utils.gtk.MessageDialog(
+                                self._window,
+                                0,
+                                Gtk.MessageType.ERROR,
+                                Gtk.ButtonsType.OK,
+                                "Timeout"
+                                )
+                            d.run()
+                            d.destroy()
 
         return
 
@@ -1811,21 +1852,22 @@ List of dictionaries. Add to dictionaties only changes (delta)
                     stanza.get_objects().append(query)
 
                     res = self._stanza_processor.send(stanza, wait=None)
-                    if res.is_error():
-                        org.wayround.pyabber.misc.stanza_error_message(
-                            self._window,
-                            res,
-                            "Server Returned Error"
-                            )
-                    else:
-                        d = org.wayround.utils.gtk.MessageDialog(
-                            self._window,
-                            0,
-                            Gtk.MessageType.INFO,
-                            Gtk.ButtonsType.OK,
-                            "Processed. No Error Returned From Server."
-                            )
-                        d.run()
-                        d.destroy()
+                    if isinstance(res, org.wayround.xmpp.core.Stanza):
+                        if res.is_error():
+                            org.wayround.pyabber.misc.stanza_error_message(
+                                self._window,
+                                res,
+                                "Server Returned Error"
+                                )
+                        else:
+                            d = org.wayround.utils.gtk.MessageDialog(
+                                self._window,
+                                0,
+                                Gtk.MessageType.INFO,
+                                Gtk.ButtonsType.OK,
+                                "Processed. No Error Returned From Server."
+                                )
+                            d.run()
+                            d.destroy()
 
         return

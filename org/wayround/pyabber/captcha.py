@@ -1,4 +1,5 @@
 
+import threading
 
 from gi.repository import Gtk
 
@@ -69,6 +70,13 @@ class CAPTCHAWidget:
 
         return c
 
+    def _t_proc(self, x):
+        x['res_data'] = \
+            self._controller.client.stanza_processor.send(
+                *x['args'],
+                **x['kwargs']
+                )
+
     def _on_send_button_clicked(self, button):
 
         stanza = org.wayround.xmpp.core.Stanza(tag='iq')
@@ -78,8 +86,22 @@ class CAPTCHAWidget:
             [self.gen_stanza_subobject()]
             )
 
-        res = self._controller.client.stanza_processor.send(stanza, wait=True)
-        if res != None:
+        proc_data = {
+            'args': (stanza,),
+            'kwargs': {'wait': True}
+            }
+
+        t = threading.Thread(
+            target=self._t_proc,
+            args=(proc_data,)
+            )
+        t.start()
+
+        org.wayround.utils.gtk.Waiter.wait_thread(t)
+
+        res = proc_data['res_data']
+
+        if isinstance(res, org.wayround.xmpp.core.Stanza):
             if res.is_error():
                 org.wayround.pyabber.misc.stanza_error_message(
                     None,
@@ -93,6 +115,17 @@ class CAPTCHAWidget:
                     Gtk.MessageType.INFO,
                     Gtk.ButtonsType.OK,
                     "Processed. No Error Returned From Server."
+                    )
+                d.run()
+                d.destroy()
+        else:
+            if res == False:
+                d = org.wayround.utils.gtk.MessageDialog(
+                    None,
+                    0,
+                    Gtk.MessageType.ERROR,
+                    Gtk.ButtonsType.OK,
+                    "Timeout"
                     )
                 d.run()
                 d.destroy()

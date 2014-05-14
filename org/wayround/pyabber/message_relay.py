@@ -16,6 +16,8 @@ class MessageRelay:
             ['new_message']
             )
 
+        return
+
     def on_message(self, event, message_obj, stanza):
 
         if event == 'message':
@@ -85,6 +87,8 @@ class MessageRelay:
                 xhtml={}
                 )
 
+        return
+
     def manual_addition(
         self,
         date, receive_date, delay_from, delay_message, incomming,
@@ -147,3 +151,5 @@ class MessageRelay:
             connection_jid_obj, jid_obj, type_, parent_thread_id, thread_id,
             subject, plain, xhtml
             )
+
+        return

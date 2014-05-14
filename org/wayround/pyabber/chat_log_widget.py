@@ -314,6 +314,8 @@ class ChatLogWidget:
                 "org.wayround.pyabber.chat_pager.Chat"
                 )
 
+        self.add_record_idle = org.wayround.utils.gtk.to_idle(self.add_record)
+
         self._incomming_messages_lock = threading.Lock()
 
         with self._incomming_messages_lock:
@@ -363,9 +365,12 @@ class ChatLogWidget:
         self._last_scroll_date = None
         self.scroll_down()
 
+        self.scroll_down_idle = \
+            org.wayround.utils.gtk.to_idle(self.scroll_down)
+
         self._looped_timer = org.wayround.utils.timer.LoopedTimer(
             0.25,
-            self.scroll_down,
+            self.scroll_down_idle,
             tuple(),
             dict()
             )
