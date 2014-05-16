@@ -627,10 +627,37 @@ class GroupChat:
             rw_f = Gtk.Frame()
             rw_f.add(self._roster_widget.get_widget())
 
-            paned.add1(self._notebook)
+            muc_box_available_button = Gtk.Button("Available")
+            muc_box_available_button.connect(
+                'clicked',
+                self._on_muc_box_available_button_click
+                )
+
+            muc_box_unavailable_button = Gtk.Button("Unavailable")
+            muc_box_unavailable_button.connect(
+                'clicked',
+                self._on_muc_box_unavailable_button_click
+                )
+
+            muc_box_cust_pres_button = Gtk.Button("Custom Presence..")
+            muc_box_cust_pres_button.connect(
+                'clicked',
+                self._on_muc_box_cust_pres_button_click
+                )
+
+            muc_top_box = Gtk.Box.new(Gtk.Orientation.HORIZONTAL, 5)
+            muc_top_box.pack_start(muc_box_available_button, False, False, 0)
+            muc_top_box.pack_start(muc_box_unavailable_button, False, False, 0)
+            muc_top_box.pack_start(muc_box_cust_pres_button, False, False, 0)
+
+            bbb = Gtk.Box.new(Gtk.Orientation.VERTICAL, 5)
+            bbb.pack_start(muc_top_box, False, False, 0)
+            bbb.pack_start(self._notebook, True, True, 0)
+
+            paned.add1(bbb)
             paned.add2(rw_f)
 
-            paned.child_set_property(self._notebook, 'shrink', False)
+            paned.child_set_property(bbb, 'shrink', False)
             paned.child_set_property(rw_f, 'shrink', False)
             paned.child_set_property(rw_f, 'resize', False)
 
@@ -829,6 +856,7 @@ class GroupChat:
     def _on_tab_close_button_clicked(self, button):
         with self._lock:
             self._pager.remove_page(self)
+        return
 
     def _on_own_rename_storage_action(self, event, storage, own_nick):
         with self._lock:
@@ -841,4 +869,30 @@ class GroupChat:
                             )
                         )
                     self.set_own_resource(own_nick)
+        return
+
+    def _on_muc_box_available_button_click(self, button):
+        j = org.wayround.xmpp.core.JID.new_from_str(self.contact_bare_jid)
+        j.resource = self.contact_resource
+        self._controller.presence_client.presence(
+            to_full_or_bare_jid=str(j),
+            typ='available',
+            options=['muc']
+            )
+        return
+
+    def _on_muc_box_unavailable_button_click(self, button):
+        j = org.wayround.xmpp.core.JID.new_from_str(self.contact_bare_jid)
+        j.resource = self.contact_resource
+        self._controller.presence_client.presence(
+            to_full_or_bare_jid=str(j),
+            typ='unavailable',
+            options=['muc']
+            )
+        return
+
+    def _on_muc_box_cust_pres_button_click(self, button):
+        j = org.wayround.xmpp.core.JID.new_from_str(self.contact_bare_jid)
+        j.resource = self.contact_resource
+        self._controller.show_presence_control_window(to_=str(j))
         return

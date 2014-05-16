@@ -34,9 +34,10 @@ class ChatLogTableRow:
         b = Gtk.Box()
         b.set_orientation(Gtk.Orientation.HORIZONTAL)
         b.set_spacing(5)
-#        b.override_background_color(
-#            Gtk.StateFlags.NORMAL, Gdk.RGBA(0.9, 0.9, 0.9)
-#            )
+        b.override_background_color(
+            Gtk.StateFlags.NORMAL,
+            Gdk.RGBA(0.7, 0.7, 0.7, 1)
+            )
 
         date_label = Gtk.Label(date)
         date_label.set_alignment(0.0, 0.5)
@@ -50,26 +51,45 @@ class ChatLogTableRow:
         subject_label.override_font(font_desc)
         self._subject_label = subject_label
         subject_label.set_alignment(0.0, 0.5)
-        subject_label.set_no_show_all(True)
-        subject_label.set_margin_left(10)
+        subject_label.set_margin_left(20)
         subject_label.set_margin_right(10)
         subject_label.set_line_wrap(True)
-        subject_label.set_line_wrap_mode(Pango.WrapMode.WORD)
+        subject_label.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR)
         subject_label.set_selectable(True)
+        subject_label.set_no_show_all(True)
         subject_label.hide()
+
+        # TODO: redo those overrides to set parameters line by line
+        font_desc = Pango.FontDescription.from_string("Clean 9 bold")
+        subject_anno_label = Gtk.Label()
+        subject_anno_label.set_alignment(0.0, 0.5)
+        subject_anno_label.override_font(font_desc)
+
+        subject_box = Gtk.Box.new(Gtk.Orientation.VERTICAL, 5)
+        subject_box.override_background_color(
+            Gtk.StateFlags.NORMAL,
+            Gdk.RGBA(0.8, 0.8, 0.8, 1)
+            )
+        subject_box.set_no_show_all(True)
+        subject_box.hide()
+
+        subject_box.pack_start(subject_anno_label, False, False, 0)
+        subject_box.pack_start(subject_label, False, False, 0)
 
         if isinstance(subject, dict) and '' in subject:
             if subject[''] in ['', None]:
-                subject_label.set_text("Subject Deleted")
+                subject_anno_label.set_text("Subject Deleted")
             else:
-                subject_label.set_text(
-                    "Changed Subject to: {}".format(subject[''])
-                    )
-            subject_label.show()
+                subject_anno_label.set_text("Changed Subject")
+                subject_label.set_text(subject[''])
+                subject_label.show()
+
+            subject_anno_label.show()
+            subject_box.show()
 
         delay_label = Gtk.Label()
         delay_label.set_line_wrap(True)
-        delay_label.set_line_wrap_mode(Pango.WrapMode.WORD)
+        delay_label.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR)
         delay_label.set_selectable(True)
         delay_label.set_alignment(0.0, 0.5)
 
@@ -85,12 +105,14 @@ class ChatLogTableRow:
 
         delay_label.set_text(delayed_text)
 
+        font_desc = Pango.FontDescription.from_string("Clean 9")
+
         text_label = Gtk.Label()
         text_label.override_font(font_desc)
         self._text_label = text_label
         text_label.set_alignment(0.0, 0.0)
         text_label.set_line_wrap(True)
-        text_label.set_line_wrap_mode(Pango.WrapMode.WORD)
+        text_label.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR)
         text_label.set_selectable(True)
         text_label.set_justify(Gtk.Justification.LEFT)
         text_label.set_margin_left(10)
@@ -112,17 +134,10 @@ class ChatLogTableRow:
         mode_lang_switch_combo.pack_start(renderer_text, True)
         mode_lang_switch_combo.add_attribute(renderer_text, "text", 0)
 
-        b.pack_start(jid_label, False, False, 0)
+        b.pack_start(jid_label, False, False, 5)
         b.pack_start(date_label, False, False, 0)
         b.pack_start(mode_lang_switch_combo, False, False, 0)
-        b.pack_start(delay_label, False, False, 0)
-        bg_color = Gdk.RGBA()
-        bg_color.green = 0.8
-        bg_color.red = 0.8
-        bg_color.blue = 0.8
-        bg_color.alpha = 1
-
-        b.override_background_color(Gtk.StateFlags.NORMAL, bg_color)
+        b.pack_start(delay_label, False, False, 5)
 
         b2 = Gtk.Box()
         b2.set_margin_top(5)
@@ -136,7 +151,7 @@ class ChatLogTableRow:
             Gtk.Separator.new(Gtk.Orientation.HORIZONTAL), False, False, 0
             )
         b2.pack_start(b, False, False, 0)
-        b2.pack_start(subject_label, False, False, 0)
+        b2.pack_start(subject_box, False, False, 0)
         b2.pack_start(
             Gtk.Separator.new(Gtk.Orientation.HORIZONTAL), False, False, 0
             )

@@ -1,18 +1,17 @@
 
-import threading
 import json
 import sys
 
 from gi.repository import Gtk, Pango
 
-import lxml.etree
 import org.wayround.pyabber.misc
+import org.wayround.pyabber.muc_roster_storage
 import org.wayround.pyabber.xdata
 import org.wayround.utils.error
 import org.wayround.utils.gtk
 import org.wayround.xmpp.muc
 import org.wayround.xmpp.xdata
-import org.wayround.pyabber.muc_roster_storage
+
 
 ROLE_LISTSTORE = Gtk.ListStore(str)
 AFFILIATION_LISTSTORE = Gtk.ListStore(str)
@@ -1018,6 +1017,7 @@ class MUCPopupMenu:
 
         configure_muc_mi = Gtk.MenuItem("Configure..")
         discover_nick_mi = Gtk.MenuItem("Discover Own Nickname..")
+        register_nick_mi = Gtk.MenuItem("(un)Registration..")
 
         edit_owner_list_muc_mi = Gtk.MenuItem("Owner list..")
         edit_admin_list_muc_mi = Gtk.MenuItem("Admin List..")
@@ -1039,6 +1039,10 @@ class MUCPopupMenu:
         discover_nick_mi.connect(
             'activate',
             self._on_discover_nick_mi_activated
+            )
+        register_nick_mi.connect(
+            'activate',
+            self._on_register_nick_mi_activated
             )
 
         edit_owner_list_muc_mi.connect(
@@ -1073,6 +1077,7 @@ class MUCPopupMenu:
         menu.append(Gtk.SeparatorMenuItem())
         menu.append(configure_muc_mi)
         menu.append(discover_nick_mi)
+        menu.append(register_nick_mi)
         menu.append(Gtk.SeparatorMenuItem())
         menu.append(edit_owner_list_muc_mi)
         menu.append(edit_admin_list_muc_mi)
@@ -1279,6 +1284,14 @@ class MUCPopupMenu:
                     )
                 d.run()
                 d.destroy()
+
+        return
+
+    def _on_register_nick_mi_activated(self, menuitem):
+        self._controller.show_registration_window(
+            target_jid_obj=self._muc_jid,
+            from_jid_obj=self._controller.jid
+            )
 
         return
 

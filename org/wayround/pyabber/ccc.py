@@ -298,13 +298,7 @@ self._rel_win_ctl.set_constructor_cb(
     def _registration_window_constructor(self):
         return org.wayround.pyabber.registration.RegistrationWindow(self)
 
-    def _registration_window_threaded_constructor(self):
-        return org.wayround.pyabber.registration.RegistrationWindow(self)
-
     def _subject_edit_window_constructor(self):
-        return org.wayround.pyabber.subject_widget.SubjectEditor(self)
-
-    def _subject_edit_window_modal_constructor(self):
         return org.wayround.pyabber.subject_widget.SubjectEditor(self)
 
     def _thread_edit_window_constructor(self):
