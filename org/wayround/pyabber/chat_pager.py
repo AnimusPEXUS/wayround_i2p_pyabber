@@ -238,7 +238,7 @@ class Chat:
     def destroy(self):
 
         self._controller.message_relay.signal.disconnect(
-            self._message_relay_listener
+            self._message_relay_listener_idle
             )
 
         if self._mode == 'groupchat':

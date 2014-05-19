@@ -72,8 +72,10 @@ class JIDWidget:
         status_box.pack_start(self._ask_label, False, False, 3)
         status_box.pack_start(self._approved_label, False, False, 3)
 
-        self._title_label = Gtk.Label()
-        self._title_label.set_alignment(0, 0.5)
+#        self._title_label = Gtk.Label()
+#        self._title_label.set_alignment(0, 0.5)
+
+        self._title_button = Gtk.Button()
 
         self._jid_label = Gtk.Label()
         self._jid_label.set_ellipsize(Pango.EllipsizeMode.MIDDLE)
@@ -89,7 +91,7 @@ class JIDWidget:
         self._userpic_i.set_alignment(0.5, 0)
         self._userpic_i.set_margin_right(5)
 
-        text_info_box.pack_start(self._title_label, False, False, 0)
+        text_info_box.pack_start(self._title_button, False, False, 0)
         text_info_box.pack_start(self._jid_label, False, False, 0)
         text_info_box.pack_start(self._status_text_label, True, True, 0)
         text_info_box.pack_start(status_box, False, False, 0)
@@ -104,17 +106,9 @@ class JIDWidget:
                 controller
                 )
 
-        event_box = Gtk.EventBox()
-        event_box.add(main_box)
+        self._main_widget = main_box
 
-        event_box.show_all()
-
-        self._main_widget = event_box
-
-        event_box.connect(
-            'button-press-event',
-            self._on_widget_right_button
-            )
+        self._title_button.connect('clicked', self._on_title_button_clicked)
 
         self._roster_storage_listener_idle = \
             org.wayround.utils.gtk.to_idle(self._roster_storage_listener)
@@ -126,11 +120,7 @@ class JIDWidget:
 
         self.reload_data()
 
-        return
-
-    def _on_popup(self, box):
-
-        self._menu.show()
+        self.get_widget().show_all()
 
         return
 
@@ -146,7 +136,7 @@ class JIDWidget:
         return self._bare_jid
 
     def get_title(self):
-        return self._title_label.get_text()
+        return self._title_button.get_label()
 
     def _set_jid_data(self, jid_data):
 
@@ -206,8 +196,8 @@ class JIDWidget:
         else:
             title_label_text = bare_jid
 
-        self._title_label.set_text(title_label_text)
-        self._title_label.set_tooltip_text(title_label_text)
+        self._title_button.set_label(title_label_text)
+        self._title_button.set_tooltip_text(title_label_text)
         return
 
     def _set_jid_label(self, bare_jid):
@@ -258,19 +248,17 @@ class JIDWidget:
 
     def destroy(self):
         self._roster_storage.signal.disconnect(
-            self._roster_storage_listener
+            self._roster_storage_listener_idle
             )
         self._menu.destroy()
         self.get_widget().destroy()
 
-    def _on_widget_right_button(self, widget, event):
+    def _on_title_button_clicked(self, widget):
 
-        if event.button == Gdk.BUTTON_SECONDARY:
+        l = self._bare_jid
 
-            l = self._bare_jid
-
-            self._menu.set(l)
-            self._menu.show()
+        self._menu.set(l)
+        self._menu.show()
 
         return
 
@@ -641,7 +629,7 @@ class MUCRosterJIDWidget:
 
     def destroy(self):
         self._muc_roster_storage.signal.disconnect(
-            self._on_storage_actions
+            self._on_storage_actions_idle
             )
         self._menu.destroy()
         self._jid_menu.destroy()

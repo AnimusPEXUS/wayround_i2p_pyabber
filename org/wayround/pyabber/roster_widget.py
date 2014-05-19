@@ -53,14 +53,17 @@ class RosterWidget:
         roster_tools_box.set_orientation(Gtk.Orientation.HORIZONTAL)
         roster_tools_box.set_spacing(5)
 
-        jid_box = Gtk.Box()
+        jid_box = Gtk.FlowBox()
         self._jid_box = jid_box
         jid_box.set_orientation(Gtk.Orientation.VERTICAL)
-        jid_box.set_spacing(5)
+        jid_box.set_row_spacing(2)
+        jid_box.set_column_spacing(2)
+#        jid_box.set_spacing(2)
         jid_box.set_margin_top(5)
         jid_box.set_margin_left(5)
         jid_box.set_margin_right(5)
         jid_box.set_margin_bottom(5)
+        jid_box.set_sort_func(self._sort, None, None)
 
         jid_box_frame = Gtk.Frame()
         jid_box_sw = Gtk.ScrolledWindow()
@@ -96,7 +99,7 @@ class RosterWidget:
         self._main_widget = b
 
         self._lock = threading.Lock()
-#        self._addlock = threading.Lock()
+        self._add_remove_lock = threading.Lock()
         self._list = []
 
         self._groups_combobox.set_no_show_all(True)
@@ -297,29 +300,72 @@ class RosterWidget:
                  )
                 )
 
+        self._jid_box.invalidate_sort()
+
+#        ordering_name = \
+#            JID_ORDERING_MODEL[self._order_combobox.get_active()][0]
+#
+#        ol = []
+#        od = {}
+#        for i in self._list:
+#            _t = ''
+#            if ordering_name == 'jid':
+#                _t = i.get_jid()
+#            elif ordering_name == 'title':
+#                _t = i.get_title()
+#
+#            ol.append(_t)
+#            if not _t in od:
+#                od[_t] = []
+#            od[_t].append(i)
+#
+#        ol.sort()
+#        for i in ol:
+#            for j in od[i]:
+#                self._jid_box.reorder_child(j.get_widget(), -1)
+
+        return
+
+    def _sort(self, c1, c2, *args):
+
+        w1 = self._get_widget_obj_by_gtk_widget(c1.get_child())
+        w2 = self._get_widget_obj_by_gtk_widget(c2.get_child())
+
+        ret = 0
+
         ordering_name = \
             JID_ORDERING_MODEL[self._order_combobox.get_active()][0]
 
-        ol = []
-        od = {}
-        for i in self._list:
-            _t = ''
+        if w1 != None and w2 != None:
+            v1 = None
+            v2 = None
+
             if ordering_name == 'jid':
-                _t = i.get_jid()
+                v1 = w1.get_jid()
+                v2 = w2.get_jid()
             elif ordering_name == 'title':
-                _t = i.get_title()
+                v1 = w1.get_title()
+                v2 = w2.get_title()
 
-            ol.append(_t)
-            if not _t in od:
-                od[_t] = []
-            od[_t].append(i)
+            if v1 == v2:
+                ret = 0
+            elif v1 > v2:
+                ret = 1
+            elif v1 < v2:
+                ret = -1
+            else:
+                pass
 
-        ol.sort()
-        for i in ol:
-            for j in od[i]:
-                self._jid_box.reorder_child(j.get_widget(), -1)
+        return ret
 
-        return
+    def _get_widget_obj_by_gtk_widget(self, gtk_widget):
+
+        ret = None
+        for i in self._list:
+            if i.get_widget() == gtk_widget:
+                ret = i
+                break
+        return ret
 
     def _clear_list(self):
 
@@ -358,15 +404,19 @@ class RosterWidget:
         self._lock.acquire()
 
         if self._mode == 'grouped':
+
             self._remove_cb_signal()
+
             group = self._get_group()
 
             groups = self._roster_storage.get_groups()
             self._set_groups(groups)
 
             self._set_group(group)
+
             if self._groups_combobox.get_active() == -1:
                 self._groups_combobox.set_active(0)
+
             self._set_cb_signal()
 
         self._reload_list()
@@ -376,11 +426,11 @@ class RosterWidget:
         return
 
     def _add_or_remove(self, bare_jid, add=False):
-        if add:
-            self._add_jid_widget(bare_jid)
-        else:
-            self._remove_jid_widget(bare_jid)
-
+        with self._add_remove_lock:
+            if add:
+                self._add_jid_widget(bare_jid)
+            else:
+                self._remove_jid_widget(bare_jid)
         return
 
     def _add_jid_widget(self, bare_jid):
@@ -393,13 +443,20 @@ class RosterWidget:
                 bare_jid=bare_jid
                 )
             self._list.append(jw)
-            self._jid_box.pack_start(jw.get_widget(), False, False, 0)
+            self._jid_box.add(jw.get_widget())
 
         return
 
     def _remove_jid_widget(self, bare_jid):
+
         for i in self._list[:]:
             if i.get_jid() == bare_jid:
+
+                for j in self._jid_box.get_children()[:]:
+                    chi = self._get_widget_obj_by_gtk_widget(j)
+                    if chi != i:
+                        j.destroy()
+
                 i.destroy()
                 self._list.remove(i)
 
@@ -422,7 +479,7 @@ class RosterWidget:
 
     def _on_order_combobox_changed(self, widget):
         self._lock.acquire()
-        self._reload_list()
+        self._jid_box.invalidate_sort()
         self._lock.release()
 
         return

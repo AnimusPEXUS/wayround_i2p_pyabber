@@ -3,7 +3,7 @@ import copy
 import json
 import logging
 
-from gi.repository import Gtk
+from gi.repository import Gtk, Pango
 
 import org.wayround.pyabber.ccc
 import org.wayround.pyabber.xdata_media_element
@@ -145,7 +145,9 @@ class XDataFormWidget:
 
                 if field.has_errors():
                     d = org.wayround.utils.gtk.MessageDialog(
-                        None,
+                        org.wayround.utils.gtk.get_root_gtk_window(
+                            self.get_widget()
+                            ),
                         0,
                         Gtk.MessageType.ERROR,
                         Gtk.ButtonsType.OK,
@@ -332,6 +334,7 @@ class FieldHidden:
         for i in self._values:
             vals.append(i.get_value())
         self._w = Gtk.Label(json.dumps(vals))
+        self._w.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR)
         self._w.set_selectable(True)
 
     def get_values(self):

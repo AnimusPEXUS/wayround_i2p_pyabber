@@ -464,7 +464,7 @@ class ChatLogWidget:
 
     def destroy(self):
         self._controller.message_relay.signal.disconnect(
-            self._message_relay_listener
+            self._message_relay_listener_idle
             )
         self.get_widget().destroy()
         self._looped_timer.stop()

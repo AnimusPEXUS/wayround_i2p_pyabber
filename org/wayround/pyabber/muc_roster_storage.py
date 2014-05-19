@@ -93,16 +93,9 @@ class Storage:
             ['set', 'own_rename', 'rename']
             )
 
-#        presence_client.signal.connect(
-#            ['presence'], self._on_presence
-#            )
-
         return
 
     def destroy(self):
-#        self._presence_client.signal.disconnect(
-#            self._on_presence
-#            )
         return
 
     def get_own_resource(self):

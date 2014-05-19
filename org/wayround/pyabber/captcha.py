@@ -110,7 +110,9 @@ class CAPTCHAWidget:
                     )
             else:
                 d = org.wayround.utils.gtk.MessageDialog(
-                    None,
+                    org.wayround.utils.gtk.get_root_gtk_window(
+                        self.get_widget()
+                        ),
                     0,
                     Gtk.MessageType.INFO,
                     Gtk.ButtonsType.OK,
@@ -121,7 +123,9 @@ class CAPTCHAWidget:
         else:
             if res == False:
                 d = org.wayround.utils.gtk.MessageDialog(
-                    None,
+                    org.wayround.utils.gtk.get_root_gtk_window(
+                        self.get_widget()
+                        ),
                     0,
                     Gtk.MessageType.ERROR,
                     Gtk.ButtonsType.OK,

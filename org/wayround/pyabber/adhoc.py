@@ -116,7 +116,7 @@ class AD_HOC_Window:
 
         if not self._selected_command:
             d = org.wayround.utils.gtk.MessageDialog(
-                None,
+                self._window,
                 0,
                 Gtk.MessageType.ERROR,
                 Gtk.ButtonsType.OK,
@@ -276,7 +276,7 @@ class AD_HOC_Response_Window:
         for i in command_struct.get_xdata():
             if self._form_controller != None:
                 d = org.wayround.utils.gtk.MessageDialog(
-                    None,
+                    self._window,
                     0,
                     Gtk.MessageType.ERROR,
                     Gtk.ButtonsType.OK,
@@ -389,7 +389,7 @@ class AD_HOC_Response_Window:
 
         if not self._form_controller:
             d = org.wayround.utils.gtk.MessageDialog(
-                None,
+                self._window,
                 0,
                 Gtk.MessageType.ERROR,
                 Gtk.ButtonsType.OK,
@@ -401,7 +401,7 @@ class AD_HOC_Response_Window:
 
             if self._command_struct.get_status() != 'executing':
                 d = org.wayround.utils.gtk.MessageDialog(
-                    None,
+                    self._window,
                     0,
                     Gtk.MessageType.ERROR,
                     Gtk.ButtonsType.OK,
@@ -414,7 +414,7 @@ class AD_HOC_Response_Window:
                 x_data = self._form_controller.gen_stanza_subobject()
                 if x_data == None:
                     d = org.wayround.utils.gtk.MessageDialog(
-                        None,
+                        self._window,
                         0,
                         Gtk.MessageType.ERROR,
                         Gtk.ButtonsType.OK,

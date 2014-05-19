@@ -314,7 +314,9 @@ class XCardWidget:
 
             if error:
                 d = org.wayround.utils.gtk.MessageDialog(
-                    None,
+                    org.wayround.utils.gtk.get_root_gtk_window(
+                        self.get_widget()
+                        ),
                     0,
                     Gtk.MessageType.ERROR,
                     Gtk.ButtonsType.OK,
@@ -391,7 +393,9 @@ class XCardWidget:
             error = True
 
             d = org.wayround.utils.gtk.MessageDialog(
-                None,
+                org.wayround.utils.gtk.get_root_gtk_window(
+                    self.get_widget()
+                    ),
                 0,
                 Gtk.MessageType.ERROR,
                 Gtk.ButtonsType.OK,
@@ -580,7 +584,9 @@ class XCardWidget:
 
         if error:
             d = org.wayround.utils.gtk.MessageDialog(
-                None,
+                org.wayround.utils.gtk.get_root_gtk_window(
+                    self.get_widget()
+                    ),
                 0,
                 Gtk.MessageType.ERROR,
                 Gtk.ButtonsType.OK,

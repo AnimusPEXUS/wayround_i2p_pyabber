@@ -163,6 +163,7 @@ class RosterWindow:
             _t.set_margin_top(5)
             _t.set_margin_bottom(5)
             _l = Gtk.Label(i[1])
+            _l.set_angle(90)
 
             roster_notebook.append_page(_t, _l)
 

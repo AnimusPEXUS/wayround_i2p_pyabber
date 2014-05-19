@@ -120,7 +120,9 @@ class ValuePCDataWidgetGroup:
         if self._mode == '+':
             if len(self._subwidgets) == 0:
                 d = org.wayround.utils.gtk.MessageDialog(
-                    None,
+                    org.wayround.utils.gtk.get_root_gtk_window(
+                        self.get_widget()
+                        ),
                     0,
                     Gtk.MessageType.ERROR,
                     Gtk.ButtonsType.OK,
@@ -639,7 +641,9 @@ class ValueImageBinvalWidget:
             pb = self._value_widget.get_pixbuf()
             if not pb:
                 d = org.wayround.utils.gtk.MessageDialog(
-                    None,
+                    org.wayround.utils.gtk.get_root_gtk_window(
+                        self.get_widget()
+                        ),
                     0,
                     Gtk.MessageType.ERROR,
                     Gtk.ButtonsType.OK,
@@ -717,7 +721,9 @@ class ValueImageBinvalWidget:
             fn = d.get_filename()
             if not fn.endswith('.png'):
                 d = org.wayround.utils.gtk.MessageDialog(
-                    None,
+                    org.wayround.utils.gtk.get_root_gtk_window(
+                        self.get_widget()
+                        ),
                     0,
                     Gtk.MessageType.ERROR,
                     Gtk.ButtonsType.OK,
@@ -1017,7 +1023,9 @@ def _init_fields(inst, elements_struct, data, editable, single_box):
 
         else:
             d = org.wayround.utils.gtk.MessageDialog(
-                None,
+                org.wayround.utils.gtk.get_root_gtk_window(
+                    inst.get_widget()
+                    ),
                 0,
                 Gtk.MessageType.ERROR,
                 Gtk.ButtonsType.OK,
@@ -1070,7 +1078,9 @@ def _gen_data_fields(inst, elements_struct, data):
 
         else:
             d = org.wayround.utils.gtk.MessageDialog(
-                None,
+                org.wayround.utils.gtk.get_root_gtk_window(
+                    inst.get_widget()
+                    ),
                 0,
                 Gtk.MessageType.ERROR,
                 Gtk.ButtonsType.OK,
@@ -1105,7 +1115,9 @@ def is_EMAIL_values_error(self):
 
     if self._userid.get_deleted():
         d = org.wayround.utils.gtk.MessageDialog(
-            None,
+            org.wayround.utils.gtk.get_root_gtk_window(
+                self.get_widget()
+                ),
             0,
             Gtk.MessageType.ERROR,
             Gtk.ButtonsType.OK,
@@ -1127,7 +1139,9 @@ def is_TEL_values_error(self):
 
     if self._number.get_deleted():
         d = org.wayround.utils.gtk.MessageDialog(
-            None,
+            org.wayround.utils.gtk.get_root_gtk_window(
+                self.get_widget()
+                ),
             0,
             Gtk.MessageType.ERROR,
             Gtk.ButtonsType.OK,
@@ -1149,7 +1163,9 @@ def is_image_binval_error(self):
 
     if not self._binval.get_deleted() and not self._extval.get_deleted():
         d = org.wayround.utils.gtk.MessageDialog(
-            None,
+            org.wayround.utils.gtk.get_root_gtk_window(
+                self.get_widget()
+                ),
             0,
             Gtk.MessageType.ERROR,
             Gtk.ButtonsType.OK,
@@ -1161,7 +1177,9 @@ def is_image_binval_error(self):
 
     if self._binval.get_deleted() and self._extval.get_deleted():
         d = org.wayround.utils.gtk.MessageDialog(
-            None,
+            org.wayround.utils.gtk.get_root_gtk_window(
+                self.get_widget()
+                ),
             0,
             Gtk.MessageType.ERROR,
             Gtk.ButtonsType.OK,
@@ -1173,7 +1191,9 @@ def is_image_binval_error(self):
 
     if not self._binval.get_deleted() and self._type_.get_deleted():
         d = org.wayround.utils.gtk.MessageDialog(
-            None,
+            org.wayround.utils.gtk.get_root_gtk_window(
+                self.get_widget()
+                ),
             0,
             Gtk.MessageType.ERROR,
             Gtk.ButtonsType.OK,
@@ -1203,7 +1223,9 @@ def is_GEO_values_error(self):
 
     if ret:
         d = org.wayround.utils.gtk.MessageDialog(
-            None,
+            org.wayround.utils.gtk.get_root_gtk_window(
+                self.get_widget()
+                ),
             0,
             Gtk.MessageType.ERROR,
             Gtk.ButtonsType.OK,
@@ -1236,7 +1258,9 @@ def is_CLASS_values_error(self):
 
     if c:
         d = org.wayround.utils.gtk.MessageDialog(
-            None,
+            org.wayround.utils.gtk.get_root_gtk_window(
+                self.get_widget()
+                ),
             0,
             Gtk.MessageType.ERROR,
             Gtk.ButtonsType.OK,

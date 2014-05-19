@@ -355,7 +355,7 @@ class MUCVoiceRequestWindow:
         request_button = Gtk.Button("Request")
         request_button.connect('clicked', self._on_request_clicked)
 
-        cancel_button = Gtk.Button("Cancel")
+        cancel_button = Gtk.Button("Close")
         cancel_button.connect('clicked', self._on_cancel_clicked)
 
         mode_sw_cb.connect('changed', self._on_mode_sw_cb_changed)
@@ -457,6 +457,21 @@ class MUCVoiceRequestWindow:
             stanza,
             wait=False
             )
+
+        d = org.wayround.utils.gtk.MessageDialog(
+            self._window,
+            0,
+            Gtk.MessageType.INFO,
+            Gtk.ButtonsType.OK,
+            """\
+Request is sent
+
+Successful it or not - can't be determined.
+Wait for administrator or server reactions.
+"""
+            )
+        d.run()
+        d.destroy()
 
         return
 
@@ -810,7 +825,7 @@ class MUCConfigWindow:
 
         if not self._form_controller:
             d = org.wayround.utils.gtk.MessageDialog(
-                None,
+                self._window,
                 0,
                 Gtk.MessageType.ERROR,
                 Gtk.ButtonsType.OK,
@@ -823,7 +838,7 @@ class MUCConfigWindow:
             x_data = self._form_controller.gen_stanza_subobject()
             if x_data == None:
                 d = org.wayround.utils.gtk.MessageDialog(
-                    None,
+                    self._window,
                     0,
                     Gtk.MessageType.ERROR,
                     Gtk.ButtonsType.OK,
@@ -1256,7 +1271,8 @@ class MUCPopupMenu:
                             0,
                             Gtk.MessageType.INFO,
                             Gtk.ButtonsType.OK,
-                            "You'r have {} nickname(s) in room `{}':\n{}".format(
+                            "You'r have {} nickname(s)"
+                            " in room `{}':\n{}".format(
                                 nicks_l,
                                 jid,
                                 nicks

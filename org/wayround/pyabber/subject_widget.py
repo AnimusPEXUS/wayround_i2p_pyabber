@@ -293,7 +293,7 @@ class SubjectWidget:
 
     def destroy(self):
         self._controller.message_relay.signal.disconnect(
-            self._message_relay_listener
+            self._message_relay_listener_idle
             )
 #        self._tooltip.destroy()
         self.get_widget().destroy()
