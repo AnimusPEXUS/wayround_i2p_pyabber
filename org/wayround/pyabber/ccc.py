@@ -339,7 +339,6 @@ def show_{i}(self, *args, **kwargs):
         self.is_driven = False
         self.jid = None
         self.message_client = None
-        self.muc_client = None
         self.presence_client = None
         self.privacy_client = None
         self.roster_client = None
@@ -407,11 +406,6 @@ def show_{i}(self, *args, **kwargs):
             )
 
         self.message_client = org.wayround.xmpp.client.Message(
-            self.client,
-            self.jid
-            )
-
-        self.muc_client = org.wayround.xmpp.muc.Client(
             self.client,
             self.jid
             )
