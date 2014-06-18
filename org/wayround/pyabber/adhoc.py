@@ -149,7 +149,7 @@ class AD_HOC_Window:
                 )
 
             threading.Thread(
-                target=process_command_stanza_result,
+                target=process_command_stanza_result_idled,
                 args=(res, self._controller)
                 ).start()
 
@@ -444,7 +444,7 @@ class AD_HOC_Response_Window:
                         )
 
                     threading.Thread(
-                        target=process_command_stanza_result,
+                        target=process_command_stanza_result_idled,
                         args=(res, self._controller)
                         ).start()
 
@@ -548,3 +548,7 @@ def process_command_stanza_result(res, controller):
                         )
 
     return
+
+
+process_command_stanza_result_idled = \
+    org.wayround.utils.gtk.to_idle(process_command_stanza_result)
