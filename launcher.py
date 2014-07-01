@@ -2,7 +2,7 @@
 
 import logging
 
-logging.basicConfig(level='DEBUG')
+logging.basicConfig(level='INFO')
 
 import org.wayround.pyabber.main
 
