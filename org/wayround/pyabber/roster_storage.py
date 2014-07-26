@@ -53,14 +53,14 @@ class RosterStorage:
         return
 
     def set_resource(
-        self,
-        bare_jid,
-        resource,
-        available=None,
-        show=None,
-        status=None,
-        not_in_roster=None
-        ):
+            self,
+            bare_jid,
+            resource,
+            available=None,
+            show=None,
+            status=None,
+            not_in_roster=None
+            ):
 
         self.set_bare(
             bare_jid=bare_jid,
@@ -75,13 +75,13 @@ class RosterStorage:
             self._data[bare_jid]['full'][resource] = {}
 
         for i in [
-            'available',
-            'show',
-            'status'
-            ]:
+                'available',
+                'show',
+                'status'
+                ]:
 
             ev = eval(i)
-            if ev != None:
+            if ev is not None:
                 self._data[bare_jid]['full'][resource][i] = ev
 
             if not i in self._data[bare_jid]['full'][resource]:
@@ -100,14 +100,13 @@ class RosterStorage:
         return
 
     def set_bare(
-        self,
-        bare_jid,
-        name_or_title=None, groups=None,
-        approved=None, ask=None, subscription=None,
-        nick=None, userpic=None, available=None, show=None, status=None,
-        not_in_roster=None
-        ):
-
+            self,
+            bare_jid,
+            name_or_title=None, groups=None,
+            approved=None, ask=None, subscription=None,
+            nick=None, userpic=None, available=None, show=None, status=None,
+            not_in_roster=None
+            ):
         """
         Change indication parameters
 
@@ -126,23 +125,23 @@ class RosterStorage:
                 }
 
         for i in [
-            'name_or_title', 'groups',
-            'approved', 'ask', 'subscription',
-            'nick', 'userpic', 'available', 'show', 'status',
-            'not_in_roster'
-            ]:
+                'name_or_title', 'groups',
+                'approved', 'ask', 'subscription',
+                'nick', 'userpic', 'available', 'show', 'status',
+                'not_in_roster'
+                ]:
 
             ev = eval(i)
-            if ev != None:
+            if ev is not None:
                 self._data[bare_jid]['bare'][i] = ev
 
             if not i in self._data[bare_jid]['bare']:
                 self._data[bare_jid]['bare'][i] = None
 
-        if ask == None:
+        if ask is None:
             self._data[bare_jid]['bare']['ask'] = None
 
-        if self._data[bare_jid]['bare']['groups'] == None:
+        if self._data[bare_jid]['bare']['groups'] is None:
             self._data[bare_jid]['bare']['groups'] = set()
 
         data = self._get_data()
@@ -230,11 +229,11 @@ class RosterStorage:
 
         res = self._roster_client.get(from_jid=self._jid.full())
 
-        if res == None:
+        if res is None:
             ret = 'wrong_answer'
         else:
             if (isinstance(res, org.wayround.xmpp.core.Stanza)
-                and res.is_error()):
+                    and res.is_error()):
 
                 ret = 'error'
 
@@ -296,12 +295,12 @@ class RosterStorage:
         if event == 'presence':
 
             if not org.wayround.xmpp.muc.has_muc_elements(
-                stanza.get_element()
-                ):
+                    stanza.get_element()
+                    ):
 
                 if not stanza.get_typ() in [
-                    'unsubscribe', 'subscribed', 'unsubscribed'
-                    ]:
+                        'unsubscribe', 'subscribed', 'unsubscribed'
+                        ]:
 
                     f_jid = None
 
@@ -318,7 +317,7 @@ class RosterStorage:
                         not_in_roster = True
 
                     if (not f_jid.bare() in
-                        self.get_data()):
+                            self.get_data()):
                         not_in_roster = True
 
                     status = None
@@ -358,9 +357,9 @@ class RosterStorage:
 
                 else:
                     logging.warning(
-                "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stanza.typ is {}".format(
-                    stanza.get_typ()
-                    )
+                        "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stanza.typ is {}".format(
+                            stanza.get_typ()
+                            )
                         )
 
             else:
