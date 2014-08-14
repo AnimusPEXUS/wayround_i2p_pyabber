@@ -63,6 +63,7 @@ class RosterWidget:
         jid_box.set_margin_left(5)
         jid_box.set_margin_right(5)
         jid_box.set_margin_bottom(5)
+        jid_box.set_homogeneous(False)
         jid_box.set_sort_func(self._sort, None, None)
 
         jid_box_frame = Gtk.Frame()
@@ -218,7 +219,8 @@ class RosterWidget:
         return len(data[subject_jid_object.bare()]['bare']['groups']) == 0
 
     def _is_self(self, subject_jid_object):
-        return subject_jid_object.bare() == self._controller.jid.bare()
+        ret = subject_jid_object.bare() == self._controller.jid.bare()
+        return ret
 
     def _is_normal_contact(self, subject_jid_object):
         return (
@@ -231,7 +233,6 @@ class RosterWidget:
         self._lock.acquire()
         self._reload_list()
         self._lock.release()
-
         return
 
     def _reload_list(self):
@@ -246,58 +247,58 @@ class RosterWidget:
                 i,
                 not self._is_self(subject_jid_object) and
                 (
-                 (self._mode == 'all')
-                 or
-                 (
-                  self._mode == 'grouped'
-                  and
-                  self._is_in_current_group(subject_jid_object, data)
-                  and
-                  self._is_normal_contact(subject_jid_object)
-                  and
-                  data[i]['bare']['subscription'] == 'both'
-                  )
-                 or
-                 (
-                  self._mode == 'ungrouped'
-                  and
-                  self._is_ungrouped(subject_jid_object, data)
-                  and
-                  self._is_normal_contact(subject_jid_object)
-                  and
-                  data[i]['bare']['subscription'] == 'both'
-                  )
-                 or
-                 (
-                  self._mode == 'services'
-                  and
-                  self._is_service(subject_jid_object)
-                  )
-                 or
-                 (
-                  self._mode == 'ask'
-                  and
-                  data[i]['bare']['ask'] == True
-                  )
-                 or
-                 (
-                  self._mode == 'to'
-                  and
-                  data[i]['bare']['subscription'] == 'to'
-                  )
-                 or
-                 (
-                  self._mode == 'from'
-                  and
-                  data[i]['bare']['subscription'] == 'from'
-                  )
-                 or
-                 (
-                  self._mode == 'none'
-                  and
-                  data[i]['bare']['subscription'] == 'none'
-                  )
-                 )
+                    (self._mode == 'all')
+                    or
+                    (
+                        self._mode == 'grouped'
+                        and
+                        self._is_in_current_group(subject_jid_object, data)
+                        and
+                        self._is_normal_contact(subject_jid_object)
+                        and
+                        data[i]['bare']['subscription'] == 'both'
+                        )
+                    or
+                    (
+                        self._mode == 'ungrouped'
+                        and
+                        self._is_ungrouped(subject_jid_object, data)
+                        and
+                        self._is_normal_contact(subject_jid_object)
+                        and
+                        data[i]['bare']['subscription'] == 'both'
+                        )
+                    or
+                    (
+                        self._mode == 'services'
+                        and
+                        self._is_service(subject_jid_object)
+                        )
+                    or
+                    (
+                        self._mode == 'ask'
+                        and
+                        data[i]['bare']['ask'] == True
+                        )
+                    or
+                    (
+                        self._mode == 'to'
+                        and
+                        data[i]['bare']['subscription'] == 'to'
+                        )
+                    or
+                    (
+                        self._mode == 'from'
+                        and
+                        data[i]['bare']['subscription'] == 'from'
+                        )
+                    or
+                    (
+                        self._mode == 'none'
+                        and
+                        data[i]['bare']['subscription'] == 'none'
+                        )
+                    )
                 )
 
         self._jid_box.invalidate_sort()
@@ -336,7 +337,7 @@ class RosterWidget:
         ordering_name = \
             JID_ORDERING_MODEL[self._order_combobox.get_active()][0]
 
-        if w1 != None and w2 != None:
+        if w1 is not None and w2 is not None:
             v1 = None
             v2 = None
 
@@ -396,10 +397,10 @@ class RosterWidget:
         return
 
     def _roster_storage_listener(
-        self,
-        event, roster_storage,
-        bare_jid, resource, data, jid_data
-        ):
+            self,
+            event, roster_storage,
+            bare_jid, resource, data, jid_data
+            ):
 
         self._lock.acquire()
 
@@ -442,8 +443,14 @@ class RosterWidget:
                 roster_storage=self._roster_storage,
                 bare_jid=bare_jid
                 )
+            w = jw.get_widget()
+
             self._list.append(jw)
-            self._jid_box.add(jw.get_widget())
+            self._jid_box.add(w)
+
+            w.set_hexpand(False)
+            w.set_vexpand(False)
+
 
         return
 

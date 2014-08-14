@@ -13,23 +13,23 @@ import org.wayround.utils.gtk
 class JIDWidget:
 
     def __init__(
-        self,
-        controller, roster_storage, bare_jid
-        ):
+            self,
+            controller, roster_storage, bare_jid
+            ):
 
         if not isinstance(
-            controller,
-            org.wayround.pyabber.ccc.ClientConnectionController
-            ):
+                controller,
+                org.wayround.pyabber.ccc.ClientConnectionController
+                ):
             raise ValueError(
                 "`controller' must be "
                 "org.wayround.pyabber.ccc.ClientConnectionController"
                 )
 
         if not isinstance(
-            roster_storage,
-            org.wayround.pyabber.roster_storage.RosterStorage
-            ):
+                roster_storage,
+                org.wayround.pyabber.roster_storage.RosterStorage
+                ):
             raise ValueError(
                 "`roster_storage' must be "
                 "org.wayround.pyabber.roster_storage.RosterStorage"
@@ -71,9 +71,6 @@ class JIDWidget:
         status_box.pack_start(self._subscription_i, False, False, 0)
         status_box.pack_start(self._ask_label, False, False, 3)
         status_box.pack_start(self._approved_label, False, False, 3)
-
-#        self._title_label = Gtk.Label()
-#        self._title_label.set_alignment(0, 0.5)
 
         self._title_button = Gtk.Button()
 
@@ -127,7 +124,7 @@ class JIDWidget:
     def reload_data(self):
         jid_data = self._roster_storage.get_jid_data(self._bare_jid)
 
-        if jid_data != None:
+        if jid_data is not None:
             self._set_jid_data(jid_data)
 
         return
@@ -155,9 +152,9 @@ class JIDWidget:
         self._set_userpic_image(None)
 
     def _roster_storage_listener(
-        self,
-        roster_storage, event, bare_jid, resource, data, jid_data
-        ):
+            self,
+            roster_storage, event, bare_jid, resource, data, jid_data
+            ):
 
         if bare_jid == self._bare_jid:
             self._set_jid_data(jid_data)
@@ -191,7 +188,7 @@ class JIDWidget:
         title_label_text = ''
         if isinstance(name, str) and name != '' and not name.isspace():
             title_label_text = name
-        elif isinstance(nick, str) and nick != '' and  not nick.isspace():
+        elif isinstance(nick, str) and nick != '' and not nick.isspace():
             title_label_text = nick
         else:
             title_label_text = bare_jid
@@ -206,7 +203,7 @@ class JIDWidget:
         return
 
     def _set_status(self, value):
-        if value == None:
+        if value is None:
             value = ''
         self._status_text_label.set_text(value)
         self._status_text_label.set_tooltip_text(value)
@@ -236,7 +233,7 @@ class JIDWidget:
         return
 
     def _set_subscription(self, value):
-        if value == None:
+        if value is None:
             value = 'none'
 
         self._subscription_i.set_from_pixbuf(
@@ -268,9 +265,9 @@ class MUCRosterJIDWidgetMenu:
     def __init__(self, controller, muc_roster_storage):
 
         if not isinstance(
-            controller,
-            org.wayround.pyabber.ccc.ClientConnectionController
-            ):
+                controller,
+                org.wayround.pyabber.ccc.ClientConnectionController
+                ):
             raise ValueError(
                 "`controller' must be org.wayround.xmpp.client.XMPPC2SClient"
                 )
@@ -371,7 +368,7 @@ class MUCRosterJIDWidgetMenu:
         room_resource_jid_true_jid = storage_item.get_jid()
 
         target_jid = None
-        if room_resource_jid_true_jid != None:
+        if room_resource_jid_true_jid is not None:
             target_jid = org.wayround.xmpp.core.JID.new_from_str(
                 room_resource_jid_true_jid
                 ).bare()
@@ -514,7 +511,7 @@ class MUCRosterJIDWidget:
 
         with self._lock:
 
-            if item == None:
+            if item is None:
                 item = self._muc_roster_storage.get_item(self.get_nick())
 
             self._user_pic.set_from_pixbuf(
@@ -527,7 +524,7 @@ class MUCRosterJIDWidget:
                 org.wayround.pyabber.icondb.get('q_10x10')
                 )
 
-            if item != None:
+            if item is not None:
 
                 if item.get_nick() == self.get_nick():
                     self._set_title(self.get_nick())
@@ -537,25 +534,25 @@ class MUCRosterJIDWidget:
                     self._set_role(item.get_role())
                     self._set_jid(item.get_jid())
                     self._main_widget.set_tooltip_text(
-    """Status text: {}""".format(item.get_status())
+                        """Status text: {}""".format(item.get_status())
                         )
 
             else:
-                    self._set_available(False)
-                    self._set_show('unknown')
-                    self._main_widget.set_tooltip_text("No status")
+                self._set_available(False)
+                self._set_show('unknown')
+                self._main_widget.set_tooltip_text("No status")
 
         return
 
     def _set_title(self, value):
-        if value == None:
+        if value is None:
             value = ''
         self._title_label.set_text(value)
         self._title_label.set_tooltip_text(value)
 
     def _set_jid(self, value):
 
-        if value == None:
+        if value is None:
             self._jid_label.set_text('')
             self._jid_label.hide()
         else:
@@ -598,7 +595,7 @@ class MUCRosterJIDWidget:
 
     def _set_affiliation(self, value):
 
-        if value == None:
+        if value is None:
             value = 'unknown'
 
         self._affiliation_icon.set_from_pixbuf(
@@ -613,7 +610,7 @@ class MUCRosterJIDWidget:
 
     def _set_role(self, value):
 
-        if value == None:
+        if value is None:
             value = 'unknown'
 
         self._role_icon.set_from_pixbuf(
@@ -647,9 +644,9 @@ class MUCRosterJIDWidget:
     def _on_storage_rename(self, event, storage, nick, new_nick):
         with self._lock:
             if event == 'rename':
-                if self.get_nick() != None:
+                if self.get_nick() is not None:
                     if nick == self.get_nick():
-                        if new_nick != None:
+                        if new_nick is not None:
                             self.set_nick(new_nick)
         return
 
@@ -684,10 +681,10 @@ class MUCRosterJIDWidget:
 class GroupChatTabWidget:
 
     def __init__(
-        self,
-        room_bare_jid, own_resource, controller, muc_roster_storage,
-        presence_client, stanza_processor
-        ):
+            self,
+            room_bare_jid, own_resource, controller, muc_roster_storage,
+            presence_client, stanza_processor
+            ):
 
         self._controller = controller
         self._room_bare_jid = room_bare_jid

@@ -11,14 +11,15 @@ class ChatWindow:
     def __init__(self, controller):
 
         if not isinstance(
-            controller,
-            org.wayround.pyabber.ccc.ClientConnectionController
-            ):
+                controller,
+                org.wayround.pyabber.ccc.ClientConnectionController
+                ):
             raise ValueError(
                 "`controller' must be org.wayround.xmpp.client.XMPPC2SClient"
                 )
 
         self._controller = controller
+        # self._title = ''
 
         window = Gtk.Window()
 
@@ -41,6 +42,9 @@ class ChatWindow:
         b.pack_start(self.chat_pager.get_widget(), True, True, 0)
 
         self._window = window
+
+        self.refresh_title()
+
         return
 
     def run(self):
@@ -63,3 +67,8 @@ class ChatWindow:
 
     def get_window_widget(self):
         return self._window
+
+    def refresh_title(self):
+        j = self._controller.jid.full()
+        self._window.set_title("Chatting as `{}'".format(j))
+        return

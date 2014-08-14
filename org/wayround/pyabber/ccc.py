@@ -116,6 +116,11 @@ class ConnectionStatusMenu:
 
         return
 
+    def set_menuitem_title(self, value):
+        if self._connections_submenu_item:
+            self._connections_submenu_item.set_label(str(value))
+        return
+
     def get_widget(self):
         return self._widget
 
@@ -138,7 +143,7 @@ class ConnectionStatusMenu:
     def _on_reconnect_mi_activated(self, mi):
 
         self._client_connetion_controller.disconnect()
-        #threading.Thread(
+        # threading.Thread(
         #    target=lambda: GLib.idle_add(
         #        self._client_connetion_controller.connect
         #        ),
@@ -166,7 +171,6 @@ class ConnectionStatusMenu:
 class ClientConnectionController:
 
     def __init__(self, main, profile, preset_name):
-
         """
         :param org.wayround.pyabber.main.ProfileSession profile:
         """
@@ -196,7 +200,7 @@ class ClientConnectionController:
                     profile.data.get_connection_preset_by_name(i)
                 break
 
-        if self.preset_data == None:
+        if self.preset_data is None:
             raise ValueError(
                 "preset with name '{}' isn't found".format(preset_name)
                 )
@@ -228,10 +232,10 @@ self._rel_win_ctl.set_constructor_cb(
 
         self.self_disco_info.set_identity(
             [
-             org.wayround.xmpp.disco.IQDiscoIdentity(
-                'client', 'pc', 'pyabber'
+                org.wayround.xmpp.disco.IQDiscoIdentity(
+                    'client', 'pc', 'pyabber'
                 )
-             ]
+                ]
             )
 
 #        self.self_disco_info.set_feature(
@@ -371,6 +375,10 @@ def show_{i}(self, *args, **kwargs):
             domain=self.preset_data['server']
             )
 
+        # self.jid.signal._signals_debug = True
+
+        self.jid.signal.connect('changed', self._on_own_jid_changed)
+
         self.connection_info = self.jid.make_connection_info()
 
         self.auth_info = self.jid.make_authentication()
@@ -379,9 +387,9 @@ def show_{i}(self, *args, **kwargs):
 
         self.sock = socket.create_connection(
             (
-             self.connection_info.host,
-             self.connection_info.port
-             )
+                self.connection_info.host,
+                self.connection_info.port
+                )
             )
 
         # make non-blocking socket
@@ -463,7 +471,7 @@ def show_{i}(self, *args, **kwargs):
                 features = features_waiter.pop()
                 features_waiter.stop()
 
-                if features == None:
+                if features is None:
                     logging.error(
                         "Timedout waiting for initial server features"
                         )
@@ -472,8 +480,8 @@ def show_{i}(self, *args, **kwargs):
                     last_features = features['args'][1]
 
             if (not self._disconnection_flag.is_set()
-                and self.preset_data['starttls']
-                and ret == 0):
+                    and self.preset_data['starttls']
+                    and ret == 0):
 
                 logging.debug("Starting TLS")
 
@@ -493,15 +501,15 @@ def show_{i}(self, *args, **kwargs):
                     last_features = res
 
             if (not self._disconnection_flag.is_set()
-                and self.preset_data['register']
-                and ret == 0):
+                    and self.preset_data['register']
+                    and ret == 0):
 
                 if (
                     last_features.find(
                         '{http://jabber.org/features/iq-register}register'
                         )
-                    != None
-                    ):
+                    is not None
+                        ):
 
                     res = self.show_registration_window(
                         get_reg_form=True,
@@ -516,8 +524,8 @@ def show_{i}(self, *args, **kwargs):
                     ret = 10
 
             if (not self._disconnection_flag.is_set()
-                and self.preset_data['login']
-                and ret == 0):
+                    and self.preset_data['login']
+                    and ret == 0):
 
                 logging.debug("Logging in")
 
@@ -553,8 +561,8 @@ def show_{i}(self, *args, **kwargs):
                     last_features = res
 
             if (not self._disconnection_flag.is_set()
-                and self.preset_data['bind']
-                and ret == 0):
+                    and self.preset_data['bind']
+                    and ret == 0):
 
                 res = org.wayround.xmpp.client.bind(
                     self.client,
@@ -572,8 +580,8 @@ def show_{i}(self, *args, **kwargs):
                         )
 
             if (not self._disconnection_flag.is_set()
-                and self.preset_data['session']
-                and ret == 0):
+                    and self.preset_data['session']
+                    and ret == 0):
 
                 logging.debug("Starting session")
 
@@ -583,14 +591,14 @@ def show_{i}(self, *args, **kwargs):
                     )
 
                 if (not isinstance(res, org.wayround.xmpp.core.Stanza)
-                    or res.is_error()):
+                        or res.is_error()):
                     logging.debug("Session establishing error")
                     ret = 5
                 else:
                     logging.debug("Session established")
 
             if (not self._disconnection_flag.is_set()
-                and ret == 0):
+                    and ret == 0):
 
                 self.roster_storage = \
                     org.wayround.pyabber.roster_storage.RosterStorage(
@@ -641,10 +649,10 @@ def show_{i}(self, *args, **kwargs):
         if not self._disconnection_flag.is_set():
             self._disconnection_flag.set()
 
-            if self._rel_win_ctl != None:
+            if self._rel_win_ctl is not None:
                 self._rel_win_ctl.destroy_windows()
 
-            if self.client != None:
+            if self.client is not None:
 
                 self.client.stop()
                 logging.debug("Now waiting for client to stop...")
@@ -671,9 +679,9 @@ def show_{i}(self, *args, **kwargs):
             self.clear()
 
     def load_roster_from_server(
-        self,
-        display_errors=False, parent_window=None
-        ):
+            self,
+            display_errors=False, parent_window=None
+            ):
 
         ret, res = self.roster_storage.load_from_server()
 
@@ -794,7 +802,7 @@ def show_{i}(self, *args, **kwargs):
             ret = self.jid.bare()
 
         elif status == 'bare_to_jid':
-#            TODO: fix self.connection_info.host
+            #            TODO: fix self.connection_info.host
             ret = self.connection_info.host
 
         elif status == 'sock_streamer':
@@ -917,21 +925,21 @@ def show_{i}(self, *args, **kwargs):
         return ret
 
     def _message_relay_listener(
-        self,
-        event, storage, original_stanza,
-        date, receive_date, delay_from, delay_message, incomming,
-        connection_jid_obj, jid_obj, type_, parent_thread_id, thread_id,
-        subject, plain, xhtml
-        ):
+            self,
+            event, storage, original_stanza,
+            date, receive_date, delay_from, delay_message, incomming,
+            connection_jid_obj, jid_obj, type_, parent_thread_id, thread_id,
+            subject, plain, xhtml
+            ):
 
         with self._incomming_message_lock:
 
             if event == 'new_message':
                 if type_ in [
-                    'message_normal',
-                    'message_error',
-                    'message_headline'
-                    ]:
+                        'message_normal',
+                        'message_error',
+                        'message_headline'
+                        ]:
                     self.show_single_message_window(
                         'view',
                         original_stanza,
@@ -947,13 +955,12 @@ def show_{i}(self, *args, **kwargs):
 
                         group_chat_found = None
                         for i in cp.pages:
-                            if (type(i) == \
-                                org.wayround.pyabber.chat_pager.GroupChat
-                                and i.contact_bare_jid == jid_obj.bare()):
+                            if (isinstance(i, org.wayround.pyabber.chat_pager.GroupChat)
+                                    and i.contact_bare_jid == jid_obj.bare()):
                                 group_chat_found = i
                                 break
 
-                        if group_chat_found == None:
+                        if group_chat_found is None:
                             cp.add_chat(jid_obj, thread_id)
                         else:
                             cp.add_private(str(jid_obj))
@@ -971,7 +978,6 @@ def show_{i}(self, *args, **kwargs):
                             )
 
                     win = w.get_window_widget()
-                    win.set_title("Message from {}".format(jid_obj))
                     win.present()
 
         return
@@ -982,8 +988,8 @@ def show_{i}(self, *args, **kwargs):
 
             if event == 'presence':
                 if org.wayround.xmpp.muc.has_muc_elements(
-                    stanza.get_element()
-                    ):
+                        stanza.get_element()
+                        ):
                     message_relay_listener_call_queue = \
                         self.message_relay.signal.gen_call_queue(
                             ['new_message']
@@ -1000,4 +1006,8 @@ def show_{i}(self, *args, **kwargs):
                             )
                         )
 
+        return
+
+    def _on_own_jid_changed(self, signal, jid_obj, old_value):
+        self._menu.set_menuitem_title(self.jid.full())
         return

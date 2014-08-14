@@ -193,6 +193,13 @@ class RosterWindow:
 
         self._window = window
 
+        window.set_title(str(self._controller.jid.full()))
+        
+        self._controller.jid.signal.connect(
+            'changed', 
+            self._on_own_jid_changed
+            )
+
         return
 
     def run(self):
@@ -239,4 +246,10 @@ class RosterWindow:
 
     def _on_send_space_button_clicked(self, button):
         self._client.io_machine.send(' ')
+        return
+
+    def _on_own_jid_changed(self, signal, jid_obj, old_value):
+        rw = self._controller.jid
+        if rw:
+            self._window.set_title(rw.full())
         return
