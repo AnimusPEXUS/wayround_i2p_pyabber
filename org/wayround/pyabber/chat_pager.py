@@ -876,7 +876,6 @@ class GroupChat:
         j.resource = self.contact_resource
         self._controller.presence_client.presence(
             to_full_or_bare_jid=str(j),
-            typ='available',
             options=['muc']
             )
         return
