@@ -24,5 +24,8 @@ setup(
         'org.wayround.pyabber': [
             os.path.join('icons', '*')
             ]
+        },
+    entry_points={
+        'console_scripts': 'pyabber = org.wayround.pyeditor.launcher'
         }
     )
