@@ -7,8 +7,9 @@ from setuptools import setup
 
 setup(
     name='org_wayround_pyabber',
-    version='0.1',
-    description='XMPP Implementation',
+    version='0.1.3',
+    description='XMPP Client Implementation',
+    url='https://github.com/AnimusPEXUS/org_wayround_pyabber',
     packages=[
         'org.wayround.pyabber'
         ],
@@ -26,6 +27,6 @@ setup(
             ]
         },
     entry_points={
-        'console_scripts': 'pyabber = org.wayround.pyeditor.launcher'
+        'console_scripts': 'pyabber = org.wayround.pyabber.launcher'
         }
     )

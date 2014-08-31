@@ -5,3 +5,6 @@
 /.pydevproject
 /.project
 /.settings
+/dist
+/build
+/org_wayround_pyabber.egg-info
