@@ -4,9 +4,9 @@ import socket
 import threading
 
 from gi.repository import Gtk
+from gi.repository import Gsasl
 
 import lxml.etree
-import org.wayround.gsasl.gsasl
 import org.wayround.pyabber.adhoc
 import org.wayround.pyabber.bob
 import org.wayround.pyabber.chat_window
@@ -530,12 +530,21 @@ def show_{i}(self, *args, **kwargs):
                 logging.debug("Logging in")
 
                 if not self._simple_gsasl:
-                    self._simple_gsasl = (
-                        org.wayround.gsasl.gsasl.GSASLSimple(
-                            mechanism='DIGEST-MD5',
-                            callback=self._gsasl_cb
-                            )
+                    logging.debug("Creating GSASLSimple..")
+                    self._simple_gsasl = Gsasl.GSASLSimple.new_with_parameters(
+                        'DIGEST-MD5',
+                        'client',
+                        # ttttttttt
+                        self._gsasl_cb
                         )
+                    logging.debug("   ...created")
+                    # self._simple_gsasl.start(ttttttttt)
+                    sgsasl_res = self._simple_gsasl.start()
+                    if sgsasl_res != Gsasl.RC.OK:
+                        logging.debug("   ...error")
+                        ret = 30
+                    else:
+                        logging.debug("   ...started")
 
                 logging.debug(
                     "Passing following features to sasl driver:\n{}".format(
@@ -814,19 +823,20 @@ def show_{i}(self, *args, **kwargs):
         elif status == 'challenge':
             res = self._simple_gsasl.step64(data['text'])
 
-            if res[0] == org.wayround.gsasl.gsasl.GSASL_OK:
+            if res[0] == Gsasl.RC.OK:
                 pass
-            elif res[0] == org.wayround.gsasl.gsasl.GSASL_NEEDS_MORE:
+            elif res[0] == Gsasl.RC.NEEDS_MORE:
                 pass
             else:
                 # TODO: this is need to be hidden
                 raise Exception(
                     "step64 returned error: {}".format(
-                        org.wayround.gsasl.gsasl.strerror_name(res[0])
+                        Gsasl.strerror_name(res[0])
                         )
                     )
 
-            ret = str(res[1], 'utf-8')
+            print("returned data: {}".format(res))
+            ret = res[1]
 
         elif status == 'success':
             pass
@@ -838,23 +848,15 @@ def show_{i}(self, *args, **kwargs):
 
     def _gsasl_cb(self, context, session, prop):
 
-        # TODO: maybe all this method need to be separated and standardized
+        ret = Gsasl.RC.OK
 
-        ret = org.wayround.gsasl.gsasl.GSASL_OK
+        logging.debug("SASL client requested for: {}".format(prop))
 
-        logging.debug(
-            "SASL client requested for: {} ({}) {}".format(
-                org.wayround.gsasl.gsasl.strproperty_name(prop),
-                prop,
-                org.wayround.gsasl.gsasl.strproperty(prop)
-                )
-            )
-
-        if prop == org.wayround.gsasl.gsasl.GSASL_QOP:
+        if prop == Gsasl.Property.QOP:
 
             server_allowed_qops = str(
                 session.property_get(
-                    org.wayround.gsasl.gsasl.GSASL_QOPS
+                    Gsasl.Property.QOPS
                     ),
                 'utf-8'
                 ).split(',')
@@ -866,11 +868,11 @@ def show_{i}(self, *args, **kwargs):
                 value = 'qop-auth'
 
             session.property_set(
-                org.wayround.gsasl.gsasl.GSASL_QOP,
+                Gsasl.Property.QOP,
                 bytes(value, 'utf-8')
                 )
 
-        elif prop == org.wayround.gsasl.gsasl.GSASL_AUTHID:
+        elif prop == Gsasl.Property.AUTHID:
 
             value = None
             if self.auth_info.authid:
@@ -878,7 +880,7 @@ def show_{i}(self, *args, **kwargs):
 
             session.property_set(prop, value)
 
-        elif prop == org.wayround.gsasl.gsasl.GSASL_SERVICE:
+        elif prop == Gsasl.Property.SERVICE:
 
             value = None
             if self.auth_info.service:
@@ -886,7 +888,7 @@ def show_{i}(self, *args, **kwargs):
 
             session.property_set(prop, value)
 
-        elif prop == org.wayround.gsasl.gsasl.GSASL_HOSTNAME:
+        elif prop == Gsasl.Property.HOSTNAME:
 
             value = None
             if self.auth_info.hostname:
@@ -894,7 +896,7 @@ def show_{i}(self, *args, **kwargs):
 
             session.property_set(prop, value)
 
-        elif prop == org.wayround.gsasl.gsasl.GSASL_REALM:
+        elif prop == Gsasl.Property.REALM:
 
             value = None
             if self.auth_info.realm:
@@ -902,7 +904,7 @@ def show_{i}(self, *args, **kwargs):
 
             session.property_set(prop, value)
 
-        elif prop == org.wayround.gsasl.gsasl.GSASL_AUTHZID:
+        elif prop == Gsasl.Property.AUTHZID:
 
             value = None
             if self.auth_info.authzid:
@@ -910,7 +912,7 @@ def show_{i}(self, *args, **kwargs):
 
             session.property_set(prop, value)
 
-        elif prop == org.wayround.gsasl.gsasl.GSASL_PASSWORD:
+        elif prop == Gsasl.Property.PASSWORD:
 
             value = None
             if self.auth_info.password:
@@ -1011,3 +1013,8 @@ def show_{i}(self, *args, **kwargs):
     def _on_own_jid_changed(self, signal, jid_obj, old_value):
         self._menu.set_menuitem_title(self.jid.full())
         return
+
+
+# def ttttttttt(cont, sess, prop):
+#     print("py ttttttttt called ok: {}, {}, {}".format(cont, sess, prop))
+#     return 0
