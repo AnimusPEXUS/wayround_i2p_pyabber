@@ -59,8 +59,8 @@ class XDataFormWidget:
         b = Gtk.Box()
         b.set_margin_top(5)
         b.set_margin_bottom(5)
-        b.set_margin_left(5)
-        b.set_margin_right(5)
+        b.set_margin_start(5)
+        b.set_margin_end(5)
         b.set_spacing(5)
         sw = Gtk.ScrolledWindow()
         sw.add(b)
@@ -244,8 +244,8 @@ class XDataFormWidget:
 
         widg = specific_field_widget_controller.get_widget()
         self._fieldswgs.append(widg)
-        widg.set_margin_left(5)
-        widg.set_margin_right(5)
+        widg.set_margin_start(5)
+        widg.set_margin_end(5)
         exp = False
         if ft in EXPENDABLE_WIDGETS:
             exp = True

@@ -51,8 +51,8 @@ class ChatLogTableRow:
         subject_label.override_font(font_desc)
         self._subject_label = subject_label
         subject_label.set_alignment(0.0, 0.5)
-        subject_label.set_margin_left(20)
-        subject_label.set_margin_right(10)
+        subject_label.set_margin_start(20)
+        subject_label.set_margin_end(10)
         subject_label.set_line_wrap(True)
         subject_label.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR)
         subject_label.set_selectable(True)
@@ -115,9 +115,9 @@ class ChatLogTableRow:
         text_label.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR)
         text_label.set_selectable(True)
         text_label.set_justify(Gtk.Justification.LEFT)
-        text_label.set_margin_left(10)
+        text_label.set_margin_start(10)
         text_label.set_margin_top(10)
-        text_label.set_margin_right(10)
+        text_label.set_margin_end(10)
         text_label.set_margin_bottom(10)
         text_label.set_no_show_all(True)
 
@@ -141,8 +141,8 @@ class ChatLogTableRow:
 
         b2 = Gtk.Box()
         b2.set_margin_top(5)
-        b2.set_margin_left(5)
-        b2.set_margin_right(5)
+        b2.set_margin_start(5)
+        b2.set_margin_end(5)
         b2.set_margin_bottom(5)
         b2.set_spacing(5)
         b2.set_orientation(Gtk.Orientation.VERTICAL)

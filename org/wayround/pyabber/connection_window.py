@@ -154,8 +154,8 @@ class ConnectionMgrWindow:
         conn_table_f.set_label("Available Presets")
 
         conn_table_f2 = Gtk.Frame()
-        conn_table_f2.set_margin_left(5)
-        conn_table_f2.set_margin_right(5)
+        conn_table_f2.set_margin_start(5)
+        conn_table_f2.set_margin_end(5)
         conn_table_f2.set_margin_top(5)
         conn_table_f2.set_margin_bottom(5)
         conn_table_f2.add(sw)
@@ -163,8 +163,8 @@ class ConnectionMgrWindow:
 
         bb01 = Gtk.ButtonBox()
         bb01.set_orientation(Gtk.Orientation.HORIZONTAL)
-        bb01.set_margin_left(5)
-        bb01.set_margin_right(5)
+        bb01.set_margin_start(5)
+        bb01.set_margin_end(5)
         bb01.set_margin_top(5)
         bb01.set_margin_bottom(5)
         bb01.set_spacing(5)
@@ -459,16 +459,16 @@ class ConnectionPresetWindow:
 
         b.set_margin_top(5)
         b.set_margin_bottom(5)
-        b.set_margin_left(5)
-        b.set_margin_right(5)
+        b.set_margin_start(5)
+        b.set_margin_end(5)
 
         preset_name_ff = Gtk.Frame()
         preset_name_ff.set_label("Preset Name")
         preset_name_entry = Gtk.Entry()
         preset_name_entry.set_margin_top(5)
         preset_name_entry.set_margin_bottom(5)
-        preset_name_entry.set_margin_left(5)
-        preset_name_entry.set_margin_right(5)
+        preset_name_entry.set_margin_start(5)
+        preset_name_entry.set_margin_end(5)
         preset_name_ff.add(preset_name_entry)
         b.pack_start(preset_name_ff, False, True, 0)
 
@@ -503,8 +503,8 @@ class ConnectionPresetWindow:
         jid_grid.set_column_spacing(5)
         jid_grid.set_margin_top(5)
         jid_grid.set_margin_bottom(5)
-        jid_grid.set_margin_left(5)
-        jid_grid.set_margin_right(5)
+        jid_grid.set_margin_start(5)
+        jid_grid.set_margin_end(5)
 
         resource_switch_combobox.set_valign(Gtk.Align.CENTER)
 
@@ -531,8 +531,8 @@ class ConnectionPresetWindow:
         pwd_grid.set_column_spacing(5)
         pwd_grid.set_margin_top(5)
         pwd_grid.set_margin_bottom(5)
-        pwd_grid.set_margin_left(5)
-        pwd_grid.set_margin_right(5)
+        pwd_grid.set_margin_tart(5)
+        pwd_grid.set_margin_end(5)
 
         resource_switch_combobox_model = Gtk.ListStore(int, str)
         resource_switch_combobox_model.append([0, "Manual"])
@@ -570,8 +570,8 @@ class ConnectionPresetWindow:
         host_port_grid.set_column_spacing(5)
         host_port_grid.set_margin_top(5)
         host_port_grid.set_margin_bottom(5)
-        host_port_grid.set_margin_left(5)
-        host_port_grid.set_margin_right(5)
+        host_port_grid.set_margin_start(5)
+        host_port_grid.set_margin_end(5)
 
         connection_routines_ff = Gtk.Frame()
         connection_routines_ff.set_label("Stream Features Handling")
@@ -586,8 +586,8 @@ class ConnectionPresetWindow:
         connection_routines_grid.set_column_spacing(5)
         connection_routines_grid.set_margin_top(5)
         connection_routines_grid.set_margin_bottom(5)
-        connection_routines_grid.set_margin_left(5)
-        connection_routines_grid.set_margin_right(5)
+        connection_routines_grid.set_margin_start(5)
+        connection_routines_grid.set_margin_end(5)
 
         auto_routines_rb = Gtk.RadioButton()
         auto_routines_rb.set_label("Automatic")
@@ -625,8 +625,8 @@ class ConnectionPresetWindow:
         tls_routines_box.set_spacing(5)
         tls_routines_box.set_margin_top(5)
         tls_routines_box.set_margin_bottom(5)
-        tls_routines_box.set_margin_left(5)
-        tls_routines_box.set_margin_right(5)
+        tls_routines_box.set_margin_start(5)
+        tls_routines_box.set_margin_end(5)
 
         starttls_necessarity_mode_combobox = Gtk.ComboBox()
         starttls_necessarity_mode_combobox.set_valign(Gtk.Align.CENTER)
@@ -687,8 +687,8 @@ class ConnectionPresetWindow:
         auto_routines_grid_or_box.set_column_spacing(5)
         auto_routines_grid_or_box.set_margin_top(5)
         auto_routines_grid_or_box.set_margin_bottom(5)
-        auto_routines_grid_or_box.set_margin_left(5)
-        auto_routines_grid_or_box.set_margin_right(5)
+        auto_routines_grid_or_box.set_margin_start(5)
+        auto_routines_grid_or_box.set_margin_end(5)
 
         manual_routines_ff = Gtk.Frame()
         manual_routines_label = Gtk.Label(
@@ -700,8 +700,8 @@ class ConnectionPresetWindow:
         manual_routines_label.set_line_wrap_mode(Pango.WrapMode.WORD)
         manual_routines_label.set_margin_top(5)
         manual_routines_label.set_margin_bottom(5)
-        manual_routines_label.set_margin_left(5)
-        manual_routines_label.set_margin_right(5)
+        manual_routines_label.set_margin_start(5)
+        manual_routines_label.set_margin_end(5)
 
         manual_routines_ff.add(manual_routines_label)
 
@@ -721,8 +721,8 @@ class ConnectionPresetWindow:
 
         bb.set_margin_top(5)
         bb.set_margin_bottom(5)
-        bb.set_margin_left(5)
-        bb.set_margin_right(5)
+        bb.set_margin_start(5)
+        bb.set_margin_end(5)
 
         b.pack_start(bb, False, False, 0)
 

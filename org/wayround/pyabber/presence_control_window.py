@@ -26,8 +26,8 @@ class PresenceControlWindow:
         b.set_orientation(Gtk.Orientation.VERTICAL)
         b.set_margin_top(5)
         b.set_margin_bottom(5)
-        b.set_margin_left(5)
-        b.set_margin_right(5)
+        b.set_margin_start(5)
+        b.set_margin_end(5)
         b.set_spacing(5)
 
         bb = Gtk.ButtonBox()
@@ -75,15 +75,15 @@ class PresenceControlWindow:
         status_sw.add(status_text_view)
         status_text_view.set_margin_top(5)
         status_text_view.set_margin_bottom(5)
-        status_text_view.set_margin_left(5)
-        status_text_view.set_margin_right(5)
+        status_text_view.set_margin_start(5)
+        status_text_view.set_margin_end(5)
         status_frame.add(status_sw)
 
         to_entry = Gtk.Entry()
         to_entry.set_margin_top(5)
         to_entry.set_margin_bottom(5)
-        to_entry.set_margin_left(5)
-        to_entry.set_margin_right(5)
+        to_entry.set_margin_start(5)
+        to_entry.set_margin_end(5)
 
         to_entry.connect('changed', self._on_to_entry_changed)
 

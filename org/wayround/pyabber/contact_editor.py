@@ -31,8 +31,8 @@ class ContactEditor:
         b.set_spacing(5)
         b.set_margin_top(5)
         b.set_margin_bottom(5)
-        b.set_margin_left(5)
-        b.set_margin_right(5)
+        b.set_margin_start(5)
+        b.set_margin_end(5)
 
         jid_frame = Gtk.Frame()
         jid_frame.set_label("Jabber ID (JID)")
@@ -40,24 +40,24 @@ class ContactEditor:
         jid_entry = Gtk.Entry()
         jid_entry.set_margin_top(5)
         jid_entry.set_margin_bottom(5)
-        jid_entry.set_margin_left(5)
-        jid_entry.set_margin_right(5)
+        jid_entry.set_margin_start(5)
+        jid_entry.set_margin_end(5)
 
         jid_frame.add(jid_entry)
 
         nick_box = Gtk.Box()
         nick_box.set_margin_top(5)
         nick_box.set_margin_bottom(5)
-        nick_box.set_margin_left(5)
-        nick_box.set_margin_right(5)
+        nick_box.set_margin_start(5)
+        nick_box.set_margin_end(5)
 
         nick_frame = Gtk.Frame()
 
         nick_box.set_orientation(Gtk.Orientation.VERTICAL)
         nick_box.set_margin_top(5)
         nick_box.set_margin_bottom(5)
-        nick_box.set_margin_left(5)
-        nick_box.set_margin_right(5)
+        nick_box.set_margin_start(5)
+        nick_box.set_margin_end(5)
 
         nick_edit = Gtk.Entry()
 
@@ -76,8 +76,8 @@ class ContactEditor:
         groups_box = Gtk.Box()
         groups_box.set_margin_top(5)
         groups_box.set_margin_bottom(5)
-        groups_box.set_margin_left(5)
-        groups_box.set_margin_right(5)
+        groups_box.set_margin_start(5)
+        groups_box.set_margin_end(5)
         groups_box.set_orientation(Gtk.Orientation.HORIZONTAL)
 
         available_g_box = Gtk.Box()

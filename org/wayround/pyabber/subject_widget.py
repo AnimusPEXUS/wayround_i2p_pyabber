@@ -62,8 +62,8 @@ class SubjectEditor:
         b = Gtk.Box()
         b.set_orientation(Gtk.Orientation.VERTICAL)
         b.set_margin_top(5)
-        b.set_margin_left(5)
-        b.set_margin_right(5)
+        b.set_margin_start(5)
+        b.set_margin_end(5)
         b.set_margin_bottom(5)
         b.set_spacing(5)
 

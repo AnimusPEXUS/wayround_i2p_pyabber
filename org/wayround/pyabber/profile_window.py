@@ -17,8 +17,8 @@ class ProfileMgrWindow:
         b.set_orientation(Gtk.Orientation.VERTICAL)
         b.set_margin_top(5)
         b.set_margin_bottom(5)
-        b.set_margin_left(5)
-        b.set_margin_right(5)
+        b.set_margin_start(5)
+        b.set_margin_end(5)
 
         b2 = Gtk.Box()
         b2.set_orientation(Gtk.Orientation.HORIZONTAL)
@@ -31,8 +31,8 @@ class ProfileMgrWindow:
         bb1.set_orientation(Gtk.Orientation.VERTICAL)
         bb1.set_spacing(5)
         bb1.set_homogeneous(True)
-        bb1.set_margin_left(5)
-        bb1.set_margin_right(5)
+        bb1.set_margin_start(5)
+        bb1.set_margin_end(5)
         bb1.set_margin_top(5)
         bb1.set_margin_bottom(5)
 
@@ -75,8 +75,8 @@ class ProfileMgrWindow:
         ff2.add(profile_info_label)
         ff2.set_label("Current Profile")
 
-        profile_info_label.set_margin_left(5)
-        profile_info_label.set_margin_right(5)
+        profile_info_label.set_margin_start(5)
+        profile_info_label.set_margin_end(5)
         profile_info_label.set_margin_top(5)
         profile_info_label.set_margin_bottom(5)
         profile_info_label.set_line_wrap(True)
@@ -332,8 +332,8 @@ class ProfileWindow:
 
         b.set_margin_top(5)
         b.set_margin_bottom(5)
-        b.set_margin_left(5)
-        b.set_margin_right(5)
+        b.set_margin_start(5)
+        b.set_margin_end(5)
 
         b2 = Gtk.Grid()
 

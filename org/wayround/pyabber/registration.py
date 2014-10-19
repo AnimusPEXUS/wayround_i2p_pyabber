@@ -20,8 +20,8 @@ class RegistrationWidgetField:
 
         self.entry = Gtk.Entry()
         self.entry.set_margin_top(5)
-        self.entry.set_margin_left(5)
-        self.entry.set_margin_right(5)
+        self.entry.set_margin_start(5)
+        self.entry.set_margin_end(5)
         self.entry.set_margin_bottom(5)
         self.entry.set_text(value)
 
@@ -139,8 +139,8 @@ class RegistrationWidget:
             _w = self._xdata.get_widget()
             _f.add(_w)
             _w.set_margin_top(5)
-            _w.set_margin_left(5)
-            _w.set_margin_right(5)
+            _w.set_margin_start(5)
+            _w.set_margin_end(5)
             _w.set_margin_bottom(5)
             self._b.pack_start(_f, True, True, 0)
             self._custom_content.append(_f)
@@ -214,9 +214,9 @@ class RegistrationWindow:
         b.set_orientation(Gtk.Orientation.VERTICAL)
         b.set_spacing(5)
         b.set_margin_top(5)
-        b.set_margin_left(5)
+        b.set_margin_start(5)
         b.set_margin_bottom(5)
-        b.set_margin_right(5)
+        b.set_margin_end(5)
 
         target_cb = Gtk.CheckButton()
         self._target_cb = target_cb
@@ -225,9 +225,9 @@ class RegistrationWindow:
         target_frame.set_label_widget(target_cb)
         target_entry = Gtk.Entry()
         target_entry.set_margin_top(5)
-        target_entry.set_margin_left(5)
+        target_entry.set_margin_start(5)
         target_entry.set_margin_bottom(5)
-        target_entry.set_margin_right(5)
+        target_entry.set_margin_end(5)
         self._target_entry = target_entry
         target_frame.add(target_entry)
 
@@ -238,17 +238,17 @@ class RegistrationWindow:
         from_frame.set_label_widget(from_cb)
         from_entry = Gtk.Entry()
         from_entry.set_margin_top(5)
-        from_entry.set_margin_left(5)
+        from_entry.set_margin_start(5)
         from_entry.set_margin_bottom(5)
-        from_entry.set_margin_right(5)
+        from_entry.set_margin_end(5)
         self._from_entry = from_entry
         from_frame.add(from_entry)
 
         self._reg_widget_ins = RegistrationWidget(self._controller)
         _reg_widget_ins_widg = self._reg_widget_ins.get_widget()
         #        _reg_widget_ins_widg.set_margin_top(5)
-        #        _reg_widget_ins_widg.set_margin_left(5)
-        #        _reg_widget_ins_widg.set_margin_right(5)
+        #        _reg_widget_ins_widg.set_margin_start(5)
+        #        _reg_widget_ins_widg.set_margin_end(5)
         #        _reg_widget_ins_widg.set_margin_bottom(5)
 
         self._resolution_label = Gtk.Label()

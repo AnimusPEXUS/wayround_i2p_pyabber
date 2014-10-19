@@ -39,8 +39,8 @@ class PrivacyEditor:
 
         l_box = Gtk.Box()
         l_box.set_margin_top(5)
-        l_box.set_margin_left(5)
-        l_box.set_margin_right(5)
+        l_box.set_margin_start(5)
+        l_box.set_margin_end(5)
         l_box.set_margin_bottom(5)
         l_box.set_spacing(5)
         l_frame.add(l_box)
@@ -162,8 +162,8 @@ class PrivacyEditor:
 
         r_box = Gtk.Box()
         r_box.set_margin_top(5)
-        r_box.set_margin_left(5)
-        r_box.set_margin_right(5)
+        r_box.set_margin_start(5)
+        r_box.set_margin_end(5)
         r_box.set_margin_bottom(5)
         r_box.set_spacing(5)
         r_frame.add(r_box)
@@ -199,8 +199,8 @@ class PrivacyEditor:
         b = Gtk.Box()
         b.set_orientation(Gtk.Orientation.VERTICAL)
         b.set_margin_top(5)
-        b.set_margin_left(5)
-        b.set_margin_right(5)
+        b.set_margin_start(5)
+        b.set_margin_end(5)
         b.set_margin_bottom(5)
         b.set_spacing(5)
 
@@ -208,8 +208,8 @@ class PrivacyEditor:
         jid_box.set_orientation(Gtk.Orientation.HORIZONTAL)
         jid_box.set_margin_top(5)
         jid_box.set_margin_bottom(5)
-        jid_box.set_margin_left(5)
-        jid_box.set_margin_right(5)
+        jid_box.set_margin_start(5)
+        jid_box.set_margin_end(5)
         jid_box.set_spacing(5)
 
         jid_reload_button = Gtk.Button("(Re)Load")

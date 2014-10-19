@@ -31,8 +31,8 @@ class RosterWindow:
         b.set_orientation(Gtk.Orientation.VERTICAL)
         b.set_margin_top(5)
         b.set_margin_bottom(5)
-        b.set_margin_left(5)
-        b.set_margin_right(5)
+        b.set_margin_start(5)
+        b.set_margin_end(5)
         b.set_spacing(5)
 
         roster_tools_box = Gtk.Toolbar()
@@ -158,8 +158,8 @@ class RosterWindow:
             self._roster_widgets.append(_rw)
 
             _t = _rw.get_widget()
-            _t.set_margin_left(5)
-            _t.set_margin_right(5)
+            _t.set_margin_start(5)
+            _t.set_margin_end(5)
             _t.set_margin_top(5)
             _t.set_margin_bottom(5)
             _l = Gtk.Label(i[1])

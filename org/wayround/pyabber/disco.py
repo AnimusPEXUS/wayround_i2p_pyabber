@@ -258,8 +258,8 @@ class Disco:
         main_box.set_orientation(Gtk.Orientation.VERTICAL)
         main_box.set_margin_top(5)
         main_box.set_margin_bottom(5)
-        main_box.set_margin_left(5)
-        main_box.set_margin_right(5)
+        main_box.set_margin_start(5)
+        main_box.set_margin_end(5)
         main_box.set_spacing(5)
 
         jid_entry = Gtk.Entry()

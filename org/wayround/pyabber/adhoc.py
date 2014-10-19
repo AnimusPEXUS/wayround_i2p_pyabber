@@ -43,8 +43,8 @@ class AD_HOC_Window:
         b.set_spacing(5)
         b.set_margin_top(5)
         b.set_margin_bottom(5)
-        b.set_margin_left(5)
-        b.set_margin_right(5)
+        b.set_margin_start(5)
+        b.set_margin_end(5)
 
         sw = Gtk.ScrolledWindow()
 
@@ -56,8 +56,8 @@ class AD_HOC_Window:
         rbb.set_homogeneous(True)
         rbb.set_margin_top(5)
         rbb.set_margin_bottom(5)
-        rbb.set_margin_left(5)
-        rbb.set_margin_right(5)
+        rbb.set_margin_start(5)
+        rbb.set_margin_end(5)
 
         none_rb = Gtk.RadioButton()
         self._none_rb = none_rb
@@ -186,16 +186,16 @@ class AD_HOC_Response_Window:
         b = Gtk.Box()
         b.set_margin_top(5)
         b.set_margin_bottom(5)
-        b.set_margin_left(5)
-        b.set_margin_right(5)
+        b.set_margin_start(5)
+        b.set_margin_end(5)
         b.set_spacing(5)
         b.set_orientation(Gtk.Orientation.VERTICAL)
 
         info_box = Gtk.Grid()
         info_box.set_column_spacing(5)
-        info_box.set_margin_left(5)
+        info_box.set_margin_start(5)
         info_box.set_margin_top(5)
-        info_box.set_margin_right(5)
+        info_box.set_margin_end(5)
         info_box.set_margin_bottom(5)
 
         label = Gtk.Label("Node:")

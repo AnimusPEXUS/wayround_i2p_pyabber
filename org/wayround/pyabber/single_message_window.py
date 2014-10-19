@@ -39,8 +39,8 @@ class SingleMessageWindow:
         b0.set_spacing(5)
         b0.set_margin_top(5)
         b0.set_margin_bottom(5)
-        b0.set_margin_left(5)
-        b0.set_margin_right(5)
+        b0.set_margin_start(5)
+        b0.set_margin_end(5)
 
         b = Gtk.Box()
         b.set_orientation(Gtk.Orientation.HORIZONTAL)
@@ -60,8 +60,8 @@ class SingleMessageWindow:
         self._from_entry = from_entry
         from_entry.set_margin_top(5)
         from_entry.set_margin_bottom(5)
-        from_entry.set_margin_left(5)
-        from_entry.set_margin_right(5)
+        from_entry.set_margin_start(5)
+        from_entry.set_margin_end(5)
         from_entry.show()
 
         from_frame.add(from_entry)
@@ -75,8 +75,8 @@ class SingleMessageWindow:
         self._to_entry = to_entry
         to_entry.set_margin_top(5)
         to_entry.set_margin_bottom(5)
-        to_entry.set_margin_left(5)
-        to_entry.set_margin_right(5)
+        to_entry.set_margin_start(5)
+        to_entry.set_margin_end(5)
         to_entry.show()
 
         to_frame.add(to_entry)
@@ -103,8 +103,8 @@ class SingleMessageWindow:
         self._subject_entry = subject_entry
         subject_entry.set_margin_top(5)
         subject_entry.set_margin_bottom(5)
-        subject_entry.set_margin_left(5)
-        subject_entry.set_margin_right(5)
+        subject_entry.set_margin_start(5)
+        subject_entry.set_margin_end(5)
 
         subject_frame.add(subject_entry)
 
@@ -121,8 +121,8 @@ class SingleMessageWindow:
         thread_box = Gtk.Box()
         thread_box.set_margin_top(5)
         thread_box.set_margin_bottom(5)
-        thread_box.set_margin_left(5)
-        thread_box.set_margin_right(5)
+        thread_box.set_margin_start(5)
+        thread_box.set_margin_end(5)
         thread_box.set_orientation(Gtk.Orientation.HORIZONTAL)
         thread_box.set_spacing(5)
 
