@@ -206,7 +206,7 @@ class DiscoMenu:
 
     def _on_registration_mi_activated(self, menuitem):
 
-        self._controller.show_registration_window_threaded(
+        self._controller.show_registration_window(
             target_jid_obj=org.wayround.xmpp.core.JID.new_from_str(
                 self._target_jid_str
                 ),

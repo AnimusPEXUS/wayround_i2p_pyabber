@@ -835,7 +835,6 @@ def show_{i}(self, *args, **kwargs):
                         )
                     )
 
-            print("returned data: {}".format(res))
             ret = res[1]
 
         elif status == 'success':
@@ -910,7 +909,8 @@ def show_{i}(self, *args, **kwargs):
             if self.auth_info.authzid:
                 value = bytes(self.auth_info.authzid, 'utf-8')
 
-            session.property_set(prop, value)
+            if value is not None:
+                session.property_set(prop, value)
 
         elif prop == Gsasl.Property.PASSWORD:
 
