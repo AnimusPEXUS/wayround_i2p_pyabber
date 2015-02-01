@@ -7,4 +7,4 @@
 /.settings
 /dist
 /build
-/org_wayround_pyabber.egg-info
+/*.egg-info

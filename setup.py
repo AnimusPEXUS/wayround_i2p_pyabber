@@ -6,27 +6,27 @@ from setuptools import setup
 
 
 setup(
-    name='org_wayround_pyabber',
+    name='wayround_org_pyabber',
     version='0.1.3',
     description='XMPP Client Implementation',
-    url='https://github.com/AnimusPEXUS/org_wayround_pyabber',
+    url='https://github.com/AnimusPEXUS/wayround_org_pyabber',
     packages=[
-        'org.wayround.pyabber'
+        'wayround_org.pyabber'
         ],
     install_requires=[
-        'org_wayround_utils',
-        'org_wayround_xmpp'
+        'wayround_org_utils',
+        'wayround_org_xmpp'
         ],
     classifiers=[
         'License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',
         'Operating System :: POSIX'
         ],
     package_data={
-        'org.wayround.pyabber': [
+        'wayround_org.pyabber': [
             os.path.join('icons', '*')
             ]
         },
     entry_points={
-        'console_scripts': 'pyabber = org.wayround.pyabber.launcher'
+        'console_scripts': 'pyabber = wayround_org.pyabber.launcher'
         }
     )
