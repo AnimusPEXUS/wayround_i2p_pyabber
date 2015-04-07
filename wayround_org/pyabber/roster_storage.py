@@ -362,6 +362,8 @@ class RosterStorage:
                             )
                         )
                     # TODO: WARNING:root:!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stanza.typ is subscribed
+                    # TODO: WARNING:root:!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stanza.typ is unsubscribe
+                    # TODO: WARNING:root:!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stanza.typ is unsubscribed
 
             else:
                 f_jid = wayround_org.xmpp.core.JID.new_from_str(

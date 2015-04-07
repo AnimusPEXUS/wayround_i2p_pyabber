@@ -380,6 +380,10 @@ def show_{i}(self, *args, **kwargs):
         self.jid.signal.connect('changed', self._on_own_jid_changed)
 
         self.connection_info = self.jid.make_connection_info()
+        
+        if self.preset_data['manual_host_and_port']:
+            self.connection_info.host = self.preset_data['host']
+            self.connection_info.port = int(self.preset_data['port'])
 
         self.auth_info = self.jid.make_authentication()
 
@@ -456,7 +460,9 @@ def show_{i}(self, *args, **kwargs):
 
         self.client.start(
             from_jid=self.jid.bare(),
-            to_jid=self.connection_info.host
+            to_jid=self.jid.domain
+            # TODO: with this custom host does not work
+            # to_jid=self.connection_info.host
             )
         self.client.wait('working')
 

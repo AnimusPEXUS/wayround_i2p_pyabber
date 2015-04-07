@@ -8,9 +8,8 @@ import wayround_org.utils.path
 
 def open_pfl(filename, password):
     ret = wayround_org.pyabber.storage.Storage(
-        'sqlite:///{}'.format(filename),
-        connect_args={'check_same_thread': False},
-        echo=False
+        'sqlite:///{}'.format(filename)
+        #, connect_args={'check_same_thread': False}
         )
     ret.create()
     return ret

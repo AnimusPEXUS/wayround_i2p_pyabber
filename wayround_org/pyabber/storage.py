@@ -15,333 +15,349 @@ import wayround_org.xmpp.bob
 
 class StorageDB(wayround_org.utils.db.BasicDB):
 
-    Base = sqlalchemy.ext.declarative.declarative_base()
+    def init_table_mappings(self, init_table_data):
 
-    class MessagesLastRead(Base):
+        class MessagesLastRead(self.decl_base):
 
-        __tablename__ = 'messages_last_read'
+            __tablename__ = 'messages_last_read'
 
-        id_ = sqlalchemy.Column(
-            name='id',
-            type_=sqlalchemy.Integer,
-            primary_key=True,
-            autoincrement=True
-            )
+            id_ = sqlalchemy.Column(
+                name='id',
+                type_=sqlalchemy.Integer,
+                primary_key=True,
+                autoincrement=True
+                )
 
-        connection_bare_jid = sqlalchemy.Column(
-            type_=sqlalchemy.UnicodeText,
-            nullable=False
-            )
+            connection_bare_jid = sqlalchemy.Column(
+                type_=sqlalchemy.UnicodeText,
+                nullable=False
+                )
 
-        connection_jid_resource = sqlalchemy.Column(
-            type_=sqlalchemy.UnicodeText,
-            nullable=True
-            )
+            connection_jid_resource = sqlalchemy.Column(
+                type_=sqlalchemy.UnicodeText,
+                nullable=True
+                )
 
-        bare_jid = sqlalchemy.Column(
-            type_=sqlalchemy.UnicodeText,
-            nullable=False
-            )
+            bare_jid = sqlalchemy.Column(
+                type_=sqlalchemy.UnicodeText,
+                nullable=False
+                )
 
-        jid_resource = sqlalchemy.Column(
-            type_=sqlalchemy.UnicodeText,
-            nullable=True
-            )
+            jid_resource = sqlalchemy.Column(
+                type_=sqlalchemy.UnicodeText,
+                nullable=True
+                )
 
-        date = sqlalchemy.Column(
-            type_=sqlalchemy.DateTime,
-            nullable=True,
-            default=None
-            )
+            date = sqlalchemy.Column(
+                type_=sqlalchemy.DateTime,
+                nullable=True,
+                default=None
+                )
 
-    class History(Base):
+        self.MessagesLastRead = MessagesLastRead
 
-        __tablename__ = 'history'
+        class History(self.decl_base):
 
-        id_ = sqlalchemy.Column(
-            name='id',
-            type_=sqlalchemy.Integer,
-            primary_key=True,
-            autoincrement=True
-            )
+            __tablename__ = 'history'
 
-        date = sqlalchemy.Column(
-            type_=sqlalchemy.DateTime,
-            nullable=False,
-            default=datetime.datetime(1, 1, 1),
-            index=True
-            )
+            id_ = sqlalchemy.Column(
+                name='id',
+                type_=sqlalchemy.Integer,
+                primary_key=True,
+                autoincrement=True
+                )
 
-        receive_date = sqlalchemy.Column(
-            type_=sqlalchemy.DateTime,
-            nullable=False,
-            default=datetime.datetime(1, 1, 1),
-            index=True
-            )
+            date = sqlalchemy.Column(
+                type_=sqlalchemy.DateTime,
+                nullable=False,
+                default=datetime.datetime(1, 1, 1),
+                index=True
+                )
 
-        delay_from = sqlalchemy.Column(
-            type_=sqlalchemy.UnicodeText,
-            nullable=True,
-            index=True
-            )
+            receive_date = sqlalchemy.Column(
+                type_=sqlalchemy.DateTime,
+                nullable=False,
+                default=datetime.datetime(1, 1, 1),
+                index=True
+                )
 
-        delay_message = sqlalchemy.Column(
-            type_=sqlalchemy.UnicodeText,
-            nullable=True,
-            index=True
-            )
+            delay_from = sqlalchemy.Column(
+                type_=sqlalchemy.UnicodeText,
+                nullable=True,
+                index=True
+                )
 
-        incomming = sqlalchemy.Column(
-            type_=sqlalchemy.Boolean,
-            nullable=False,
-            default=True
-            )
+            delay_message = sqlalchemy.Column(
+                type_=sqlalchemy.UnicodeText,
+                nullable=True,
+                index=True
+                )
 
-        connection_bare_jid = sqlalchemy.Column(
-            type_=sqlalchemy.UnicodeText,
-            nullable=False,
-            index=True
-            )
+            incomming = sqlalchemy.Column(
+                type_=sqlalchemy.Boolean,
+                nullable=False,
+                default=True
+                )
 
-        connection_jid_resource = sqlalchemy.Column(
-            type_=sqlalchemy.UnicodeText,
-            nullable=True,
-            index=True
-            )
+            connection_bare_jid = sqlalchemy.Column(
+                type_=sqlalchemy.UnicodeText,
+                nullable=False,
+                index=True
+                )
 
-        bare_jid = sqlalchemy.Column(
-            type_=sqlalchemy.UnicodeText,
-            nullable=False,
-            index=True
-            )
+            connection_jid_resource = sqlalchemy.Column(
+                type_=sqlalchemy.UnicodeText,
+                nullable=True,
+                index=True
+                )
 
-        jid_resource = sqlalchemy.Column(
-            type_=sqlalchemy.UnicodeText,
-            nullable=True,
-            index=True
-            )
+            bare_jid = sqlalchemy.Column(
+                type_=sqlalchemy.UnicodeText,
+                nullable=False,
+                index=True
+                )
 
-        type_ = sqlalchemy.Column(
-            name='type',
-            type_=sqlalchemy.String(length=10),
-            nullable=False,
-            default=''
-            )
+            jid_resource = sqlalchemy.Column(
+                type_=sqlalchemy.UnicodeText,
+                nullable=True,
+                index=True
+                )
 
-        parent_thread_id = sqlalchemy.Column(
-            type_=sqlalchemy.UnicodeText,
-            nullable=True
-            )
+            type_ = sqlalchemy.Column(
+                name='type',
+                type_=sqlalchemy.String(length=10),
+                nullable=False,
+                default=''
+                )
 
-        thread_id = sqlalchemy.Column(
-            type_=sqlalchemy.UnicodeText,
-            nullable=True
-            )
+            parent_thread_id = sqlalchemy.Column(
+                type_=sqlalchemy.UnicodeText,
+                nullable=True
+                )
 
-        subject = sqlalchemy.Column(
-            type_=sqlalchemy.PickleType,
-            nullable=False
-            )
+            thread_id = sqlalchemy.Column(
+                type_=sqlalchemy.UnicodeText,
+                nullable=True
+                )
 
-        plain = sqlalchemy.Column(
-            type_=sqlalchemy.PickleType,
-            nullable=False
-            )
+            subject = sqlalchemy.Column(
+                type_=sqlalchemy.PickleType,
+                nullable=False
+                )
 
-        xhtml = sqlalchemy.Column(
-            type_=sqlalchemy.PickleType,
-            nullable=False
-            )
+            plain = sqlalchemy.Column(
+                type_=sqlalchemy.PickleType,
+                nullable=False
+                )
 
-    class ConnectionPreset(Base):
+            xhtml = sqlalchemy.Column(
+                type_=sqlalchemy.PickleType,
+                nullable=False
+                )
 
-        __tablename__ = 'connection_presets'
+        self.History = History
 
-        name = sqlalchemy.Column(
-            type_=sqlalchemy.UnicodeText,
-            nullable=False,
-            primary_key=True,
-            )
+        class ConnectionPreset(self.decl_base):
 
-        username = sqlalchemy.Column(
-            type_=sqlalchemy.UnicodeText,
-            nullable=False
-            )
+            __tablename__ = 'connection_presets'
 
-        server = sqlalchemy.Column(
-            type_=sqlalchemy.UnicodeText,
-            nullable=False
-            )
+            name = sqlalchemy.Column(
+                type_=sqlalchemy.UnicodeText,
+                nullable=False,
+                primary_key=True,
+                )
 
-        resource_mode = sqlalchemy.Column(
-            type_=sqlalchemy.UnicodeText,
-            nullable=False,
-            default='client'
-            )
+            username = sqlalchemy.Column(
+                type_=sqlalchemy.UnicodeText,
+                nullable=False
+                )
 
-        resource = sqlalchemy.Column(
-            type_=sqlalchemy.UnicodeText,
-            nullable=False
-            )
+            server = sqlalchemy.Column(
+                type_=sqlalchemy.UnicodeText,
+                nullable=False
+                )
 
-        password = sqlalchemy.Column(
-            type_=sqlalchemy.UnicodeText,
-            nullable=False,
-            default='123'
-            )
+            resource_mode = sqlalchemy.Column(
+                type_=sqlalchemy.UnicodeText,
+                nullable=False,
+                default='client'
+                )
 
-        password2 = sqlalchemy.Column(
-            type_=sqlalchemy.UnicodeText,
-            nullable=False,
-            default='1234'
-            )
+            resource = sqlalchemy.Column(
+                type_=sqlalchemy.UnicodeText,
+                nullable=False
+                )
 
-        manual_host_and_port = sqlalchemy.Column(
-            type_=sqlalchemy.Boolean,
-            nullable=False,
-            default=False
-            )
+            password = sqlalchemy.Column(
+                type_=sqlalchemy.UnicodeText,
+                nullable=False,
+                default='123'
+                )
 
-        host = sqlalchemy.Column(
-            type_=sqlalchemy.UnicodeText,
-            nullable=False,
-            default=''
-            )
+            password2 = sqlalchemy.Column(
+                type_=sqlalchemy.UnicodeText,
+                nullable=False,
+                default='1234'
+                )
 
-        port = sqlalchemy.Column(
-            type_=sqlalchemy.BigInteger,
-            nullable=False,
-            default=5222
-            )
+            manual_host_and_port = sqlalchemy.Column(
+                type_=sqlalchemy.Boolean,
+                nullable=False,
+                default=False
+                )
 
-        stream_features_handling = sqlalchemy.Column(
-            type_=sqlalchemy.UnicodeText,
-            nullable=False,
-            default='auto'
-            )
+            host = sqlalchemy.Column(
+                type_=sqlalchemy.UnicodeText,
+                nullable=False,
+                default=''
+                )
 
-        starttls = sqlalchemy.Column(
-            type_=sqlalchemy.Boolean,
-            nullable=False,
-            default=True
-            )
+            port = sqlalchemy.Column(
+                type_=sqlalchemy.BigInteger,
+                nullable=False,
+                default=5222
+                )
 
-        starttls_necessarity_mode = sqlalchemy.Column(
-            type_=sqlalchemy.UnicodeText,
-            nullable=False,
-            default='necessary'
-            )
+            stream_features_handling = sqlalchemy.Column(
+                type_=sqlalchemy.UnicodeText,
+                nullable=False,
+                default='auto'
+                )
 
-        cert_verification_mode = sqlalchemy.Column(
-            type_=sqlalchemy.UnicodeText,
-            nullable=False,
-            default='can_selfsigned'
-            )
+            starttls = sqlalchemy.Column(
+                type_=sqlalchemy.Boolean,
+                nullable=False,
+                default=True
+                )
 
-        register = sqlalchemy.Column(
-            type_=sqlalchemy.Boolean,
-            nullable=False,
-            default=False
-            )
+            starttls_necessarity_mode = sqlalchemy.Column(
+                type_=sqlalchemy.UnicodeText,
+                nullable=False,
+                default='necessary'
+                )
 
-        login = sqlalchemy.Column(
-            type_=sqlalchemy.Boolean,
-            nullable=False,
-            default=True
-            )
+            cert_verification_mode = sqlalchemy.Column(
+                type_=sqlalchemy.UnicodeText,
+                nullable=False,
+                default='can_selfsigned'
+                )
 
-        bind = sqlalchemy.Column(
-            type_=sqlalchemy.Boolean,
-            nullable=False,
-            default=True
-            )
+            register = sqlalchemy.Column(
+                type_=sqlalchemy.Boolean,
+                nullable=False,
+                default=False
+                )
 
-        session = sqlalchemy.Column(
-            type_=sqlalchemy.Boolean,
-            nullable=False,
-            default=True
-            )
+            login = sqlalchemy.Column(
+                type_=sqlalchemy.Boolean,
+                nullable=False,
+                default=True
+                )
 
-    class BoBCache(Base):
+            bind = sqlalchemy.Column(
+                type_=sqlalchemy.Boolean,
+                nullable=False,
+                default=True
+                )
 
-        __tablename__ = 'bob_cache'
+            session = sqlalchemy.Column(
+                type_=sqlalchemy.Boolean,
+                nullable=False,
+                default=True
+                )
 
-        id_ = sqlalchemy.Column(
-            name='id',
-            type_=sqlalchemy.Integer,
-            primary_key=True,
-            autoincrement=True
-            )
+        self.ConnectionPreset = ConnectionPreset
 
-        date = sqlalchemy.Column(
-            type_=sqlalchemy.DateTime,
-            nullable=False,
-            default=datetime.datetime(1, 1, 1),
-            index=True
-            )
+        class BoBCache(self.decl_base):
 
-        maxage = sqlalchemy.Column(
-            type_=sqlalchemy.Integer,
-            nullable=False,
-            default=0
-            )
+            __tablename__ = 'bob_cache'
 
-        type_ = sqlalchemy.Column(
-            name='type',
-            type_=sqlalchemy.UnicodeText,
-            nullable=True,
-            index=True
-            )
+            id_ = sqlalchemy.Column(
+                name='id',
+                type_=sqlalchemy.Integer,
+                primary_key=True,
+                autoincrement=True
+                )
 
-        sha1 = sqlalchemy.Column(
-            type_=sqlalchemy.UnicodeText,
-            nullable=False,
-            index=True
-            )
+            date = sqlalchemy.Column(
+                type_=sqlalchemy.DateTime,
+                nullable=False,
+                default=datetime.datetime(1, 1, 1),
+                index=True
+                )
 
-        data = sqlalchemy.Column(
-            type_=sqlalchemy.LargeBinary,
-            nullable=True
-            )
+            maxage = sqlalchemy.Column(
+                type_=sqlalchemy.Integer,
+                nullable=False,
+                default=0
+                )
 
-    class VCard(Base):
+            type_ = sqlalchemy.Column(
+                name='type',
+                type_=sqlalchemy.UnicodeText,
+                nullable=True,
+                index=True
+                )
 
-        __tablename__ = 'vcard'
+            sha1 = sqlalchemy.Column(
+                type_=sqlalchemy.UnicodeText,
+                nullable=False,
+                index=True
+                )
 
-        id_ = sqlalchemy.Column(
-            name='id',
-            type_=sqlalchemy.Integer,
-            primary_key=True,
-            autoincrement=True
-            )
+            data = sqlalchemy.Column(
+                type_=sqlalchemy.LargeBinary,
+                nullable=True
+                )
 
-        connection_bare_jid = sqlalchemy.Column(
-            type_=sqlalchemy.UnicodeText,
-            nullable=False,
-            index=True
-            )
+        self.BoBCache = BoBCache
 
-        bare_jid = sqlalchemy.Column(
-            type_=sqlalchemy.UnicodeText,
-            nullable=False,
-            index=True
-            )
+        class VCard(self.decl_base):
 
-        version = sqlalchemy.Column(
-            type_=sqlalchemy.DateTime,
-            nullable=False,
-            index=True
-            )
+            __tablename__ = 'vcard'
 
-        photo = sqlalchemy.Column(
-            type_=sqlalchemy.LargeBinary,
-            nullable=True
-            )
+            id_ = sqlalchemy.Column(
+                name='id',
+                type_=sqlalchemy.Integer,
+                primary_key=True,
+                autoincrement=True
+                )
 
-        data = sqlalchemy.Column(
-            type_=sqlalchemy.PickleType,
-            nullable=True
-            )
+            connection_bare_jid = sqlalchemy.Column(
+                type_=sqlalchemy.UnicodeText,
+                nullable=False,
+                index=True
+                )
+
+            bare_jid = sqlalchemy.Column(
+                type_=sqlalchemy.UnicodeText,
+                nullable=False,
+                index=True
+                )
+
+            version = sqlalchemy.Column(
+                type_=sqlalchemy.DateTime,
+                nullable=False,
+                index=True
+                )
+
+            photo = sqlalchemy.Column(
+                type_=sqlalchemy.LargeBinary,
+                nullable=True
+                )
+
+            data = sqlalchemy.Column(
+                type_=sqlalchemy.PickleType,
+                nullable=True
+                )
+
+        self.VCard = VCard
+
+        # TODO: I don't like this naming but this is for quick fix when I re
+        #       done BasicDB class in utils/db.py
+        self.Base = self.decl_base
+
+        return
 
 #        for i in [
 #            'source', 'kind', 'xml', 'fn', 'n', 'nickname', 'photo', 'bday',
@@ -352,65 +368,6 @@ class StorageDB(wayround_org.utils.db.BasicDB):
 #            ]:
 
 
-CONNECTION_PRESET_FIELDS = \
-    wayround_org.utils.types.attrs_dict_to_object_same_names(
-        wayround_org.utils.sqlalchemy.get_column_names(
-            StorageDB.Base.metadata,
-            'connection_presets'
-            )
-        )
-
-HISTORY_RECORD_FIELDS = \
-    wayround_org.utils.types.attrs_dict_to_object_same_names(
-        wayround_org.utils.sqlalchemy.get_column_names(
-            StorageDB.Base.metadata,
-            'history'
-            )
-        )
-
-
-for i in HISTORY_RECORD_FIELDS[:]:
-    if i[0] == 'id':
-        HISTORY_RECORD_FIELDS.remove(i)
-        HISTORY_RECORD_FIELDS.append(('id_', 'id_',))
-
-    if i[0] == 'type':
-        HISTORY_RECORD_FIELDS.remove(i)
-        HISTORY_RECORD_FIELDS.append(('type_', 'type_',))
-
-del i
-
-
-BOB_CACHE_FIELDS = \
-    wayround_org.utils.types.attrs_dict_to_object_same_names(
-        wayround_org.utils.sqlalchemy.get_column_names(
-            StorageDB.Base.metadata,
-            'bob_cache'
-            )
-        )
-
-for i in BOB_CACHE_FIELDS[:]:
-    if i[0] == 'id':
-        BOB_CACHE_FIELDS.remove(i)
-        BOB_CACHE_FIELDS.append(('id_', 'id_',))
-
-    if i[0] == 'type':
-        BOB_CACHE_FIELDS.remove(i)
-        BOB_CACHE_FIELDS.append(('type_', 'type_',))
-
-
-VCARD_FIELDS = \
-    wayround_org.utils.types.attrs_dict_to_object_same_names(
-        wayround_org.utils.sqlalchemy.get_column_names(
-            StorageDB.Base.metadata,
-            'vcard'
-            )
-        )
-
-for i in VCARD_FIELDS[:]:
-    if i[0] == 'id':
-        VCARD_FIELDS.remove(i)
-        VCARD_FIELDS.append(('id_', 'id_',))
 
 
 class Storage:
@@ -419,11 +376,73 @@ class Storage:
         self.signal = wayround_org.utils.threading.Signal(
             self,
             [
-             'history_update'
-             ]
+                'history_update'
+                ]
             )
-        self._db = StorageDB(*args, **kwargs)
 
+        self._db = StorageDB(*args, **kwargs)
+                
+        self.CONNECTION_PRESET_FIELDS = \
+            wayround_org.utils.types.attrs_dict_to_object_same_names(
+                wayround_org.utils.sqlalchemy.get_column_names(
+                    self._db.Base.metadata,
+                    'connection_presets'
+                    )
+                )
+
+        self.HISTORY_RECORD_FIELDS = \
+            wayround_org.utils.types.attrs_dict_to_object_same_names(
+                wayround_org.utils.sqlalchemy.get_column_names(
+                    self._db.Base.metadata,
+                    'history'
+                    )
+                )
+
+
+        for i in self.HISTORY_RECORD_FIELDS[:]:
+            if i[0] == 'id':
+                self.HISTORY_RECORD_FIELDS.remove(i)
+                self.HISTORY_RECORD_FIELDS.append(('id_', 'id_',))
+
+            if i[0] == 'type':
+                self.HISTORY_RECORD_FIELDS.remove(i)
+                self.HISTORY_RECORD_FIELDS.append(('type_', 'type_',))
+
+
+
+        self.BOB_CACHE_FIELDS = \
+            wayround_org.utils.types.attrs_dict_to_object_same_names(
+                wayround_org.utils.sqlalchemy.get_column_names(
+                    self._db.Base.metadata,
+                    'bob_cache'
+                    )
+                )
+
+        for i in self.BOB_CACHE_FIELDS[:]:
+            if i[0] == 'id':
+                self.BOB_CACHE_FIELDS.remove(i)
+                self.BOB_CACHE_FIELDS.append(('id_', 'id_',))
+
+            if i[0] == 'type':
+                self.BOB_CACHE_FIELDS.remove(i)
+                self.BOB_CACHE_FIELDS.append(('type_', 'type_',))
+
+
+        self.VCARD_FIELDS = \
+            wayround_org.utils.types.attrs_dict_to_object_same_names(
+                wayround_org.utils.sqlalchemy.get_column_names(
+                    self._db.Base.metadata,
+                    'vcard'
+                    )
+                )
+
+        for i in self.VCARD_FIELDS[:]:
+            if i[0] == 'id':
+                self.VCARD_FIELDS.remove(i)
+                self.VCARD_FIELDS.append(('id_', 'id_',))
+        
+        del i
+        
         self._lock = threading.RLock()
 
         self._cleaning_bob = False
@@ -444,9 +463,9 @@ class Storage:
     destroy = close
 
     def _get_message_last_read_date(
-        self,
-        connection_jid_obj, jid_obj
-        ):
+            self,
+            connection_jid_obj, jid_obj
+            ):
 
         ret = None
 
@@ -458,13 +477,13 @@ class Storage:
         res = self._db.session.query(self._db.MessagesLastRead).\
             filter(
                 self._db.MessagesLastRead.connection_bare_jid
-                    == connection_bare_jid,
+            == connection_bare_jid,
                 self._db.MessagesLastRead.connection_jid_resource
-                    == connection_jid_resource,
+            == connection_jid_resource,
                 self._db.MessagesLastRead.bare_jid == bare_jid,
                 self._db.MessagesLastRead.jid_resource == jid_resource
                 ).\
-                all()
+            all()
 
         n = None
 
@@ -494,9 +513,9 @@ class Storage:
         return ret
 
     def get_message_last_read_date(
-        self,
-        connection_jid_obj, jid_obj
-        ):
+            self,
+            connection_jid_obj, jid_obj
+            ):
 
         with self._lock:
 
@@ -508,7 +527,7 @@ class Storage:
                     connection_jid_obj,
                     jid_obj
                     )
-                if res != None:
+                if res is not None:
                     ret = res.date
 
             except:
@@ -517,10 +536,10 @@ class Storage:
         return ret
 
     def set_message_last_read_date(
-        self,
-        connection_jid_obj, jid_obj,
-        date
-        ):
+            self,
+            connection_jid_obj, jid_obj,
+            date
+            ):
 
         with self._lock:
 
@@ -539,11 +558,11 @@ class Storage:
         return
 
     def add_history_record(
-        self,
-        date, receive_date, delay_from, delay_message, incomming,
-        connection_jid_obj, jid_obj, type_, parent_thread_id, thread_id,
-        subject, plain, xhtml
-        ):
+            self,
+            date, receive_date, delay_from, delay_message, incomming,
+            connection_jid_obj, jid_obj, type_, parent_thread_id, thread_id,
+            subject, plain, xhtml
+            ):
 
         with self._lock:
 
@@ -555,11 +574,11 @@ class Storage:
                 jid_resource = jid_obj.resource
 
                 if self._is_history_record_already_in(
-                    date,
-                    connection_bare_jid, connection_jid_resource,
-                    bare_jid, jid_resource,
-                    subject, plain, xhtml
-                    ):
+                        date,
+                        connection_bare_jid, connection_jid_resource,
+                        bare_jid, jid_resource,
+                        subject, plain, xhtml
+                        ):
                     logging.debug(
                         "Message dated {} assumed to be already in DB".format(
                             date
@@ -602,20 +621,20 @@ class Storage:
         return
 
     def _is_history_record_already_in(
-        self,
-        date,
-        connection_bare_jid, connection_jid_resource,
-        bare_jid, jid_resource,
-        subject, plain, xhtml
-        ):
+            self,
+            date,
+            connection_bare_jid, connection_jid_resource,
+            bare_jid, jid_resource,
+            subject, plain, xhtml
+            ):
 
         q = self._db.session.query(self._db.History)
 
         q = q.filter(
             self._db.History.date
-                == date,
+            == date,
             self._db.History.connection_bare_jid
-                == connection_bare_jid,
+            == connection_bare_jid,
             self._db.History.bare_jid == bare_jid,
 
             self._db.History.subject == subject,
@@ -629,10 +648,10 @@ class Storage:
 #                    == connection_jid_resource
 #                )
 
-        if jid_resource != None:
+        if jid_resource is not None:
             q = q.filter(
                 self._db.History.jid_resource
-                    == jid_resource
+                == jid_resource
                 )
 
         res = q.all()
@@ -644,40 +663,40 @@ class Storage:
         connection_bare_jid=None, connection_jid_resource=None,
         bare_jid=None, jid_resource=None,
 
-        starting_from_date=None, starting_includingly=True,
-        ending_with_date=None, ending_includingly=True,
-        limit=None, offset=None,
-        types=None
-        ):
+            starting_from_date=None, starting_includingly=True,
+            ending_with_date=None, ending_includingly=True,
+            limit=None, offset=None,
+            types=None
+            ):
 
         with self._lock:
 
             try:
 
-                if types == None:
+                if types is None:
                     types = []
 
                 q = self._db.session.query(self._db.History)
 
                 q = q.filter(
                     self._db.History.connection_bare_jid
-                        == connection_bare_jid,
+                    == connection_bare_jid,
                     self._db.History.bare_jid == bare_jid
                     )
 
-                if connection_jid_resource != None:
+                if connection_jid_resource is not None:
                     q = q.filter(
                         self._db.History.connection_jid_resource
-                            == connection_jid_resource
+                        == connection_jid_resource
                         )
 
-                if jid_resource != None:
+                if jid_resource is not None:
                     q = q.filter(
                         self._db.History.jid_resource
-                            == jid_resource
+                        == jid_resource
                         )
 
-                if starting_from_date != None:
+                if starting_from_date is not None:
 
                     if starting_includingly:
                         q = q.filter(
@@ -688,7 +707,7 @@ class Storage:
                             self._db.History.date > starting_from_date
                             )
 
-                if ending_with_date != None:
+                if ending_with_date is not None:
 
                     if ending_includingly:
                         q = q.filter(self._db.History.date <= ending_with_date)
@@ -700,10 +719,10 @@ class Storage:
 
                 q = q.order_by(self._db.History.date.desc())
 
-                if limit != None:
+                if limit is not None:
                     q = q.limit(limit)
 
-                if offset != None:
+                if offset is not None:
                     q = q.offset(offset)
 
                 q = q.from_self()
@@ -765,7 +784,7 @@ class Storage:
 
                     self._db.commit()
 
-                if ret != None:
+                if ret is not None:
                     res = {}
                     wayround_org.utils.types.attrs_object_to_dict(
                         ret, res, CONNECTION_PRESET_FIELDS
@@ -778,7 +797,7 @@ class Storage:
 
     def set_connection_preset(self, name, preset):
         p = self.get_connection_preset_by_name(name)
-        if p != None:
+        if p is not None:
             self.del_connection_preset(name)
 
         with self._lock:
@@ -845,7 +864,7 @@ class Storage:
             except:
                 logging.exception("Error '{}' bob data".format(_mode))
             else:
-                if _mode == 'get' and ret != None:
+                if _mode == 'get' and ret is not None:
                     res = wayround_org.xmpp.bob.Data(
                         wayround_org.xmpp.bob.format_cid(method, sum_val)
                         )
@@ -907,7 +926,7 @@ class Storage:
                     curdat = datetime.datetime.utcnow()
                     for i in all1:
                         if (i.date + datetime.timedelta(seconds=int(i.maxage))
-                            < curdat):
+                                < curdat):
                             self._db.session.delete(i)
                     self._db.commit()
 
@@ -919,8 +938,8 @@ class Storage:
         return
 
     def get_latest_vcard(
-        self, connection_bare_jid, bare_jid
-        ):
+            self, connection_bare_jid, bare_jid
+            ):
 
         connection_bare_jid = connection_bare_jid.lower()
         bare_jid = bare_jid.lower()
@@ -948,17 +967,17 @@ class Storage:
         return ret
 
     def set_vcard(
-        self,
-        connection_bare_jid, bare_jid,
-        data
-        ):
+            self,
+            connection_bare_jid, bare_jid,
+            data
+            ):
 
         with self._lock:
             if (data
-                != self.get_latest_vcard(
-                    connection_bare_jid,
-                    bare_jid)['data']
-                ):
+                        != self.get_latest_vcard(
+                            connection_bare_jid,
+                            bare_jid)['data']
+                    ):
 
                 vcard = self._db.VCard()
                 vcard.connection_bare_jid = connection_bare_jid
@@ -970,7 +989,6 @@ class Storage:
                 self._db.session.commit()
 
         return
-
 
 
 def convert_history_query_result_list(lst):

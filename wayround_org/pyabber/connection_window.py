@@ -531,7 +531,7 @@ class ConnectionPresetWindow:
         pwd_grid.set_column_spacing(5)
         pwd_grid.set_margin_top(5)
         pwd_grid.set_margin_bottom(5)
-        pwd_grid.set_margin_tart(5)
+        pwd_grid.set_margin_start(5)
         pwd_grid.set_margin_end(5)
 
         resource_switch_combobox_model = Gtk.ListStore(int, str)
@@ -793,6 +793,7 @@ class ConnectionPresetWindow:
             'login': True,
             'bind': True,
             'session': True
+            # TODO: where is 'priority'?
             }
 
         if typ == 'new':
