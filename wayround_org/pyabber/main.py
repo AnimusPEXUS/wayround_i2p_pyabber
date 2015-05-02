@@ -117,7 +117,7 @@ class ProfileSession:
         return
 
     def save(self):
-        self.data.commit()
+        # TODO: remove this method
         return
 
 

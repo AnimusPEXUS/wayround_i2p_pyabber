@@ -368,8 +368,6 @@ class StorageDB(wayround_org.utils.db.BasicDB):
 #            ]:
 
 
-
-
 class Storage:
 
     def __init__(self, *args, **kwargs):
@@ -381,7 +379,7 @@ class Storage:
             )
 
         self._db = StorageDB(*args, **kwargs)
-                
+
         self.CONNECTION_PRESET_FIELDS = \
             wayround_org.utils.types.attrs_dict_to_object_same_names(
                 wayround_org.utils.sqlalchemy.get_column_names(
@@ -398,7 +396,6 @@ class Storage:
                     )
                 )
 
-
         for i in self.HISTORY_RECORD_FIELDS[:]:
             if i[0] == 'id':
                 self.HISTORY_RECORD_FIELDS.remove(i)
@@ -407,8 +404,6 @@ class Storage:
             if i[0] == 'type':
                 self.HISTORY_RECORD_FIELDS.remove(i)
                 self.HISTORY_RECORD_FIELDS.append(('type_', 'type_',))
-
-
 
         self.BOB_CACHE_FIELDS = \
             wayround_org.utils.types.attrs_dict_to_object_same_names(
@@ -427,7 +422,6 @@ class Storage:
                 self.BOB_CACHE_FIELDS.remove(i)
                 self.BOB_CACHE_FIELDS.append(('type_', 'type_',))
 
-
         self.VCARD_FIELDS = \
             wayround_org.utils.types.attrs_dict_to_object_same_names(
                 wayround_org.utils.sqlalchemy.get_column_names(
@@ -440,9 +434,9 @@ class Storage:
             if i[0] == 'id':
                 self.VCARD_FIELDS.remove(i)
                 self.VCARD_FIELDS.append(('id_', 'id_',))
-        
+
         del i
-        
+
         self._lock = threading.RLock()
 
         self._cleaning_bob = False
@@ -451,11 +445,6 @@ class Storage:
 
     def create(self):
         return self._db.create_all()
-
-    def commit(self):
-        return self._db.commit()
-
-    save = commit
 
     def close(self):
         return self._db.close()
@@ -469,12 +458,14 @@ class Storage:
 
         ret = None
 
+        session = sqlalchemy.orm.Session(self._db.decl_base.metadata.bind)
+
         connection_bare_jid = connection_jid_obj.bare()
         connection_jid_resource = connection_jid_obj.resource
         bare_jid = jid_obj.bare()
         jid_resource = jid_obj.resource
 
-        res = self._db.session.query(self._db.MessagesLastRead).\
+        res = session.query(self._db.MessagesLastRead).\
             filter(
                 self._db.MessagesLastRead.connection_bare_jid
             == connection_bare_jid,
@@ -495,7 +486,7 @@ class Storage:
             n.bare_jid = bare_jid
             n.jid_resource = jid_resource
 
-            self._db.session.add(n)
+            session.add(n)
 
             ret = n
 
@@ -506,9 +497,10 @@ class Storage:
 
         if len(res) > 1:
             for i in res[1:]:
-                self._db.session.delete(i)
+                session.delete(i)
 
-        self._db.commit()
+        session.commit()
+        session.close()
 
         return ret
 
@@ -549,8 +541,6 @@ class Storage:
                     jid_obj
                     )
                 res.date = date
-
-                self._db.commit()
 
             except:
                 logging.exception("Error setting last read date")
@@ -603,9 +593,14 @@ class Storage:
                     h.plain = plain
                     h.xhtml = xhtml
 
-                    self._db.session.add(h)
+                    session = sqlalchemy.orm.Session(
+                        self._db.decl_base.metadata.bind
+                        )
 
-                    self._db.session.commit()
+                    session.add(h)
+
+                    session.commit()
+                    session.close()
 
                     self.signal.emit(
                         'history_update',
@@ -628,7 +623,11 @@ class Storage:
             subject, plain, xhtml
             ):
 
-        q = self._db.session.query(self._db.History)
+        session = sqlalchemy.orm.Session(
+            self._db.decl_base.metadata.bind
+            )
+
+        q = session.query(self._db.History)
 
         q = q.filter(
             self._db.History.date
@@ -656,6 +655,9 @@ class Storage:
 
         res = q.all()
 
+        session.commit()
+        session.close()
+
         return len(res) != 0
 
     def get_history_records(
@@ -671,12 +673,16 @@ class Storage:
 
         with self._lock:
 
+            session = sqlalchemy.orm.Session(
+                self._db.decl_base.metadata.bind
+                )
+
             try:
 
                 if types is None:
                     types = []
 
-                q = self._db.session.query(self._db.History)
+                q = session.query(self._db.History)
 
                 q = q.filter(
                     self._db.History.connection_bare_jid
@@ -732,7 +738,10 @@ class Storage:
             except:
                 logging.exception("Error getting history record")
 
-            ret = convert_history_query_result_list(q.all())
+            ret = self.convert_history_query_result_list(q.all())
+
+            session.commit()
+            session.close()
 
         return ret
 
@@ -741,10 +750,17 @@ class Storage:
 
         with self._lock:
 
+            session = sqlalchemy.orm.Session(
+                self._db.decl_base.metadata.bind
+                )
+
             try:
-                ret = self._db.session.query(self.ConnectionPreset).count()
+                ret = session.query(self.ConnectionPreset).count()
             except:
                 logging.exception("Error getting connection presets count")
+
+            session.commit()
+            session.close()
 
         return ret
 
@@ -753,14 +769,21 @@ class Storage:
 
         with self._lock:
 
+            session = sqlalchemy.orm.Session(
+                self._db.decl_base.metadata.bind
+                )
+
             try:
-                res = self._db.session.query(self._db.ConnectionPreset).\
+                res = session.query(self._db.ConnectionPreset).\
                     add_columns(self._db.ConnectionPreset.name).\
                     all()
                 for i in res:
                     ret.append(i.name)
             except:
                 logging.exception("Error connection presets list")
+
+            session.commit()
+            session.close()
 
         return ret
 
@@ -769,8 +792,12 @@ class Storage:
 
         with self._lock:
 
+            session = sqlalchemy.orm.Session(
+                self._db.decl_base.metadata.bind
+                )
+
             try:
-                res = self._db.session.query(self._db.ConnectionPreset).\
+                res = session.query(self._db.ConnectionPreset).\
                     filter(self._db.ConnectionPreset.name == name).\
                     all()
 
@@ -780,18 +807,21 @@ class Storage:
                 if len(res) > 1:
 
                     for i in res[1:]:
-                        self._db.session.delete(i)
+                        session.delete(i)
 
-                    self._db.commit()
+                    session.commit()
 
                 if ret is not None:
                     res = {}
                     wayround_org.utils.types.attrs_object_to_dict(
-                        ret, res, CONNECTION_PRESET_FIELDS
+                        ret, res, self.CONNECTION_PRESET_FIELDS
                         )
                     ret = res
             except:
                 logging.exception("Error getting connection preset by name")
+
+            session.commit()
+            session.close()
 
         return ret
 
@@ -802,32 +832,48 @@ class Storage:
 
         with self._lock:
 
+            session = sqlalchemy.orm.Session(
+                self._db.decl_base.metadata.bind
+                )
+
             try:
 
                 new_preset = self._db.ConnectionPreset()
 
                 wayround_org.utils.types.attrs_dict_to_object(
-                    preset, new_preset, CONNECTION_PRESET_FIELDS
+                    preset, new_preset, self.CONNECTION_PRESET_FIELDS
                     )
 
-                self._db.session.add(new_preset)
-                self._db.commit()
+                session.add(new_preset)
+                session.commit()
             except:
                 logging.exception("Error setting connection preset")
+
+            session.commit()
+            session.close()
 
         return
 
     def del_connection_preset(self, name):
         with self._lock:
+
+            session = sqlalchemy.orm.Session(
+                self._db.decl_base.metadata.bind
+                )
+
             try:
-                p = self._db.session.query(self._db.ConnectionPreset).\
+                p = session.query(self._db.ConnectionPreset).\
                     filter(self._db.ConnectionPreset.name == name).\
                     all()
                 for i in p:
-                    self._db.session.delete(i)
-                self._db.commit()
+                    session.delete(i)
+                session.commit()
             except:
                 logging.exception("Error deleting connection preset")
+
+            session.commit()
+            session.close()
+
         return
 
     def _get_count_bob_data(self, method, sum_val, _mode='count'):
@@ -840,6 +886,7 @@ class Storage:
                 "acceptable methods are ['sha1']"
                 )
 
+        # TODO: eliminate eval
         table_field = eval('self._db.BoBCache.{}'.format(method))
 
         ret = 0
@@ -848,8 +895,12 @@ class Storage:
 
         with self._lock:
 
+            session = sqlalchemy.orm.Session(
+                self._db.decl_base.metadata.bind
+                )
+
             try:
-                ret = self._db.session.query(self._db.BoBCache).\
+                ret = session.query(self._db.BoBCache).\
                     filter(table_field == sum_val)
 
                 if _mode == 'count':
@@ -873,6 +924,9 @@ class Storage:
                     res.set_maxage(ret.maxage)
 
                     ret = res
+
+            session.commit()
+            session.close()
 
         return ret
 
@@ -898,6 +952,10 @@ class Storage:
 
             with self._lock:
 
+                session = sqlalchemy.orm.Session(
+                    self._db.decl_base.metadata.bind
+                    )
+
                 try:
                     n = self._db.BoBCache()
                     n.data = bob.get_data()
@@ -906,10 +964,13 @@ class Storage:
                     n.sha1 = sha1
                     n.type_ = bob.get_type_()
 
-                    self._db.session.add(n)
-                    self._db.commit()
+                    session.add(n)
+                    session.commit()
                 except:
                     logging.exception("Error adding bob data")
+
+                session.commit()
+                session.close()
 
         return
 
@@ -921,17 +982,24 @@ class Storage:
 
             with self._lock:
 
+                session = sqlalchemy.orm.Session(
+                    self._db.decl_base.metadata.bind
+                    )
+
                 try:
-                    all1 = self._db.session.query(self._db.BoBCache).all()
+                    all1 = session.query(self._db.BoBCache).all()
                     curdat = datetime.datetime.utcnow()
                     for i in all1:
                         if (i.date + datetime.timedelta(seconds=int(i.maxage))
                                 < curdat):
-                            self._db.session.delete(i)
-                    self._db.commit()
+                            session.delete(i)
+                    session.commit()
 
                 except:
                     logging.exception("Error cleaning bob data")
+
+                session.commit()
+                session.close()
 
             self._cleaning_bob = False
 
@@ -946,7 +1014,11 @@ class Storage:
 
         with self._lock:
 
-            res = self._db.session.query(self._db.VCard).\
+            session = sqlalchemy.orm.Session(
+                self._db.decl_base.metadata.bind
+                )
+
+            res = session.query(self._db.VCard).\
                 filter(
                     self._db.VCard.connection_bare_jid == connection_bare_jid,
                     self._db.VCard.bare_jid == bare_jid
@@ -961,8 +1033,11 @@ class Storage:
             if len(res) != 0:
                 ret = {}
                 wayround_org.utils.types.attrs_object_to_dict(
-                    res, ret, VCARD_FIELDS
+                    res, ret, self.VCARD_FIELDS
                     )
+
+            session.commit()
+            session.close()
 
         return ret
 
@@ -973,36 +1048,42 @@ class Storage:
             ):
 
         with self._lock:
-            if (data
-                        != self.get_latest_vcard(
-                            connection_bare_jid,
-                            bare_jid)['data']
-                    ):
+
+            session = sqlalchemy.orm.Session(
+                self._db.decl_base.metadata.bind
+                )
+
+            if (data != self.get_latest_vcard(
+                    connection_bare_jid,
+                    bare_jid
+                    )['data']):
 
                 vcard = self._db.VCard()
                 vcard.connection_bare_jid = connection_bare_jid
                 vcard.bare_jid = bare_jid
                 vcard.data = data
 
-                self._db.session.add(vcard)
+                session.add(vcard)
 
-                self._db.session.commit()
+                session.commit()
+
+            session.commit()
+            session.close()
 
         return
 
+    def convert_history_query_result_list(self, lst):
 
-def convert_history_query_result_list(lst):
+        ret = []
 
-    ret = []
+        for i in lst:
 
-    for i in lst:
+            d = {}
 
-        d = {}
+            wayround_org.utils.types.attrs_object_to_dict(
+                i, d, self.HISTORY_RECORD_FIELDS
+                )
 
-        wayround_org.utils.types.attrs_object_to_dict(
-            i, d, HISTORY_RECORD_FIELDS
-            )
+            ret.append(d)
 
-        ret.append(d)
-
-    return ret
+        return ret
